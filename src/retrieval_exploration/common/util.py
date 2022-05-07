@@ -10,7 +10,7 @@ def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> str:
 def get_doc_sep_token(model_name_or_path, tokenizer) -> str:
     """Returns a suitable document seperator token depending on `model_name_or_path` and
     `tokenizer`. In general, the function checks if this `model_name_or_path` has a special
-    document token (defined in `common.util._DOC_SEP_TOKENS`). If that is not found, it then follows
+    document token (defined in `common.util._DOC_SEP_TOKENS`). If none of these are found, it then follows
     the following order: `tokenizer.sep_token`, `tokenizer.bos_token`, `tokenizer.eos_token`. If
     these are all `None`, a `ValueError` is raised.
     """
