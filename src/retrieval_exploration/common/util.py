@@ -10,8 +10,8 @@ def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> str:
 def get_doc_sep_token(model_name_or_path, tokenizer) -> str:
     """Returns a suitable document seperator token depending on `model_name_or_path` and
     `tokenizer`. In general, the function checks if this `model_name_or_path` has a special
-    document token (defined in `common.util._DOC_SEP_TOKENS`). If none of these are found, it then follows
-    the following order: `tokenizer.sep_token`, `tokenizer.bos_token`, `tokenizer.eos_token`. If
+    document token (defined in `common.util._DOC_SEP_TOKENS`). If that is not found, it then checks
+    for: `tokenizer.sep_token`, `tokenizer.bos_token`, `tokenizer.eos_token` (in that order). If
     these are all `None`, a `ValueError` is raised.
     """
     # PRIMERA models have their own special token, <doc-sep>.
@@ -31,7 +31,7 @@ def get_doc_sep_token(model_name_or_path, tokenizer) -> str:
 
 def get_global_attention_mask(input_ids: List[List[str]], token_ids: List[int]) -> List[List[int]]:
     """Returns a corresponding global attention mask for `input_ids`, which is 1 for any tokens in
-    `token_ids` (indicating the model should attend to those tokens) and 0 elsewhere (indicated the
+    `token_ids` (indicating the model should attend to those tokens) and 0 elsewhere (indicating the
     model should not attend to those tokens).
 
     # Parameters
