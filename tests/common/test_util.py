@@ -1,8 +1,10 @@
+from typing import Callable
 import pytest
 from retrieval_exploration.common import util
+from transformers import PreTrainedTokenizer
 
 
-def test_preprocess_multi_news():
+def test_preprocess_multi_news() -> None:
     # Could be anything, choose the PRIMERA document separator token
     doc_sep_token = "<doc-sep>"
     text = "Document numero uno {util._DOC_SEP_TOKENS['multi_news']} Document numero dos"
@@ -18,7 +20,7 @@ def test_preprocess_multi_news():
     assert expected_summary == actual_summary
 
 
-def test_get_doc_sep_token(hf_tokenizer):
+def test_get_doc_sep_token(hf_tokenizer: Callable) -> None:
     # A model from the PRIMERA family
     tokenizer = hf_tokenizer("allenai/PRIMERA")
     assert util.get_doc_sep_token(tokenizer) == util._DOC_SEP_TOKENS["primera"]

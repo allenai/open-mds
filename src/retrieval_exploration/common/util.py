@@ -1,4 +1,5 @@
 from typing import List
+from transformers import PreTrainedTokenizer
 
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
 
@@ -7,7 +8,7 @@ def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> str:
     return text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token), summary
 
 
-def get_doc_sep_token(tokenizer) -> str:
+def get_doc_sep_token(tokenizer: PreTrainedTokenizer) -> str:
     """Returns a suitable document seperator token depending on `tokenizer`. In general, the
     function checks if this `tokenizer.name_or_path` has a special document token (defined in
     `common.util._DOC_SEP_TOKENS`). If that is not found, it then checks for: `tokenizer.sep_token`,
