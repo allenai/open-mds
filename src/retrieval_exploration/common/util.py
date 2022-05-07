@@ -7,15 +7,15 @@ def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> str:
     return text.replace(_DOC_SEP_TOKENS["multinews"], doc_sep_token), summary
 
 
-def get_doc_sep_token(model_name_or_path, tokenizer) -> str:
-    """Returns a suitable document seperator token depending on `model_name_or_path` and
-    `tokenizer`. In general, the function checks if this `model_name_or_path` has a special
-    document token (defined in `common.util._DOC_SEP_TOKENS`). If that is not found, it then checks
-    for: `tokenizer.sep_token`, `tokenizer.bos_token`, `tokenizer.eos_token` (in that order). If
-    these are all `None`, a `ValueError` is raised.
+def get_doc_sep_token(tokenizer) -> str:
+    """Returns a suitable document seperator token depending on `tokenizer`. In general, the
+    function checks if this `tokenizer.name_or_path` has a special document token (defined in
+    `common.util._DOC_SEP_TOKENS`). If that is not found, it then checks for: `tokenizer.sep_token`,
+    `tokenizer.bos_token`, `tokenizer.eos_token` in that order. If these are all `None`, a
+    `ValueError` is raised.
     """
     # PRIMERA models have their own special token, <doc-sep>.
-    if "primera" in model_name_or_path.lower():
+    if "primera" in tokenizer.name_or_path.lower():
         return _DOC_SEP_TOKENS["primera"]
     elif tokenizer.sep_token is not None:
         return tokenizer.sep_token
@@ -25,7 +25,7 @@ def get_doc_sep_token(model_name_or_path, tokenizer) -> str:
         return tokenizer.eos_token
     else:
         raise ValueError(
-            f"Could not determine a suitable document sperator token for mode '{model_name_or_path}'"
+            f"Could not determine a suitable document sperator token '{tokenizer.name_or_path}'"
         )
 
 
@@ -44,7 +44,6 @@ def get_global_attention_mask(input_ids: List[List[str]], token_ids: List[int]) 
 
     # TODO (John): Ideally this would be vectorized
     global_attention_mask = [
-        [1 if token_id in token_ids else 0 for token_id in batch]
-        for batch in input_ids
+        [1 if token_id in token_ids else 0 for token_id in batch] for batch in input_ids
     ]
     return global_attention_mask
