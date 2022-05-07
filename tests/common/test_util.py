@@ -1,7 +1,6 @@
 from typing import Callable
 import pytest
 from retrieval_exploration.common import util
-from transformers import PreTrainedTokenizer
 
 
 def test_preprocess_multi_news() -> None:
