@@ -29,5 +29,4 @@ poetry install
 # Install any task specific dependencies, e.g.
 poetry install -E "summarization"
 
-
 cd "$PROJECT/$USER/retrieval-exploration"
