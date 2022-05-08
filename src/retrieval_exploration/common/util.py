@@ -38,7 +38,8 @@ def truncate_multi_doc(
 ) -> str:
     """Given some `text`, which is assumed to be multiple documents joined by `doc_sep_token`,
     truncates each document (using `tokenizer`) so that the length of the concatenation of all
-    documents does not exceed max_length.
+    documents does not exceed max_length. See https://aclanthology.org/2021.naacl-main.380/ and
+    https://arxiv.org/abs/2110.08499 for more details.
     """
     # Some datasets have the doc sep token at the end of the text, so strip it before we split.
     docs = text.strip(doc_sep_token).split(doc_sep_token)
