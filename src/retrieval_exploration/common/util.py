@@ -42,15 +42,16 @@ def truncate_multi_doc(
     https://arxiv.org/abs/2110.08499 for more details.
     """
     # Some datasets have the doc sep token at the end of the text, so strip it before we split.
-    docs = text.strip(doc_sep_token).split(doc_sep_token)
-    # -2 to make room for the special tokens
-    max_doc_length = (max_length - 2) // len(docs)
+    docs = text.strip(doc_sep_token).strip().split(doc_sep_token)
+    # -2 to make room for the special tokens, -(len(docs) - 1) to make room for the doc sep tokens.
+    max_doc_length = (max_length - 2 - (len(docs) - 1)) // len(docs)
     truncated_docs = []
     for doc in docs:
         # Truncate each doc to its maximum allowed length
         truncated_docs.append(
             tokenizer.convert_tokens_to_string(
                 tokenizer.tokenize(doc, max_length=max_doc_length, truncation=True)
+            # Going to join everything on a space at the end, so strip it off here.
             ).strip()
         )
     return f" {doc_sep_token} ".join(truncated_docs)
