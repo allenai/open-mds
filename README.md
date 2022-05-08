@@ -1,5 +1,8 @@
 # Retrieval Exploration
 
+[![ci](https://github.com/allenai/retrieval-exploration/actions/workflows/ci.yml/badge.svg)](https://github.com/allenai/retrieval-exploration/actions/workflows/ci.yml)
+[![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
+
 ## Installation
 
 This repository requires Python 3.8 or later.

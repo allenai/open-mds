@@ -66,6 +66,7 @@ def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
         text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer
     )
     assert expected == actual
+    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
 
     # Test a simple case with two documents, where both are the same length
     docs = [
@@ -74,12 +75,14 @@ def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
     ]
     text = f" {doc_sep_token} ".join(docs)
 
-    expected = "I am document one. I am the same length <doc-sep> I am document two. I am the same length"
+    expected = (
+        "I am document one. I am the same length <doc-sep> I am document two. I am the same length"
+    )
     actual = util.truncate_multi_doc(
         text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer
     )
-
     assert expected == actual
+    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
 
 
 def test_get_global_attention_mask() -> None:
