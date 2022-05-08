@@ -5,7 +5,10 @@ _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
 
 
 def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> str:
-    return text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token), summary
+    # Some examples have a doc sep token at the end of the text, so strip it before we split.
+    text = text.strip(_DOC_SEP_TOKENS["multi_news"]).strip()
+    text = text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token)
+    return text, summary
 
 
 def get_doc_sep_token(tokenizer: PreTrainedTokenizer) -> str:
@@ -28,6 +31,30 @@ def get_doc_sep_token(tokenizer: PreTrainedTokenizer) -> str:
         raise ValueError(
             f"Could not determine a suitable document sperator token '{tokenizer.name_or_path}'"
         )
+
+
+def truncate_multi_doc(
+    text: str, doc_sep_token: str, max_length: int, tokenizer: PreTrainedTokenizer
+) -> str:
+    """Given some `text`, which is assumed to be multiple documents joined by `doc_sep_token`,
+    truncates each document (using `tokenizer`) so that the length of the concatenation of all
+    documents does not exceed max_length. See https://aclanthology.org/2021.naacl-main.380/ and
+    https://arxiv.org/abs/2110.08499 for more details.
+    """
+    # Some datasets have the doc sep token at the end of the text, so strip it before we split.
+    docs = text.strip(doc_sep_token).strip().split(doc_sep_token)
+    # -2 to make room for the special tokens, -(len(docs) - 1) to make room for the doc sep tokens.
+    max_doc_length = (max_length - 2 - (len(docs) - 1)) // len(docs)
+    truncated_docs = []
+    for doc in docs:
+        # Truncate each doc to its maximum allowed length
+        truncated_docs.append(
+            tokenizer.convert_tokens_to_string(
+                tokenizer.tokenize(doc, max_length=max_doc_length, truncation=True)
+            # Going to join everything on a space at the end, so strip it off here.
+            ).strip()
+        )
+    return f" {doc_sep_token} ".join(truncated_docs)
 
 
 def get_global_attention_mask(input_ids: List[List[str]], token_ids: List[int]) -> List[List[int]]:
