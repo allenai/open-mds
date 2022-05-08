@@ -15,13 +15,13 @@ Many dependencies are task specific, so you will need to specify the correct tas
 
 Install with `pip` right from GitHub, or clone the repo locally:
 
-```
+```bash
 pip install "git+https://github.com/allenai/retrieval-exploration.git#egg=retrieval_exploration[all]"
 ```
 
 or
 
-```
+```bash
 git clone https://github.com/allenai/retrieval-exploration.git
 cd retrieval-exploration
 pip install -e ".[all]"
