@@ -4,13 +4,21 @@ from retrieval_exploration.common import util
 
 
 def test_preprocess_multi_news() -> None:
-    # Could be anything, choose the PRIMERA document separator token
     doc_sep_token = "<doc-sep>"
-    text = "Document numero uno {util._DOC_SEP_TOKENS['multi_news']} Document numero dos"
+
+    # Test a simple case with two documents, where one is longer than the other
+    docs = [
+        "Document numero uno.",
+        # Including a document separator token at the end. Some examples in multi-news do this,
+        # so we should make sure it doesn't trip up our logic.
+        f"Document numero dos. {util._DOC_SEP_TOKENS['multi_news']}",
+    ]
+    text = f" {util._DOC_SEP_TOKENS['multi_news']} ".join(docs)
     summary = "This can be anything"
+
     expected_text, expected_summary = (
-        text.replace(util._DOC_SEP_TOKENS["multi_news"], "<doc-sep>"),
-        summary,
+        "Document numero uno. <doc-sep> Document numero dos.",
+        "This can be anything",
     )
     actual_text, actual_summary = util.preprocess_multi_news(
         text=text, summary=summary, doc_sep_token=doc_sep_token
@@ -39,7 +47,42 @@ def test_get_doc_sep_token(hf_tokenizer: Callable) -> None:
         _ = util.get_doc_sep_token(tokenizer)
 
 
-def test_get_global_attention_mask():
+def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
+    max_length = 24
+    doc_sep_token = "<doc-sep>"
+    tokenizer = hf_tokenizer("allenai/PRIMERA")
+
+    # Test a simple case with two documents, where one is longer than the other
+    docs = [
+        "I am document one.",
+        # Including a document separator token at the end. Some examples in multi-news do this,
+        # so we should make sure it doesn't trip up logic.
+        f"I am document two. I am a little longer than document one. {doc_sep_token}",
+    ]
+    text = f" {doc_sep_token} ".join(docs)
+
+    expected = "I am document one. <doc-sep> I am document two. I am a little longer than"
+    actual = util.truncate_multi_doc(
+        text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer
+    )
+    assert expected == actual
+
+    # Test a simple case with two documents, where both are the same length
+    docs = [
+        "I am document one. I am the same length as document two",
+        "I am document two. I am the same length as document one.",
+    ]
+    text = f" {doc_sep_token} ".join(docs)
+
+    expected = "I am document one. I am the same length as <doc-sep> I am document two. I am the same length as"
+    actual = util.truncate_multi_doc(
+        text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer
+    )
+
+    assert expected == actual
+
+
+def test_get_global_attention_mask() -> None:
     # Test a simple case with two tokens to be globally attended to
     input_ids = [[117, 0, 6, 42], [0, 2, 117, 24]]
     token_ids = [117, 42]
