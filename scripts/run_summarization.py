@@ -537,8 +537,9 @@ def main():
                 else:
                     text, summary = examples[text_column][i], examples[summary_column][i]
 
-                # Rather than naively truncating the concatenated documents, we truncate each
-                # document separately to statisfy the max length of the input.
+                # Rather than naively truncating the concatenated documents, we follow
+                # https://aclanthology.org/2021.naacl-main.380/ and https://arxiv.org/abs/2110.08499
+                # by truncating each document separately to statisfy the max length of the input.
                 text = util.truncate_multi_doc(
                     text,
                     doc_sep_token=doc_sep_token,
