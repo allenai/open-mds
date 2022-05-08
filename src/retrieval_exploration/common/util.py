@@ -1,10 +1,10 @@
-from typing import List
+from typing import List, Tuple
 from transformers import PreTrainedTokenizer
 
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
 
 
-def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> str:
+def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
     # Some examples have a doc sep token at the end of the text, so strip it before we split.
     text = text.strip(_DOC_SEP_TOKENS["multi_news"]).strip()
     text = text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token)
@@ -51,13 +51,13 @@ def truncate_multi_doc(
         truncated_docs.append(
             tokenizer.convert_tokens_to_string(
                 tokenizer.tokenize(doc, max_length=max_doc_length, truncation=True)
-            # Going to join everything on a space at the end, so strip it off here.
+                # Going to join everything on a space at the end, so strip it off here.
             ).strip()
         )
     return f" {doc_sep_token} ".join(truncated_docs)
 
 
-def get_global_attention_mask(input_ids: List[List[str]], token_ids: List[int]) -> List[List[int]]:
+def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) -> List[List[int]]:
     """Returns a corresponding global attention mask for `input_ids`, which is 1 for any tokens in
     `token_ids` (indicating the model should attend to those tokens) and 0 elsewhere (indicating the
     model should not attend to those tokens).
