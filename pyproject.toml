@@ -25,7 +25,11 @@ summarization = ["sentencepiece", "protobuf", "rouge-score", "nltk", "py7zr"]
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"
 flake8 = "^4.0.1"
+mypy = "^0.950"
 pytest = "^7.1.2"
+pytest-cov = "^3.0.0"
+coverage = "^6.3.2"
+codecov = "^2.1.12"
 
 # This configuration is adapted from: https://github.com/allenai/allennlp/blob/main/pyproject.toml
 [tool.black]
