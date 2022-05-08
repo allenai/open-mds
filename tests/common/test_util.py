@@ -61,7 +61,7 @@ def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
     ]
     text = f" {doc_sep_token} ".join(docs)
 
-    expected = "I am document one. <doc-sep> I am document two. I am a little longer than"
+    expected = "I am document one. <doc-sep> I am document two. I am a little longer"
     actual = util.truncate_multi_doc(
         text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer
     )
@@ -74,7 +74,7 @@ def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
     ]
     text = f" {doc_sep_token} ".join(docs)
 
-    expected = "I am document one. I am the same length as <doc-sep> I am document two. I am the same length as"
+    expected = "I am document one. I am the same length <doc-sep> I am document two. I am the same length"
     actual = util.truncate_multi_doc(
         text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer
     )
