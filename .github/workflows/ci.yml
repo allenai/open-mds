@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v2
+        uses: abatilo/actions-poetry@v2.1.4
       - name: Install dependencies with Poetry
         run: |
           poetry install
@@ -38,9 +38,9 @@ jobs:
           poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings.
           poetry run flake8 . --count --exit-zero --max-complexity=10 --statistics
-      - name: Type check with mypy
-        run: |
-          poetry run mypy .
+      # - name: Type check with mypy
+      #   run: |
+      #     poetry run mypy .
       - name: Test with pytest
         run: |
           poetry run pytest tests --cov-report=xml --cov ./seq2rel --cov-config=.coveragerc
