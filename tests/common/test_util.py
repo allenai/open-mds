@@ -122,16 +122,20 @@ def test_perturbed() -> None:
 
     # Test the case where half the documents should be replaced.
     per_perturbed = 0.5
-    expected = per_perturbed * num_docs
+    expected_num_perturbed = per_perturbed * num_docs
     perturbed = util.perturb(inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed)
     for input_, perturbed_ in zip(inputs, perturbed):
-        actual = num_docs - sum([doc in input_ for doc in perturbed_.split(doc_sep_token)])
-        assert expected == actual
+        actual_num_perturbed = num_docs - sum(
+            [doc in input_ for doc in perturbed_.split(doc_sep_token)]
+        )
+        assert expected_num_perturbed == actual_num_perturbed
 
     # Test the case where all documents should be replaced.
     per_perturbed = 1.0
-    expected = per_perturbed * num_docs
+    expected_num_perturbed = per_perturbed * num_docs
     perturbed = util.perturb(inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed)
     for input_, perturbed_ in zip(inputs, perturbed):
-        actual = num_docs - sum([doc in input_ for doc in perturbed_.split(doc_sep_token)])
-        assert expected == actual
+        actual_num_perturbed = num_docs - sum(
+            [doc in input_ for doc in perturbed_.split(doc_sep_token)]
+        )
+        assert expected_num_perturbed == actual_num_perturbed
