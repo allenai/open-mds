@@ -6,7 +6,7 @@
 ####################################################################################################
 
 # Load the required modules
-# Note: rust is only need for compiling the tokenizers library
+# Note: rust is only needed for compiling the tokenizers library
 module load StdEnv/2020 gcc/9.3.0 python/3.8 cuda/11.4 rust/1.59.0 arrow/7.0.0
 
 # Setup the project and scratch directories
