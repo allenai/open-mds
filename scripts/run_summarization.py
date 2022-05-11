@@ -23,7 +23,6 @@ import os
 import sys
 from dataclasses import dataclass, field
 from typing import Optional
-
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
@@ -251,7 +250,6 @@ class DataTrainingArguments:
         default="",
         metadata={"help": "A prefix to add before every source text (useful for T5 models)."},
     )
-
     forced_bos_token: Optional[str] = field(
         default=None,
         metadata={
@@ -259,6 +257,10 @@ class DataTrainingArguments:
             "Useful for multilingual models like mBART where the first generated token"
             "needs to be the target language token (Usually it is the target language token)"
         },
+    )
+    per_perturbed: Optional[float] = field(
+        default=None,
+        metadata={"help": "Percent of input documents to replace with randomly sampled documents,"},
     )
 
     def __post_init__(self):
@@ -551,6 +553,20 @@ def main():
                 targets.append(summary)
 
         inputs = [prefix + inp for inp in inputs]
+
+        if data_args.per_perturbed:
+            inputs = util.perturb(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                (
+                    f"{data_args.per_perturbed:.2%} of input documents in each instance replaced"
+                    " with a randomly sampled document."
+                )
+            )
+
         model_inputs = tokenizer(
             inputs, max_length=data_args.max_source_length, padding=padding, truncation=True
         )
@@ -660,27 +676,55 @@ def main():
         return preds, labels
 
     def compute_metrics(eval_preds):
-        preds, labels = eval_preds
+        preds, labels, inputs = eval_preds.predictions, eval_preds.label_ids, eval_preds.inputs
+
         if isinstance(preds, tuple):
             preds = preds[0]
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         if data_args.ignore_pad_token_for_loss:
             # Replace -100 in the labels as we can't decode them.
             labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+            if inputs is not None:
+                inputs = np.where(inputs != -100, inputs, tokenizer.pad_token_id)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
         # Some simple post-processing
         decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
         result = metric.compute(
-            predictions=decoded_preds, references=decoded_labels, use_stemmer=True
+            predictions=decoded_preds,
+            references=decoded_labels,
+            use_stemmer=True,
+            use_aggregator=False,
         )
-        # Extract a few results from ROUGE
-        result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
+
+        # Some basic post-processing on results.
+
+        for key, value in result.items():
+            result[key] = {
+                "precision": [round(score.precision * 100, 4) for score in value],
+                "recall": [round(score.recall * 100, 4) for score in value],
+                "fmeasure": [round(score.fmeasure * 100, 4) for score in value],
+            }
+
+        # Determine the number of input documents for all examples, which is used in our
+        # pertubation experiments.
+        if inputs is not None:
+            decoded_inputs = tokenizer.batch_decode(inputs, skip_special_tokens=False)
+            num_docs = [
+                # Some examples have doc sep token at the end, so strip it to get correct count.
+                input_.strip(doc_sep_token).count(doc_sep_token) + 1
+                for input_ in decoded_inputs
+            ]
+            result["num_docs"] = num_docs
+            result["labels"] = decoded_labels
+
+        # Add useful metadata to the output dict.
+        result["example_idx"] = list(range(len(num_docs)))
+        result["per_perturbed"] = data_args.per_perturbed or 0.0
 
         prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
         result["gen_len"] = np.mean(prediction_lens)
-        result = {k: round(v, 4) for k, v in result.items()}
         return result
 
     # Initialize our Trainer
