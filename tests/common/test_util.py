@@ -1,3 +1,5 @@
+import copy
+import random
 from typing import Callable
 import pytest
 from retrieval_exploration.common import util
@@ -104,3 +106,32 @@ def test_get_global_attention_mask() -> None:
     actual_global_attention_mask = util.get_global_attention_mask(input_ids=input_ids, token_ids=[])
     expected_global_attention_mask = [[0, 0, 0, 0], [0, 0, 0, 0]]
     assert expected_global_attention_mask == actual_global_attention_mask
+
+
+def test_perturbed() -> None:
+    num_docs = 4
+    doc_sep_token = "<doc-sep>"
+    inputs = [
+        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
+        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs, num_docs * 2)),
+    ]
+    # Test a simple case where per_perturbed is 0.0 and so this is a no-op
+    expected = copy.deepcopy(inputs)
+    actual = util.perturb(inputs, doc_sep_token=doc_sep_token, per_perturbed=0.0)
+    assert expected == actual
+
+    # Test the case where half the documents should be replaced.
+    per_perturbed = 0.5
+    expected = per_perturbed * num_docs
+    perturbed = util.perturb(inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed)
+    for input_, perturbed_ in zip(inputs, perturbed):
+        actual = num_docs - sum([doc in input_ for doc in perturbed_.split(doc_sep_token)])
+        assert expected == actual
+
+    # Test the case where all documents should be replaced.
+    per_perturbed = 1.0
+    expected = per_perturbed * num_docs
+    perturbed = util.perturb(inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed)
+    for input_, perturbed_ in zip(inputs, perturbed):
+        actual = num_docs - sum([doc in input_ for doc in perturbed_.split(doc_sep_token)])
+        assert expected == actual
