@@ -1,10 +1,12 @@
-import math
-import random
 from typing import List, Tuple
 
 from transformers import PreTrainedTokenizer
 
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
+
+
+def split_docs(text: str, doc_sep_token: str) -> List[str]:
+    return [doc.strip() for doc in text.strip(doc_sep_token).strip().split(doc_sep_token)]
 
 
 def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
@@ -45,11 +47,11 @@ def truncate_multi_doc(
     https://arxiv.org/abs/2110.08499 for more details.
     """
     # Some datasets have the doc sep token at the end of the text, so strip it before we split.
-    docs = text.strip(doc_sep_token).strip().split(doc_sep_token)
+    input_docs = split_docs(text, doc_sep_token=doc_sep_token)
     # -2 to make room for the special tokens, -(len(docs) - 1) to make room for the doc sep tokens.
-    max_doc_length = (max_length - 2 - (len(docs) - 1)) // len(docs)
+    max_doc_length = (max_length - 2 - (len(input_docs) - 1)) // len(input_docs)
     truncated_docs = []
-    for doc in docs:
+    for doc in input_docs:
         # Truncate each doc to its maximum allowed length
         truncated_docs.append(
             tokenizer.convert_tokens_to_string(
@@ -78,61 +80,3 @@ def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) 
         [1 if token_id in token_ids else 0 for token_id in batch] for batch in input_ids
     ]
     return global_attention_mask
-
-
-def perturb(inputs: List[str], doc_sep_token: str, per_perturbed: float) -> List[str]:
-    """Given `inputs`, a list of strings where each string contains the input documents
-    (seperated `doc_sep_token`) of one example from the dataset, perturbs the input by replacing
-    `per_perturbed` percent of documents in each example with a random document sampled from `inputs.`
-
-    # Parameters
-
-    inputs : `List[str]`
-        A list of strings, each string containing the input documents for one example. It is assumed
-        that documents are seperated by `doc_sep_token`.
-    doc_sep_token : `str`
-        The token that separates individual documents in `inputs`.
-    per_perturbed : `float`
-        The percentage of documents in each example that should be randomly replaced with a document
-        sampled from `inputs`.
-    """
-    # Do nothing if no documents should be perturbed
-    if per_perturbed == 0.0:
-        return inputs
-
-    perturbed_inputs = []
-
-    for i, text in enumerate(inputs):
-        # Some datasets have the doc sep token at the end of the text, so strip it before we split.
-        # We also strip off extra whitespace at the beginning and end of each document because we
-        # will join on a space later.
-        input_docs = [doc.strip() for doc in text.strip(doc_sep_token).strip().split(doc_sep_token)]
-
-        # The absolute number of documents to replace
-        k = math.ceil(per_perturbed * len(input_docs))
-
-        # Randomly sample documents until we have at least k of them
-        random_docs = []
-        while True:
-            random_instance_idx = random.randint(0, len(inputs) - 1)
-            # Don't sample documents from the example we are currently processing
-            if random_instance_idx == i:
-                continue
-            random_example = inputs[random_instance_idx]
-            docs = random_example.strip(doc_sep_token).strip().split(doc_sep_token)
-            # Don't sample the same random document (for the same instance) twice
-            while True:
-                random_doc = random.choice(docs)
-                if random_doc not in random_docs:
-                    break
-            random_docs.append(random_doc)
-            if len(random_docs) == k:
-                break
-
-        # Replace random documents in the current instance with the randomly choosen documents
-        for j, doc in zip(random.sample(range(len(input_docs)), k), random_docs):
-            input_docs[j] = doc.strip()
-
-        perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
-
-    return perturbed_inputs
