@@ -579,7 +579,7 @@ def main():
                 doc_sep_token=doc_sep_token,
                 per_perturbed=data_args.per_perturbed,
             )
-            logger.info("Input document will be shuffled.")
+            logger.info("Input documents will be randomly shuffled.")
         elif data_args.perturbation == "duplication":
             inputs = perturbations.random_duplication(
                 inputs,
@@ -592,6 +592,8 @@ def main():
                     " duplicated."
                 )
             )
+        else:
+            logger.info("No perturbations will be applied")
 
         model_inputs = tokenizer(
             inputs, max_length=data_args.max_source_length, padding=padding, truncation=True
@@ -703,7 +705,6 @@ def main():
 
     def compute_metrics(eval_preds):
         preds, labels, inputs = eval_preds.predictions, eval_preds.label_ids, eval_preds.inputs
-
         if isinstance(preds, tuple):
             preds = preds[0]
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
@@ -724,8 +725,7 @@ def main():
             use_aggregator=False,
         )
 
-        # Some basic post-processing on results.
-
+        # Extract a few results from ROUGE
         for key, value in result.items():
             result[key] = {
                 "precision": [round(score.precision * 100, 4) for score in value],
@@ -743,16 +743,23 @@ def main():
                 for input_ in decoded_inputs
             ]
             result["num_docs"] = num_docs
-            result["per_perturbed"] = data_args.per_perturbed
+
             result["example_idx"] = list(range(len(num_docs)))
+
+            result["perturbation"] = data_args.perturbation
+            result["per_perturbed"] = data_args.per_perturbed
+
             # TODO (John): We'd like to strip all special tokens but in some cases that would
             # remove the doc sep token, so at the very least strip the pad token.
             result["inputs"] = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
-            result["decoded_preds"] = decoded_preds
+            result["preds"] = decoded_preds
             result["labels"] = decoded_labels
 
+        # Add the mean length of reference and generated summaries.
+        label_lens = [np.count_nonzero(label != tokenizer.pad_token_id) for label in labels]
         prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
-        result["gen_len"] = np.mean(prediction_lens)
+        result["label_len"] = np.mean(label_lens)
+        result["pred_len"] = np.mean(prediction_lens)
         return result
 
     # Initialize our Trainer
