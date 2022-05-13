@@ -6,6 +6,9 @@ _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
 
 
 def split_docs(text: str, doc_sep_token: str) -> List[str]:
+    # Some datasets have the doc sep token at the end of the text, so strip it before we split.
+    # We also strip off extra whitespace at the beginning and end of each document because we
+    # will join on a space later.
     return [doc.strip() for doc in text.strip(doc_sep_token).strip().split(doc_sep_token)]
 
 
