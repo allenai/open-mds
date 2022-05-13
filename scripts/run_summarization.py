@@ -561,7 +561,29 @@ def main():
 
         inputs = [prefix + inp for inp in inputs]
 
-        if data_args.perturbation == "replacement":
+        if data_args.perturbation == "shuffle":
+            inputs = perturbations.random_shuffle(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                "Input documents of each example will be randomly shuffled before training/evaluation."
+            )
+
+        elif data_args.perturbation == "duplication":
+            inputs = perturbations.random_duplication(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                (
+                    f"{data_args.per_perturbed:.2%} of input documents in each example will be"
+                    " duplicated before training/evaluation."
+                )
+            )
+        elif data_args.perturbation == "replacement":
             inputs = perturbations.random_replacement(
                 inputs,
                 doc_sep_token=doc_sep_token,
@@ -573,27 +595,12 @@ def main():
                     " with a randomly sampled document."
                 )
             )
-        elif data_args.perturbation == "shuffle":
-            inputs = perturbations.random_shuffle(
-                inputs,
-                doc_sep_token=doc_sep_token,
-                per_perturbed=data_args.per_perturbed,
-            )
-            logger.info("Input documents will be randomly shuffled.")
-        elif data_args.perturbation == "duplication":
-            inputs = perturbations.random_duplication(
-                inputs,
-                doc_sep_token=doc_sep_token,
-                per_perturbed=data_args.per_perturbed,
-            )
-            logger.info(
-                (
-                    f"{data_args.per_perturbed:.2%} of input documents in each instance will be"
-                    " duplicated."
-                )
-            )
+        elif data_args.perturbation is None:
+            logger.info("No perturbations will be applied.")
         else:
-            logger.info("No perturbations will be applied")
+            raise ValueError(
+                f"Got an unexpected value for --perturbation: {data_args.perturbation}"
+            )
 
         model_inputs = tokenizer(
             inputs, max_length=data_args.max_source_length, padding=padding, truncation=True
