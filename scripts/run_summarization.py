@@ -751,10 +751,11 @@ def main():
             ]
             result["num_docs"] = num_docs
 
+            # TODO (John): A lot of these should be logged OUTSIDE this function.
             result["example_idx"] = list(range(len(num_docs)))
-
             result["perturbation"] = data_args.perturbation
             result["per_perturbed"] = data_args.per_perturbed
+            result["seed"] = training_args.seed
 
             # TODO (John): We'd like to strip all special tokens but in some cases that would
             # remove the doc sep token, so at the very least strip the pad token.
