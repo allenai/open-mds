@@ -580,8 +580,8 @@ def main():
                 per_perturbed=data_args.per_perturbed,
             )
             logger.info("Input document will be shuffled.")
-        elif data_args.perturbation == "addition":
-            inputs = perturbations.random_addition(
+        elif data_args.perturbation == "duplication":
+            inputs = perturbations.random_duplication(
                 inputs,
                 doc_sep_token=doc_sep_token,
                 per_perturbed=data_args.per_perturbed,

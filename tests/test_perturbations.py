@@ -52,7 +52,7 @@ def test_random_shuffling() -> None:
             assert perturbed_doc.strip() in input_example
 
 
-def test_random_addition() -> None:
+def test_random_duplication() -> None:
     num_docs = 4
     doc_sep_token = "<doc-sep>"
     inputs = [
@@ -61,13 +61,13 @@ def test_random_addition() -> None:
     ]
     # Test a simple case where per_perturbed is 0.0 and so this is a no-op
     expected = copy.deepcopy(inputs)
-    actual = perturbations.random_addition(inputs, doc_sep_token=doc_sep_token, per_perturbed=0.0)
+    actual = perturbations.random_duplication(inputs, doc_sep_token=doc_sep_token, per_perturbed=0.0)
     assert expected == actual
 
     # Test the cases where a fraction of documents should be perturbed.
     for per_perturbed in [0.5, 1.0]:
         expected_num_perturbed = per_perturbed * num_docs
-        perturbed = perturbations.random_addition(
+        perturbed = perturbations.random_duplication(
             inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed
         )
 

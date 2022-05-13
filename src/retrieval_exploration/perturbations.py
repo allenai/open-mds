@@ -89,7 +89,7 @@ def random_shuffle(
     return perturbed_inputs
 
 
-def random_addition(
+def random_duplication(
     inputs: List[str], doc_sep_token: str, per_perturbed: Optional[float] = None
 ) -> List[str]:
     """Given `inputs`, a list of strings where each string contains the input documents
