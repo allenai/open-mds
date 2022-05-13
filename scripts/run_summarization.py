@@ -47,6 +47,7 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode
 from transformers.utils.versions import require_version
+from retrieval_exploration import perturbations
 from retrieval_exploration.common import util
 
 
@@ -258,9 +259,17 @@ class DataTrainingArguments:
             "needs to be the target language token (Usually it is the target language token)"
         },
     )
+    perturbation: Optional[str] = (
+        field(
+            default=None,
+            metadata={"help": "The pertubation strategy to use."},
+        ),
+    )
     per_perturbed: Optional[float] = field(
         default=None,
-        metadata={"help": "Percent of input documents to replace with randomly sampled documents,"},
+        metadata={
+            "help": "Percent of input documents to perturb. Has no effect if perturbation is None."
+        },
     )
 
     def __post_init__(self):
@@ -554,8 +563,8 @@ def main():
 
         inputs = [prefix + inp for inp in inputs]
 
-        if data_args.per_perturbed:
-            inputs = util.perturb(
+        if data_args.perturbation == "replacement":
+            inputs = perturbations.random_replacement(
                 inputs,
                 doc_sep_token=doc_sep_token,
                 per_perturbed=data_args.per_perturbed,
@@ -564,6 +573,25 @@ def main():
                 (
                     f"{data_args.per_perturbed:.2%} of input documents in each instance replaced"
                     " with a randomly sampled document."
+                )
+            )
+        elif data_args.perturbation == "shuffle":
+            inputs = perturbations.random_shuffle(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info("Input document will be shuffled.")
+        elif data_args.perturbation == "addition":
+            inputs = perturbations.random_addition(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                (
+                    f"{data_args.per_perturbed:.2%} of input documents in each instance will be"
+                    " duplicated."
                 )
             )
 
@@ -717,11 +745,13 @@ def main():
                 for input_ in decoded_inputs
             ]
             result["num_docs"] = num_docs
+            result["per_perturbed"] = data_args.per_perturbed
+            result["example_idx"] = list(range(len(num_docs)))
+            # TODO (John): We'd like to strip all special tokens but in some cases that would
+            # remove the doc sep token, so at the very least strip the pad token.
+            result["inputs"] = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
+            result["decoded_preds"] = decoded_preds
             result["labels"] = decoded_labels
-
-        # Add useful metadata to the output dict.
-        result["example_idx"] = list(range(len(num_docs)))
-        result["per_perturbed"] = data_args.per_perturbed or 0.0
 
         prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
         result["gen_len"] = np.mean(prediction_lens)
