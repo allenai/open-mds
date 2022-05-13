@@ -1,11 +1,13 @@
 import math
 import random
-from typing import List
+from typing import List, Optional
 
 from retrieval_exploration.common import util
 
 
-def random_replacement(inputs: List[str], doc_sep_token: str, per_perturbed: float) -> List[str]:
+def random_replacement(
+    inputs: List[str], doc_sep_token: str, per_perturbed: Optional[float] = None
+) -> List[str]:
     """Given `inputs`, a list of strings where each string contains the input documents
     (seperated `doc_sep_token`) of one example from the dataset, perturbs the input by replacing
     `per_perturbed` percent of documents in each example with a random document sampled from `inputs.`
@@ -17,20 +19,17 @@ def random_replacement(inputs: List[str], doc_sep_token: str, per_perturbed: flo
         that documents are seperated by `doc_sep_token`.
     doc_sep_token : `str`
         The token that separates individual documents in `inputs`.
-    per_perturbed : `float`
+    per_perturbed : `float`, optional (default=None)
         The percentage of documents in each example that should be randomly replaced with a document
-        sampled from `inputs`.
+        sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
     """
-    # Do nothing if no documents should be perturbed
-    if per_perturbed == 0.0:
+    if not per_perturbed:
         return inputs
 
     perturbed_inputs = []
 
     for i, text in enumerate(inputs):
-        # Some datasets have the doc sep token at the end of the text, so strip it before we split.
-        # We also strip off extra whitespace at the beginning and end of each document because we
-        # will join on a space later.
+
         input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to replace
@@ -63,7 +62,9 @@ def random_replacement(inputs: List[str], doc_sep_token: str, per_perturbed: flo
     return perturbed_inputs
 
 
-def random_shuffle(inputs: List[str], doc_sep_token: str) -> List[str]:
+def random_shuffle(
+    inputs: List[str], doc_sep_token: str, per_perturbed: Optional[float] = None
+) -> List[str]:
     """Given `inputs`, a list of strings where each string contains the input documents
     (seperated `doc_sep_token`) of one example from the dataset, perturbs the input by randomly
     shuffling the order of documents in each example.
@@ -75,15 +76,51 @@ def random_shuffle(inputs: List[str], doc_sep_token: str) -> List[str]:
         that documents are seperated by `doc_sep_token`.
     doc_sep_token : `str`
         The token that separates individual documents in `inputs`.
+    per_perturbed : `float`, optional (default=None)
+        Has no effect. Exists for consistency with other perturbation functions.
     """
     perturbed_inputs = []
 
     for text in inputs:
-        # Some datasets have the doc sep token at the end of the text, so strip it before we split.
-        # We also strip off extra whitespace at the beginning and end of each document because we
-        # will join on a space later.
         input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
         random.shuffle(input_docs)
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
+
+    return perturbed_inputs
+
+
+def random_addition(
+    inputs: List[str], doc_sep_token: str, per_perturbed: Optional[float] = None
+) -> List[str]:
+    """Given `inputs`, a list of strings where each string contains the input documents
+    (seperated `doc_sep_token`) of one example from the dataset, perturbs the input by replacing
+    `per_perturbed` percent of documents in each example with a random document sampled from `inputs.`
+
+    # Parameters
+
+    inputs : `List[str]`
+        A list of strings, each string containing the input documents for one example. It is assumed
+        that documents are seperated by `doc_sep_token`.
+    doc_sep_token : `str`
+        The token that separates individual documents in `inputs`.
+    per_perturbed : `float`, optional (default=None)
+        The percentage of documents in each example that should be randomly replaced with a document
+        sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
+    """
+    if not per_perturbed:
+        return inputs
+
+    perturbed_inputs = []
+
+    for text in inputs:
+        input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
+
+        # The absolute number of documents to add
+        k = math.ceil(per_perturbed * len(input_docs))
+
+        # Randomly sample k documents which we will repeat in the input
+        repeaters = random.sample(input_docs, k)
+
+        perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs + repeaters))
 
     return perturbed_inputs
