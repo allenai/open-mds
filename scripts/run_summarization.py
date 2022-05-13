@@ -259,11 +259,9 @@ class DataTrainingArguments:
             "needs to be the target language token (Usually it is the target language token)"
         },
     )
-    perturbation: Optional[str] = (
-        field(
-            default=None,
-            metadata={"help": "The pertubation strategy to use."},
-        ),
+    perturbation: Optional[str] = field(
+        default=None,
+        metadata={"help": "The pertubation strategy to use."},
     )
     per_perturbed: Optional[float] = field(
         default=None,
