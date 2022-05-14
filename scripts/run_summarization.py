@@ -19,6 +19,7 @@ Fine-tuning the library models for sequence to sequence.
 # You can also adapt this script on your own sequence to sequence task. Pointers for this are left as comments.
 
 import logging
+import math
 import os
 import sys
 from dataclasses import dataclass, field
@@ -749,13 +750,14 @@ def main():
                 input_.strip(doc_sep_token).count(doc_sep_token) + 1
                 for input_ in decoded_inputs
             ]
-            result["num_docs"] = num_docs
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
+            result["num_docs"] = math.floor(num_docs / (data_args.per_perturbed or 1))
             result["example_idx"] = list(range(len(num_docs)))
             result["perturbation"] = data_args.perturbation
             result["per_perturbed"] = data_args.per_perturbed
             result["seed"] = training_args.seed
+            result["model_name_or_path"] = model_args.model_name_or_path
 
             # TODO (John): We'd like to strip all special tokens but in some cases that would
             # remove the doc sep token, so at the very least strip the pad token.
