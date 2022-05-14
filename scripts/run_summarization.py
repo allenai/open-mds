@@ -745,15 +745,15 @@ def main():
         # pertubation experiments.
         if inputs is not None:
             decoded_inputs = tokenizer.batch_decode(inputs, skip_special_tokens=False)
-            num_docs = [
+            input_docs = [
                 # Some examples have doc sep token at the end, so strip it to get correct count.
                 input_.strip(doc_sep_token).count(doc_sep_token) + 1
                 for input_ in decoded_inputs
             ]
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
-            result["num_docs"] = math.floor(num_docs / (1 + data_args.per_perturbed))
-            result["example_idx"] = list(range(len(num_docs)))
+            result["num_docs"] = math.floor(len(input_docs) / (1 + data_args.per_perturbed))
+            result["example_idx"] = list(range(len(input_docs)))
             result["perturbation"] = data_args.perturbation
             result["per_perturbed"] = data_args.per_perturbed
             result["seed"] = training_args.seed
