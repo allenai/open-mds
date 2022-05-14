@@ -752,7 +752,7 @@ def main():
             ]
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
-            result["num_docs"] = math.floor(num_docs / (data_args.per_perturbed or 1))
+            result["num_docs"] = math.floor(num_docs / (1 + data_args.per_perturbed))
             result["example_idx"] = list(range(len(num_docs)))
             result["perturbation"] = data_args.perturbation
             result["per_perturbed"] = data_args.per_perturbed
