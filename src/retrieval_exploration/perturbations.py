@@ -8,6 +8,23 @@ from retrieval_exploration.common import util
 def _sample_random_docs(
     inputs: List[str], doc_sep_token: str, k: int, exclude: Optional[List[int]] = None
 ) -> List[str]:
+    """Given `inputs`, a list of strings where each string contains the input documents seperated
+    by `doc_sep_token` of one example from the dataset, randomly samples `k` documents without
+    replacement. If `exclude` is provided, will not sample from the examples at these indices in
+    `inputs`.
+
+    # Parameters
+
+    inputs : `List[str]`
+        A list of strings, each string containing the input documents for one example. It is assumed
+        that documents are seperated by `doc_sep_token`.
+    doc_sep_token : `str`
+        The token that separates individual documents in `inputs`.
+    k : `int`
+        The number of documents to sample (without replacement) from `inputs`.
+    exclude : `List[int]`, optional (default=None)
+        If provided, will not sample from the examples at these indices in `inputs`.
+    """
     random_docs = []
     while True:
         random_instance_idx = random.randint(0, len(inputs) - 1)
@@ -30,9 +47,9 @@ def _sample_random_docs(
 def random_shuffle(
     inputs: List[str], doc_sep_token: str, per_perturbed: Optional[float] = None
 ) -> List[str]:
-    """Given `inputs`, a list of strings where each string contains the input documents
-    (seperated `doc_sep_token`) of one example from the dataset, perturbs the input by randomly
-    shuffling the order of documents in each example.
+    """Given `inputs`, a list of strings where each string contains the input documents seperated
+    by `doc_sep_token` of one example from the dataset, perturbs the input by randomly shuffling the
+    order of documents in each example.
 
     # Parameters
 
@@ -55,9 +72,9 @@ def random_shuffle(
 
 
 def random_addition(inputs: List[str], doc_sep_token: str, per_perturbed: Optional[float] = None):
-    """Given `inputs`, a list of strings where each string contains the input documents
-    (seperated `doc_sep_token`) of one example from the dataset, perturbs the input by adding
-    `per_perturbed` percent of documents in each example with a random document sampled from `inputs.`
+    """Given `inputs`, a list of strings where each string contains the input documents seperated
+    by `doc_sep_token` of one example from the dataset, perturbs the input by adding `per_perturbed`
+    percent of documents in each example with a random document sampled from `inputs.`
 
     # Parameters
 
@@ -97,9 +114,9 @@ def random_deletion(inputs: List[str], doc_sep_token: str, per_perturbed: Option
 def random_duplication(
     inputs: List[str], doc_sep_token: str, per_perturbed: Optional[float] = None
 ) -> List[str]:
-    """Given `inputs`, a list of strings where each string contains the input documents
-    (seperated `doc_sep_token`) of one example from the dataset, perturbs the input by replacing
-    `per_perturbed` percent of documents in each example with a random document sampled from `inputs.`
+    """Given `inputs`, a list of strings where each string contains the input documents seperated
+    by `doc_sep_token` of one example from the dataset, perturbs the input by replacing `per_perturbed`
+    percent of documents in each example with a random document sampled from `inputs.`
 
     # Parameters
 
@@ -134,9 +151,9 @@ def random_duplication(
 def random_replacement(
     inputs: List[str], doc_sep_token: str, per_perturbed: Optional[float] = None
 ) -> List[str]:
-    """Given `inputs`, a list of strings where each string contains the input documents
-    (seperated `doc_sep_token`) of one example from the dataset, perturbs the input by replacing
-    `per_perturbed` percent of documents in each example with a random document sampled from `inputs.`
+    """Given `inputs`, a list of strings where each string contains the input documents seperated
+    by `doc_sep_token` of one example from the dataset, perturbs the input by replacing `per_perturbed`
+    percent of documents in each example with a random document sampled from `inputs.`
 
     # Parameters
 
