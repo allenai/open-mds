@@ -752,7 +752,7 @@ def main():
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
             result["num_docs"] = np.floor(
-                np.asarray(input_docs) / (1 + data_args.per_perturbed)
+                np.asarray(input_docs) / (1 + data_args.per_perturbed).astype(int)
             ).tolist()
             result["example_idx"] = list(range(len(input_docs)))
             result["perturbation"] = data_args.perturbation
