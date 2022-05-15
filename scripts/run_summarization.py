@@ -19,7 +19,6 @@ Fine-tuning the library models for sequence to sequence.
 # You can also adapt this script on your own sequence to sequence task. Pointers for this are left as comments.
 
 import logging
-import math
 import os
 import sys
 from dataclasses import dataclass, field
@@ -752,7 +751,9 @@ def main():
             ]
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
-            result["num_docs"] = math.floor(len(input_docs) / (1 + data_args.per_perturbed))
+            result["num_docs"] = np.floor(
+                np.asarray(input_docs) / (1 + data_args.per_perturbed)
+            ).tolist()
             result["example_idx"] = list(range(len(input_docs)))
             result["perturbation"] = data_args.perturbation
             result["per_perturbed"] = data_args.per_perturbed
