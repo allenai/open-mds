@@ -3,6 +3,33 @@ import math
 
 from retrieval_exploration import perturbations
 from retrieval_exploration.common import util
+import pytest
+
+
+def test_sample_random_docs() -> None:
+    num_docs = 16
+    doc_sep_token = "<doc-sep>"
+    inputs = [
+        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
+        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs, num_docs * 2)),
+    ]
+
+    with pytest.raises(ValueError):
+        perturbations._sample_random_docs(
+            # Choose a k greater than the total number of documents
+            inputs,
+            doc_sep_token=doc_sep_token,
+            k=(num_docs * 2) + 1,
+        )
+
+    with pytest.raises(ValueError):
+        perturbations._sample_random_docs(
+            # Choose a k greater than the total number of documents
+            inputs,
+            doc_sep_token=doc_sep_token,
+            k=4,
+            exclude=[0, 1],
+        )
 
 
 def test_random_shuffling() -> None:
