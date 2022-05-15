@@ -621,9 +621,12 @@ def main():
             ]
 
         model_inputs["labels"] = labels["input_ids"]
-        # Add global attention mask. We don't bother checking if the model will actually use it,
-        # as it will be ignored if not.
-        global_attention_tokens = [tokenizer.bos_token, doc_sep_token]
+        # Add a global attention mask to models inputs. We don't bother checking if the model will
+        # actually use it, as it will be ignored if not. For summarization, we place global attention
+        # on the document seperator token and the bos token (if it exists).
+        global_attention_tokens = [doc_sep_token]
+        if tokenizer.bos_token is not None:
+            global_attention_tokens.append(tokenizer.bos_token)
         model_inputs["global_attention_mask"] = util.get_global_attention_mask(
             model_inputs.input_ids,
             token_ids=tokenizer.convert_tokens_to_ids(global_attention_tokens),
