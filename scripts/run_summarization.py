@@ -23,7 +23,6 @@ import os
 import sys
 from dataclasses import dataclass, field
 from typing import Optional
-
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
@@ -48,6 +47,7 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode
 from transformers.utils.versions import require_version
+from retrieval_exploration import perturbations
 from retrieval_exploration.common import util
 
 
@@ -251,13 +251,22 @@ class DataTrainingArguments:
         default="",
         metadata={"help": "A prefix to add before every source text (useful for T5 models)."},
     )
-
     forced_bos_token: Optional[str] = field(
         default=None,
         metadata={
             "help": "The token to force as the first generated token after the decoder_start_token_id."
             "Useful for multilingual models like mBART where the first generated token"
             "needs to be the target language token (Usually it is the target language token)"
+        },
+    )
+    perturbation: Optional[str] = field(
+        default=None,
+        metadata={"help": "The pertubation strategy to use."},
+    )
+    per_perturbed: Optional[float] = field(
+        default=None,
+        metadata={
+            "help": "Percent of input documents to perturb. Has no effect if perturbation is None."
         },
     )
 
@@ -551,6 +560,48 @@ def main():
                 targets.append(summary)
 
         inputs = [prefix + inp for inp in inputs]
+
+        if data_args.perturbation == "shuffle":
+            inputs = perturbations.random_shuffle(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                "Input documents of each example will be randomly shuffled before training/evaluation."
+            )
+
+        elif data_args.perturbation == "duplication":
+            inputs = perturbations.random_duplication(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                (
+                    f"{data_args.per_perturbed:.2%} of input documents in each example will be"
+                    " duplicated before training/evaluation."
+                )
+            )
+        elif data_args.perturbation == "replacement":
+            inputs = perturbations.random_replacement(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                (
+                    f"{data_args.per_perturbed:.2%} of input documents in each instance replaced"
+                    " with a randomly sampled document."
+                )
+            )
+        elif data_args.perturbation is None:
+            logger.info("No perturbations will be applied.")
+        else:
+            raise ValueError(
+                f"Got an unexpected value for --perturbation: {data_args.perturbation}"
+            )
+
         model_inputs = tokenizer(
             inputs, max_length=data_args.max_source_length, padding=padding, truncation=True
         )
@@ -570,9 +621,12 @@ def main():
             ]
 
         model_inputs["labels"] = labels["input_ids"]
-        # Add global attention mask. We don't bother checking if the model will actually use it,
-        # as it will be ignored if not.
-        global_attention_tokens = [tokenizer.bos_token, doc_sep_token]
+        # Add a global attention mask to models inputs. We don't bother checking if the model will
+        # actually use it, as it will be ignored if not. For summarization, we place global attention
+        # on the document seperator token and the bos token (if it exists).
+        global_attention_tokens = [doc_sep_token]
+        if tokenizer.bos_token is not None:
+            global_attention_tokens.append(tokenizer.bos_token)
         model_inputs["global_attention_mask"] = util.get_global_attention_mask(
             model_inputs.input_ids,
             token_ids=tokenizer.convert_tokens_to_ids(global_attention_tokens),
@@ -660,27 +714,66 @@ def main():
         return preds, labels
 
     def compute_metrics(eval_preds):
-        preds, labels = eval_preds
+        preds, labels, inputs = eval_preds.predictions, eval_preds.label_ids, eval_preds.inputs
         if isinstance(preds, tuple):
             preds = preds[0]
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         if data_args.ignore_pad_token_for_loss:
             # Replace -100 in the labels as we can't decode them.
             labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+            if inputs is not None:
+                inputs = np.where(inputs != -100, inputs, tokenizer.pad_token_id)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
         # Some simple post-processing
         decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
         result = metric.compute(
-            predictions=decoded_preds, references=decoded_labels, use_stemmer=True
+            predictions=decoded_preds,
+            references=decoded_labels,
+            use_stemmer=True,
+            use_aggregator=False,
         )
-        # Extract a few results from ROUGE
-        result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
 
+        # Extract a few results from ROUGE
+        for key, value in result.items():
+            result[key] = {
+                "precision": [round(score.precision * 100, 4) for score in value],
+                "recall": [round(score.recall * 100, 4) for score in value],
+                "fmeasure": [round(score.fmeasure * 100, 4) for score in value],
+            }
+
+        # Determine the number of input documents for all examples, which is used in our
+        # pertubation experiments.
+        if inputs is not None:
+            decoded_inputs = tokenizer.batch_decode(inputs, skip_special_tokens=False)
+            input_docs = [
+                # Some examples have doc sep token at the end, so strip it to get correct count.
+                input_.strip(doc_sep_token).count(doc_sep_token) + 1
+                for input_ in decoded_inputs
+            ]
+
+            # TODO (John): A lot of these should be logged OUTSIDE this function.
+            result["num_docs"] = np.floor(
+                np.asarray(input_docs) / (1 + data_args.per_perturbed).astype(int)
+            ).tolist()
+            result["example_idx"] = list(range(len(input_docs)))
+            result["perturbation"] = data_args.perturbation
+            result["per_perturbed"] = data_args.per_perturbed
+            result["seed"] = training_args.seed
+            result["model_name_or_path"] = model_args.model_name_or_path
+
+            # TODO (John): We'd like to strip all special tokens but in some cases that would
+            # remove the doc sep token, so at the very least strip the pad token.
+            result["inputs"] = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
+            result["preds"] = decoded_preds
+            result["labels"] = decoded_labels
+
+        # Add the mean length of reference and generated summaries.
+        label_lens = [np.count_nonzero(label != tokenizer.pad_token_id) for label in labels]
         prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
-        result["gen_len"] = np.mean(prediction_lens)
-        result = {k: round(v, 4) for k, v in result.items()}
+        result["label_len"] = np.mean(label_lens)
+        result["pred_len"] = np.mean(prediction_lens)
         return result
 
     # Initialize our Trainer

@@ -1,7 +1,18 @@
 from typing import List, Tuple
+
 from transformers import PreTrainedTokenizer
 
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
+
+
+def split_docs(text: str, doc_sep_token: str) -> List[str]:
+    """Given `text`, a string which contains the input documents seperated by `doc_sep_token`,
+    returns a list of each individual documents. Ignores any documents that are empty.
+    order of documents in each example.
+    """
+    return [
+        doc.strip() for doc in text.strip(doc_sep_token).strip().split(doc_sep_token) if doc.strip()
+    ]
 
 
 def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
@@ -42,11 +53,11 @@ def truncate_multi_doc(
     https://arxiv.org/abs/2110.08499 for more details.
     """
     # Some datasets have the doc sep token at the end of the text, so strip it before we split.
-    docs = text.strip(doc_sep_token).strip().split(doc_sep_token)
+    input_docs = split_docs(text, doc_sep_token=doc_sep_token)
     # -2 to make room for the special tokens, -(len(docs) - 1) to make room for the doc sep tokens.
-    max_doc_length = (max_length - 2 - (len(docs) - 1)) // len(docs)
+    max_doc_length = (max_length - 2 - (len(input_docs) - 1)) // len(input_docs)
     truncated_docs = []
-    for doc in docs:
+    for doc in input_docs:
         # Truncate each doc to its maximum allowed length
         truncated_docs.append(
             tokenizer.convert_tokens_to_string(
