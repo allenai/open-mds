@@ -3,6 +3,19 @@ import pytest
 from retrieval_exploration.common import util
 
 
+def test_split_docs() -> None:
+    doc_sep_token = "<doc-sep>"
+
+    # Test the case with an empty string as input
+    expected = []
+    actual = util.split_docs("", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+    actual = util.split_docs("This does not contain doc_sep_token", doc_sep_token=doc_sep_token)
+    expected = ["This does not contain doc_sep_token"]
+    assert expected == actual
+
+
 def test_preprocess_multi_news() -> None:
     doc_sep_token = "<doc-sep>"
 
