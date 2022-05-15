@@ -6,13 +6,13 @@ from retrieval_exploration.common import util
 
 
 def _sample_random_docs(
-    inputs: List[str], doc_sep_token: str, k: int, exclude: List[int]
+    inputs: List[str], doc_sep_token: str, k: int, exclude: Optional[List[int]] = None
 ) -> List[str]:
     random_docs = []
     while True:
         random_instance_idx = random.randint(0, len(inputs) - 1)
         # Don't sample documents from the example we are currently processing
-        if random_instance_idx not in exclude:
+        if exclude is not None and random_instance_idx in exclude:
             continue
         random_example = inputs[random_instance_idx]
         docs = random_example.strip(doc_sep_token).strip().split(doc_sep_token)
