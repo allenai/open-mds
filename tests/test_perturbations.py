@@ -74,7 +74,7 @@ def test_random_duplication() -> None:
 
 
 def test_random_replacement() -> None:
-    num_docs = 4
+    num_docs = 32
     doc_sep_token = "<doc-sep>"
     inputs = [
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
