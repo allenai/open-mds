@@ -25,6 +25,20 @@ def _sample_random_docs(
     exclude : `List[int]`, optional (default=None)
         If provided, will not sample from the examples at these indices in `inputs`.
     """
+    # Easier to deal with an empty list than None, but bad practice to set default value as []
+    exclude = exclude or []
+
+    # Check that we have enough documents to sample from
+    total_num_docs = sum(
+        len(util.split_docs(input_, doc_sep_token=doc_sep_token))
+        for i, input_ in enumerate(inputs)
+        if i not in exclude
+    )
+    if total_num_docs < k:
+        raise ValueError(
+            f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}."
+        )
+
     random_docs = []
     while True:
         random_instance_idx = random.randint(0, len(inputs) - 1)
