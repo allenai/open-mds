@@ -1,4 +1,5 @@
-from typing import Callable
+from typing import Callable, List
+
 import pytest
 from retrieval_exploration.common import util
 
@@ -7,7 +8,7 @@ def test_split_docs() -> None:
     doc_sep_token = "<doc-sep>"
 
     # Test the case with an empty string as input
-    expected = []
+    expected: List[str] = []
     actual = util.split_docs("", doc_sep_token=doc_sep_token)
     assert expected == actual
 
