@@ -77,8 +77,8 @@ def random_shuffle(
     """
     perturbed_inputs = []
 
-    for text in inputs:
-        input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
+    for example in inputs:
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
         random.shuffle(input_docs)
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
 
@@ -106,9 +106,9 @@ def random_addition(inputs: List[str], doc_sep_token: str, per_perturbed: Option
 
     perturbed_inputs = []
 
-    for i, text in enumerate(inputs):
+    for i, example in enumerate(inputs):
 
-        input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to perturb
         k = math.ceil(per_perturbed * len(input_docs))
@@ -183,8 +183,8 @@ def random_duplication(
 
     perturbed_inputs = []
 
-    for text in inputs:
-        input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
+    for example in inputs:
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to add
         k = math.ceil(per_perturbed * len(input_docs))
@@ -220,9 +220,9 @@ def random_replacement(
 
     perturbed_inputs = []
 
-    for i, text in enumerate(inputs):
+    for i, example in enumerate(inputs):
 
-        input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to perturb
         k = math.ceil(per_perturbed * len(input_docs))
