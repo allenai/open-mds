@@ -56,7 +56,29 @@ def test_random_shuffling() -> None:
 
 
 def test_random_addition() -> None:
-    pass
+    num_docs = 32
+    doc_sep_token = "<doc-sep>"
+    inputs = [
+        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
+        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs, num_docs * 2)),
+    ]
+    # Test a simple case where per_perturbed is 0.0 and so this is a no-op
+    expected = copy.deepcopy(inputs)
+    actual = perturbations.random_addition(inputs, doc_sep_token=doc_sep_token, per_perturbed=0.0)
+    assert expected == actual
+
+    # Test the cases where a fraction of documents should be perturbed.
+    for per_perturbed in [0.22, 0.5, 1.0]:
+        expected_num_perturbed = num_docs + math.ceil(per_perturbed * num_docs)
+        perturbed = perturbations.random_addition(
+            inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed
+        )
+        for input_, perturbed_ in zip(inputs, perturbed):
+            actual_num_perturbed = len(perturbed_.split(doc_sep_token))
+            # We are adding, so all documents in the input should be in the perturbed
+            assert input_ in perturbed_
+            # and the total document count should increase
+            assert expected_num_perturbed == actual_num_perturbed
 
 
 def test_random_deletion() -> None:
