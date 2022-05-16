@@ -77,8 +77,8 @@ def random_shuffle(
     """
     perturbed_inputs = []
 
-    for text in inputs:
-        input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
+    for example in inputs:
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
         random.shuffle(input_docs)
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
 
@@ -106,14 +106,14 @@ def random_addition(inputs: List[str], doc_sep_token: str, per_perturbed: Option
 
     perturbed_inputs = []
 
-    for i, text in enumerate(inputs):
+    for i, example in enumerate(inputs):
 
-        input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to perturb
         k = math.ceil(per_perturbed * len(input_docs))
 
-        # Randomly sample documents k unique documents
+        # Randomly sample k unique documents to add
         random_docs = _sample_random_docs(inputs, doc_sep_token=doc_sep_token, k=k, exclude=[i])
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs + random_docs))
@@ -122,7 +122,42 @@ def random_addition(inputs: List[str], doc_sep_token: str, per_perturbed: Option
 
 
 def random_deletion(inputs: List[str], doc_sep_token: str, per_perturbed: Optional[float] = None):
-    pass
+    """Given `inputs`, a list of strings where each string contains the input documents seperated
+    by `doc_sep_token` of one example from the dataset, perturbs the input by removing `per_perturbed`
+    percent of documents in each example at random.
+
+    # Parameters
+
+    inputs : `List[str]`
+        A list of strings, each string containing the input documents for one example. It is assumed
+        that documents are seperated by `doc_sep_token`.
+    doc_sep_token : `str`
+        The token that separates individual documents in `inputs`.
+    per_perturbed : `float`, optional (default=None)
+        The percentage of documents in each example that should be randomly replaced with a document
+        sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
+    """
+    if not per_perturbed:
+        return inputs
+
+    perturbed_inputs = []
+
+    for example in inputs:
+
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+
+        # The absolute number of documents to perturb
+        k = math.ceil(per_perturbed * len(input_docs))
+
+        # Randomly sample k unique documents to delete
+        to_delete = random.sample(range(len(input_docs)), k)
+
+        # Collect the perturbed example
+        perturbed_inputs.append(
+            f" {doc_sep_token} ".join(doc for j, doc in enumerate(input_docs) if j not in to_delete)
+        )
+
+    return perturbed_inputs
 
 
 def random_duplication(
@@ -148,8 +183,8 @@ def random_duplication(
 
     perturbed_inputs = []
 
-    for text in inputs:
-        input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
+    for example in inputs:
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to add
         k = math.ceil(per_perturbed * len(input_docs))
@@ -185,14 +220,14 @@ def random_replacement(
 
     perturbed_inputs = []
 
-    for i, text in enumerate(inputs):
+    for i, example in enumerate(inputs):
 
-        input_docs = util.split_docs(text, doc_sep_token=doc_sep_token)
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to perturb
         k = math.ceil(per_perturbed * len(input_docs))
 
-        # Randomly sample documents k unique documents
+        # Randomly sample k unique documents
         random_docs = _sample_random_docs(inputs, doc_sep_token=doc_sep_token, k=k, exclude=[i])
 
         # Replace random documents in the current instance with the randomly choosen documents

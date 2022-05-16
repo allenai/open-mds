@@ -40,6 +40,7 @@ def test_random_shuffling() -> None:
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs, num_docs * 2)),
     ]
+
     perturbed = perturbations.random_shuffle(inputs, doc_sep_token=doc_sep_token)
 
     # Because the perturbation is random we check other properties of the perturbed inputs.
@@ -56,7 +57,7 @@ def test_random_shuffling() -> None:
 
 
 def test_random_addition() -> None:
-    num_docs = 32
+    num_docs = 16
     doc_sep_token = "<doc-sep>"
     inputs = [
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
@@ -73,20 +74,51 @@ def test_random_addition() -> None:
         perturbed = perturbations.random_addition(
             inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed
         )
-        for input_, perturbed_ in zip(inputs, perturbed):
-            actual_num_perturbed = len(perturbed_.split(doc_sep_token))
-            # We are adding, so all documents in the input should be in the perturbed
-            assert input_ in perturbed_
-            # and the total document count should increase
+        # Because the perturbation is random we check other properties of the perturbed inputs.
+        for input_example, perturbed_example in zip(inputs, perturbed):
+            actual_num_perturbed = len(util.split_docs(perturbed_example, doc_sep_token))
+
+            # That the pertubation was actually applied
+            assert input_example != perturbed_example
+            # That all input examples are in the perturbed example
+            assert input_example in perturbed_example
+            # That the total document count increased by the expected amount
             assert expected_num_perturbed == actual_num_perturbed
 
 
 def test_random_deletion() -> None:
-    pass
+    num_docs = 16
+    doc_sep_token = "<doc-sep>"
+    inputs = [
+        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
+        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs, num_docs * 2)),
+    ]
+    # Test a simple case where per_perturbed is 0.0 and so this is a no-op
+    expected = copy.deepcopy(inputs)
+    actual = perturbations.random_deletion(inputs, doc_sep_token=doc_sep_token, per_perturbed=0.0)
+    assert expected == actual
+
+    # Test the cases where a fraction of documents should be perturbed.
+    for per_perturbed in [0.22, 0.5, 1.0]:
+        expected_num_perturbed = num_docs - math.ceil(per_perturbed * num_docs)
+        perturbed = perturbations.random_deletion(
+            inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed
+        )
+
+        # Because the perturbation is random we check other properties of the perturbed inputs.
+        for input_example, perturbed_example in zip(inputs, perturbed):
+            actual_num_perturbed = len(util.split_docs(perturbed_example, doc_sep_token))
+
+            # That the pertubation was actually applied
+            assert input_example != perturbed_example
+            # That all perturbed examples are in the input example
+            assert perturbed_example in perturbed_example
+            # That the total document count decreased by the expected amount
+            assert expected_num_perturbed == actual_num_perturbed
 
 
 def test_random_duplication() -> None:
-    num_docs = 4
+    num_docs = 16
     doc_sep_token = "<doc-sep>"
     inputs = [
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
@@ -123,7 +155,7 @@ def test_random_duplication() -> None:
 
 
 def test_random_replacement() -> None:
-    num_docs = 32
+    num_docs = 16
     doc_sep_token = "<doc-sep>"
     inputs = [
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
@@ -142,8 +174,9 @@ def test_random_replacement() -> None:
         perturbed = perturbations.random_replacement(
             inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed
         )
-        for input_, perturbed_ in zip(inputs, perturbed):
+        # Because the perturbation is random we check other properties of the perturbed inputs.
+        for input_example, perturbed_example in zip(inputs, perturbed):
             actual_num_perturbed = num_docs - sum(
-                [doc in input_ for doc in perturbed_.split(doc_sep_token)]
+                [doc in input_example for doc in perturbed_example.split(doc_sep_token)]
             )
             assert expected_num_perturbed == actual_num_perturbed
