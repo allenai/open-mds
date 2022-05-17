@@ -98,6 +98,34 @@ def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
     assert expected == actual
     assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
 
+    # Test that the argument num_docs is respected
+    docs = [
+        "I am document one. I am the same length as document two",
+        "I am document two. I am the same length as document one.",
+        "I am document three. I am the same length as both document one and two.",
+    ]
+    text = f" {doc_sep_token} ".join(docs)
+
+    expected = (
+        "I am document one. I am the same length <doc-sep>"
+        " I am document two. I am the same length <doc-sep>"
+        " I am document three. I am the same length"
+    )
+    actual = util.truncate_multi_doc(
+        text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer, num_docs=2
+    )
+    assert expected == actual
+    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
+
+    expected = (
+        "I am document one. I <doc-sep> I am document two. I <doc-sep> I am document three. I"
+    )
+    actual = util.truncate_multi_doc(
+        text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer, num_docs=3
+    )
+    assert expected == actual
+    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
+
 
 def test_get_global_attention_mask() -> None:
     # Test a simple case with two tokens to be globally attended to
@@ -120,7 +148,7 @@ def test_get_global_attention_mask() -> None:
     assert expected_global_attention_mask == actual_global_attention_mask
 
 
-def test_get_original_num_docs():
+def test_get_num_original_docs():
     num_docs = 16
     doc_sep_token = "<doc-sep>"
     inputs = [
@@ -128,21 +156,28 @@ def test_get_original_num_docs():
     ]
 
     # Test the case where no perturbations are applied
-    assert util.get_original_num_docs(inputs, doc_sep_token) == [num_docs]
-    assert util.get_original_num_docs(
+    assert util.get_num_original_docs(inputs, doc_sep_token) == [num_docs]
+    assert util.get_num_original_docs(
         inputs, doc_sep_token, perturbation="addition", per_perturbed=None
     ) == [num_docs]
 
     # Test the case with addition
     expected = [num_docs - 2]
-    actual = util.get_original_num_docs(
+    actual = util.get_num_original_docs(
         inputs, doc_sep_token, perturbation="addition", per_perturbed=0.10
     )
     assert expected == actual
 
     # Test the case with deletion
     expected = [num_docs + 2]
-    actual = util.get_original_num_docs(
+    actual = util.get_num_original_docs(
         inputs, doc_sep_token, perturbation="deletion", per_perturbed=0.1
+    )
+    assert expected == actual
+
+    # Test the case where the inputs are a string
+    expected = [num_docs + 2]
+    actual = util.get_num_original_docs(
+        inputs[0], doc_sep_token, perturbation="deletion", per_perturbed=0.1
     )
     assert expected == actual
