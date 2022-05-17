@@ -549,11 +549,21 @@ def main():
                 # Rather than naively truncating the concatenated documents, we follow
                 # https://aclanthology.org/2021.naacl-main.380/ and https://arxiv.org/abs/2110.08499
                 # by truncating each document separately to statisfy the max length of the input.
+                # We need to be careful that we control for this truncation during our perturbation
+                # experiments, so we compute the number of original documents in the unperturbed
+                # input and use that to determine the allowed length of each input document.
+                num_original_docs = util.get_num_original_docs(
+                    text,
+                    doc_sep_token=doc_sep_token,
+                    perturbation=data_args.perturbation,
+                    per_perturbed=data_args.per_perturbed,
+                )
                 text = util.truncate_multi_doc(
                     text,
                     doc_sep_token=doc_sep_token,
                     max_length=data_args.max_source_length,
                     tokenizer=tokenizer,
+                    num_docs=num_original_docs[0],
                 )
 
                 inputs.append(text)
@@ -773,7 +783,7 @@ def main():
             decoded_inputs = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
             # Determine the number of input documents for all examples, which is used in our
             # pertubation experiments.
-            original_num_docs = util.get_original_num_docs(
+            num_original_docs = util.get_num_original_docs(
                 inputs=decoded_inputs,
                 doc_sep_token=doc_sep_token,
                 perturbation=data_args.perturbation,
@@ -781,7 +791,7 @@ def main():
             )
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
-            result["num_docs"] = original_num_docs
+            result["num_docs"] = num_original_docs
             result["example_idx"] = list(range(len(decoded_inputs)))
             result["perturbation"] = data_args.perturbation
             result["per_perturbed"] = data_args.per_perturbed
