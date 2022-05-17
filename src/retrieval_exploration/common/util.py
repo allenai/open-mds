@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from transformers import PreTrainedTokenizer
@@ -46,17 +46,25 @@ def get_doc_sep_token(tokenizer: PreTrainedTokenizer) -> str:
 
 
 def truncate_multi_doc(
-    text: str, doc_sep_token: str, max_length: int, tokenizer: PreTrainedTokenizer
+    text: str,
+    doc_sep_token: str,
+    max_length: int,
+    tokenizer: PreTrainedTokenizer,
+    num_docs: Optional[int] = None,
 ) -> str:
     """Given some `text`, which is assumed to be multiple documents joined by `doc_sep_token`,
     truncates each document (using `tokenizer`) so that the length of the concatenation of all
     documents does not exceed max_length. See https://aclanthology.org/2021.naacl-main.380/ and
-    https://arxiv.org/abs/2110.08499 for more details.
+    https://arxiv.org/abs/2110.08499 for more details. If `num_docs` is provided, the truncation
+    is done as if there are `num_docs` number of input documents. This is useful to control
+    for truncation when applying pertubations (e.g. additiion and deletion).
     """
     # Some datasets have the doc sep token at the end of the text, so strip it before we split.
     input_docs = split_docs(text, doc_sep_token=doc_sep_token)
+    # If num_docs is not provided, determine it from the input text
+    num_docs = num_docs or len(input_docs)
     # -2 to make room for the special tokens, -(len(docs) - 1) to make room for the doc sep tokens.
-    max_doc_length = (max_length - 2 - (len(input_docs) - 1)) // len(input_docs)
+    max_doc_length = (max_length - 2 - (num_docs - 1)) // num_docs
     truncated_docs = []
     for doc in input_docs:
         # Truncate each doc to its maximum allowed length
@@ -89,8 +97,8 @@ def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) 
     return global_attention_mask
 
 
-def get_original_num_docs(
-    inputs: List[str],
+def get_num_original_docs(
+    inputs: Union[str, List[str]],
     doc_sep_token: str,
     perturbation: Optional[str] = None,
     per_perturbed: Optional[float] = None,
@@ -107,6 +115,8 @@ def get_original_num_docs(
     per_perturbed : `float`, optional (default=None)
         The percentage of documents in each example that was perturbed.
     """
+    if isinstance(inputs, str):
+        inputs = [inputs]
     # Compute the number of documents in each example
     num_docs = [len(split_docs(input_, doc_sep_token)) for input_ in inputs]
     # If a perturbation was applied, determine the number of documents before perturbation
