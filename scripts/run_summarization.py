@@ -570,7 +570,30 @@ def main():
             logger.info(
                 "Input documents of each example will be randomly shuffled before training/evaluation."
             )
-
+        elif data_args.perturbation == "addition":
+            inputs = perturbations.random_addition(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                (
+                    f"{data_args.per_perturbed:.2%} of input documents in each example will be"
+                    " added before training/evaluation."
+                )
+            )
+        elif data_args.perturbation == "deletion":
+            inputs = perturbations.random_deletion(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                (
+                    f"{data_args.per_perturbed:.2%} of input documents in each example will be"
+                    " removed before training/evaluation."
+                )
+            )
         elif data_args.perturbation == "duplication":
             inputs = perturbations.random_duplication(
                 inputs,
@@ -743,29 +766,29 @@ def main():
                 "fmeasure": [round(score.fmeasure * 100, 4) for score in value],
             }
 
-        # Determine the number of input documents for all examples, which is used in our
-        # pertubation experiments.
         if inputs is not None:
+            # TODO (John): We'd like to strip all special tokens but in some cases that would
+            # remove the doc sep token, so at the very least strip the pad token.
             decoded_inputs = tokenizer.batch_decode(inputs, skip_special_tokens=False)
-            input_docs = [
-                # Some examples have doc sep token at the end, so strip it to get correct count.
-                input_.strip(doc_sep_token).count(doc_sep_token) + 1
-                for input_ in decoded_inputs
-            ]
+            decoded_inputs = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
+            # Determine the number of input documents for all examples, which is used in our
+            # pertubation experiments.
+            original_num_docs = util.get_original_num_docs(
+                inputs=decoded_inputs,
+                doc_sep_token=doc_sep_token,
+                perturbation=data_args.perturbation,
+                per_perturbed=data_args.per_perturbed,
+            )
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
-            result["num_docs"] = np.floor(
-                np.asarray(input_docs) / (1 + data_args.per_perturbed).astype(int)
-            ).tolist()
-            result["example_idx"] = list(range(len(input_docs)))
+            result["num_docs"] = original_num_docs
+            result["example_idx"] = list(range(len(decoded_inputs)))
             result["perturbation"] = data_args.perturbation
             result["per_perturbed"] = data_args.per_perturbed
             result["seed"] = training_args.seed
             result["model_name_or_path"] = model_args.model_name_or_path
 
-            # TODO (John): We'd like to strip all special tokens but in some cases that would
-            # remove the doc sep token, so at the very least strip the pad token.
-            result["inputs"] = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
+            result["inputs"] = decoded_inputs
             result["preds"] = decoded_preds
             result["labels"] = decoded_labels
 

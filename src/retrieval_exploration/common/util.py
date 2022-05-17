@@ -1,5 +1,6 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
+import numpy as np
 from transformers import PreTrainedTokenizer
 
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
@@ -86,3 +87,36 @@ def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) 
         [1 if token_id in token_ids else 0 for token_id in batch] for batch in input_ids
     ]
     return global_attention_mask
+
+
+def get_original_num_docs(
+    inputs: List[str],
+    doc_sep_token: str,
+    perturbation: Optional[str] = None,
+    per_perturbed: Optional[float] = None,
+) -> List[int]:
+    """Returns the number of original documents in each example from `inputs` given the applied
+    `perturbation` and fraction of documents perturbed, `per_perturbed`.
+
+    # Parameters
+
+    inputs : `List[str]`
+        The input text provided to the model.
+    doc_sep_token : `str`
+        The token that separates individual documents in `inputs`.
+    per_perturbed : `float`, optional (default=None)
+        The percentage of documents in each example that was perturbed.
+    """
+    # Compute the number of documents in each example
+    num_docs = [len(split_docs(input_, doc_sep_token)) for input_ in inputs]
+    # If a perturbation was applied, determine the number of documents before perturbation
+    per_perturbed = per_perturbed or 0.0
+    original_num_docs = np.asarray(num_docs).astype(float)
+    if perturbation is not None and per_perturbed > 0.0:
+        if perturbation == "deletion":
+            original_num_docs /= 1 - per_perturbed
+            original_num_docs = np.ceil(original_num_docs)
+        else:
+            original_num_docs /= 1 + per_perturbed
+            original_num_docs = np.floor(original_num_docs)
+    return original_num_docs.astype(int).tolist()

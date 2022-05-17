@@ -69,7 +69,7 @@ def test_random_addition() -> None:
     assert expected == actual
 
     # Test the cases where a fraction of documents should be perturbed.
-    for per_perturbed in [0.22, 0.5, 1.0]:
+    for per_perturbed in [0.1, 0.22, 0.5, 1.0]:
         expected_num_perturbed = num_docs + math.ceil(per_perturbed * num_docs)
         perturbed = perturbations.random_addition(
             inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed
@@ -99,7 +99,7 @@ def test_random_deletion() -> None:
     assert expected == actual
 
     # Test the cases where a fraction of documents should be perturbed.
-    for per_perturbed in [0.22, 0.5, 1.0]:
+    for per_perturbed in [0.1, 0.22, 0.5, 1.0]:
         expected_num_perturbed = num_docs - math.ceil(per_perturbed * num_docs)
         perturbed = perturbations.random_deletion(
             inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed
@@ -132,7 +132,7 @@ def test_random_duplication() -> None:
     assert expected == actual
 
     # Test the cases where a fraction of documents should be perturbed.
-    for per_perturbed in [0.22, 0.5, 1.0]:
+    for per_perturbed in [0.1, 0.22, 0.5, 1.0]:
         expected_num_perturbed = math.ceil(per_perturbed * num_docs)
         perturbed = perturbations.random_duplication(
             inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed
@@ -169,13 +169,18 @@ def test_random_replacement() -> None:
     assert expected == actual
 
     # Test the cases where a fraction of documents should be perturbed.
-    for per_perturbed in [0.22, 0.5, 1.0]:
+    for per_perturbed in [0.1, 0.22, 0.5, 1.0]:
         expected_num_perturbed = math.ceil(per_perturbed * num_docs)
         perturbed = perturbations.random_replacement(
             inputs, doc_sep_token=doc_sep_token, per_perturbed=per_perturbed
         )
         # Because the perturbation is random we check other properties of the perturbed inputs.
         for input_example, perturbed_example in zip(inputs, perturbed):
+            # The total number of documents is unchanged
+            assert len(util.split_docs(perturbed_example, doc_sep_token)) == len(
+                util.split_docs(input_example, doc_sep_token)
+            )
+            # The correct number of documents were replaced
             actual_num_perturbed = num_docs - sum(
                 [doc in input_example for doc in perturbed_example.split(doc_sep_token)]
             )
