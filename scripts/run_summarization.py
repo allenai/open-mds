@@ -26,6 +26,7 @@ from typing import Optional
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
+import math
 from datasets import load_dataset, load_metric
 
 import transformers
@@ -570,7 +571,30 @@ def main():
             logger.info(
                 "Input documents of each example will be randomly shuffled before training/evaluation."
             )
-
+        elif data_args.perturbation == "addition":
+            inputs = perturbations.random_addition(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                (
+                    f"{data_args.per_perturbed:.2%} of input documents in each example will be"
+                    " added before training/evaluation."
+                )
+            )
+        elif data_args.perturbation == "deletion":
+            inputs = perturbations.random_deletion(
+                inputs,
+                doc_sep_token=doc_sep_token,
+                per_perturbed=data_args.per_perturbed,
+            )
+            logger.info(
+                (
+                    f"{data_args.per_perturbed:.2%} of input documents in each example will be"
+                    " removed before training/evaluation."
+                )
+            )
         elif data_args.perturbation == "duplication":
             inputs = perturbations.random_duplication(
                 inputs,
@@ -743,29 +767,36 @@ def main():
                 "fmeasure": [round(score.fmeasure * 100, 4) for score in value],
             }
 
-        # Determine the number of input documents for all examples, which is used in our
-        # pertubation experiments.
         if inputs is not None:
+            # TODO (John): We'd like to strip all special tokens but in some cases that would
+            # remove the doc sep token, so at the very least strip the pad token.
             decoded_inputs = tokenizer.batch_decode(inputs, skip_special_tokens=False)
-            input_docs = [
-                # Some examples have doc sep token at the end, so strip it to get correct count.
-                input_.strip(doc_sep_token).count(doc_sep_token) + 1
-                for input_ in decoded_inputs
-            ]
+            decoded_inputs = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
+            # Determine the number of input documents for all examples, which is used in our
+            # pertubation experiments.
+            num_docs = [len(util.split_docs(input_, doc_sep_token)) for input_ in decoded_inputs]
+
+            # Attempt to compute the original number of inputs documents. This is actually
+            # rather tricky. It will differ if the document was deleted vs. added or replaced.
+            original_num_docs = np.asarray(num_docs).astype("float64")
+            if data_args.per_perturbed > 0.0:
+                if data_args.perturbation == "deletion":
+                    original_num_docs /= 1 - data_args.per_perturbed
+                    original_num_docs = np.ceil(original_num_docs)
+                else:
+                    original_num_docs /= 1 + data_args.per_perturbed
+                    original_num_docs = np.floor(original_num_docs)
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
-            result["num_docs"] = np.floor(
-                np.asarray(input_docs) / (1 + data_args.per_perturbed).astype(int)
-            ).tolist()
-            result["example_idx"] = list(range(len(input_docs)))
+            original_num_docs = original_num_docs.tolist()
+            result["num_docs"] = original_num_docs
+            result["example_idx"] = list(range(len(num_docs)))
             result["perturbation"] = data_args.perturbation
             result["per_perturbed"] = data_args.per_perturbed
             result["seed"] = training_args.seed
             result["model_name_or_path"] = model_args.model_name_or_path
 
-            # TODO (John): We'd like to strip all special tokens but in some cases that would
-            # remove the doc sep token, so at the very least strip the pad token.
-            result["inputs"] = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
+            result["inputs"] = decoded_inputs
             result["preds"] = decoded_preds
             result["labels"] = decoded_labels
 
