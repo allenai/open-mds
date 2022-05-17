@@ -26,7 +26,6 @@ from typing import Optional
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
-import math
 from datasets import load_dataset, load_metric
 
 import transformers
@@ -774,23 +773,16 @@ def main():
             decoded_inputs = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
             # Determine the number of input documents for all examples, which is used in our
             # pertubation experiments.
-            num_docs = [len(util.split_docs(input_, doc_sep_token)) for input_ in decoded_inputs]
-
-            # Attempt to compute the original number of inputs documents. This is actually
-            # rather tricky. It will differ if the document was deleted vs. added or replaced.
-            original_num_docs = np.asarray(num_docs).astype("float64")
-            if data_args.per_perturbed > 0.0:
-                if data_args.perturbation == "deletion":
-                    original_num_docs /= 1 - data_args.per_perturbed
-                    original_num_docs = np.ceil(original_num_docs)
-                else:
-                    original_num_docs /= 1 + data_args.per_perturbed
-                    original_num_docs = np.floor(original_num_docs)
+            original_num_docs = util.get_original_num_docs(
+                inputs=decoded_inputs,
+                doc_sep_token=doc_sep_token,
+                perturbation=data_args.perturbation,
+                per_perturbed=data_args.per_perturbed,
+            )
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
-            original_num_docs = original_num_docs.tolist()
             result["num_docs"] = original_num_docs
-            result["example_idx"] = list(range(len(num_docs)))
+            result["example_idx"] = list(range(len(decoded_inputs)))
             result["perturbation"] = data_args.perturbation
             result["per_perturbed"] = data_args.per_perturbed
             result["seed"] = training_args.seed
