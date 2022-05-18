@@ -142,7 +142,7 @@ def get_num_original_docs(
 
 def load_results_dicts(
     data_dir: str, metric_column: Optional[str] = None
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[Optional[pd.DataFrame], pd.DataFrame]:
     """Loads the result dictionaries at `data_dir`. Assumes this directory is organized as follows:
 
     data_dir
@@ -161,6 +161,7 @@ def load_results_dicts(
     `"{metric_column}_delta"` will be computed as the difference between the perturbed results
     and the baseline results for that column name and added to the returned dataframe.
     """
+    baseline_dfs = []
     perturbation_dfs = []
     for model_dir in Path(data_dir).iterdir():
         baseline_df = None
@@ -170,6 +171,7 @@ def load_results_dicts(
             results_dict = json.loads(filepath.read_text())
             results_dict_flattened = flatten(results_dict, reducer="underscore")
             baseline_df = pd.DataFrame(results_dict_flattened)
+            baseline_dfs.append(baseline_df)
 
         perturbation_dir = Path(model_dir) / _PERTURBATIONS_DIR
         for filepath in Path(perturbation_dir).glob(f"**/{_RESULTS_FILENAME}"):
@@ -188,5 +190,6 @@ def load_results_dicts(
                     perturbation_df[metric_column] - baseline_df[metric_column]
                 )
             perturbation_dfs.append(perturbation_df)
+    baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
     perturbed_df = pd.concat(perturbation_dfs, ignore_index=True)
     return baseline_df, perturbed_df
