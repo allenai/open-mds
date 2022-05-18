@@ -20,22 +20,44 @@ def test_split_docs() -> None:
 def test_preprocess_multi_news() -> None:
     doc_sep_token = "<doc-sep>"
 
-    # Test a simple case with two documents, where one is longer than the other
     docs = [
         "Document numero uno.",
         # Including a document separator token at the end. Some examples in multi-news do this,
         # so we should make sure it doesn't trip up our logic.
         f"Document numero dos. {util._DOC_SEP_TOKENS['multi_news']}",
     ]
-    text = f" {util._DOC_SEP_TOKENS['multi_news']} ".join(docs)
-    summary = "This can be anything"
+    document = f" {util._DOC_SEP_TOKENS['multi_news']} ".join(docs)
+    example = {
+        "document": document,
+        "summary": "This is the summary.",
+    }
 
     expected_text, expected_summary = (
         "Document numero uno. <doc-sep> Document numero dos.",
-        "This can be anything",
+        "This is the summary.",
     )
     actual_text, actual_summary = util.preprocess_multi_news(
-        text=text, summary=summary, doc_sep_token=doc_sep_token
+        example=example, doc_sep_token=doc_sep_token
+    )
+    assert expected_text == actual_text
+    assert expected_summary == actual_summary
+
+
+def test_preprocess_multi_x_science_sum() -> None:
+    doc_sep_token = "<doc-sep>"
+
+    example = {
+        "abstract": "This is the query abstract.",
+        "ref_abstracts": {"abstract": ["This is a cited abstract."]},
+        "related_work": "This is the related work.",
+    }
+
+    expected_text, expected_summary = (
+        "This is the query abstract. <doc-sep> This is a cited abstract.",
+        "This is the related work.",
+    )
+    actual_text, actual_summary = util.preprocess_multi_x_science_sum(
+        example=example, doc_sep_token=doc_sep_token
     )
     assert expected_text == actual_text
     assert expected_summary == actual_summary
