@@ -778,7 +778,13 @@ def main():
 
         # Compute and post-process bertscore results
         bertscore_results = bertscore.compute(
-            predictions=decoded_preds, references=decoded_labels, lang="en"
+            predictions=decoded_preds,
+            references=decoded_labels,
+            lang="en",
+            # These are mostly based on the recommendations in https://github.com/Tiiiger/bert_score
+            model_type="microsoft/deberta-large-mnli",
+            rescale_with_baseline=True,
+            use_fast_tokenizer=True,
         )
         for key, value in bertscore_results.items():
             if key == "hashcode":
