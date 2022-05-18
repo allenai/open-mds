@@ -54,3 +54,7 @@ docs/*.md
 docs/api
 site/
 mkdocs.yml
+
+# slurm
+
+slurm-*.out

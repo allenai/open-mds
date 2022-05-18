@@ -24,10 +24,20 @@ def split_docs(text: str, doc_sep_token: str) -> List[str]:
     ]
 
 
-def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
-    # Some examples have a doc sep token at the end of the text, so strip it before we split.
+def preprocess_multi_news(example, doc_sep_token: str) -> Tuple[str, str]:
+    """Given an `example` dict, returns a tuple of strings containing the text and summary."""
+    text = example["document"]
     text = text.strip(_DOC_SEP_TOKENS["multi_news"]).strip()
     text = text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token)
+    summary = example["summary"].strip()
+    return text, summary
+
+
+def preprocess_multi_x_science_sum(example, doc_sep_token: str) -> Tuple[str, str]:
+    """Given an `example` dict, returns a tuple of strings containing the text and summary."""
+    ref_abstracts = [abstract.strip() for abstract in example["ref_abstracts"]["abstract"]]
+    text = f" {doc_sep_token} ".join([example["abstract"].strip()] + ref_abstracts)
+    summary = example["related_work"].strip()
     return text, summary
 
 
@@ -141,7 +151,7 @@ def get_num_original_docs(
 
 
 def load_results_dicts(
-    data_dir: str, metric_column: Optional[str] = None
+    data_dir: str, metric_columns: Optional[List[str]] = None
 ) -> Tuple[Optional[pd.DataFrame], pd.DataFrame]:
     """Loads the result dictionaries at `data_dir`. Assumes this directory is organized as follows:
 
@@ -157,9 +167,10 @@ def load_results_dicts(
     │   └── ...
     └── ...
 
-    If the subdirectory `"baseline"` is present and `metric_column` is provided, a new column,
-    `"{metric_column}_delta"` will be computed as the difference between the perturbed results
-    and the baseline results for that column name and added to the returned dataframe.
+    If the subdirectory `"baseline"` is present and `metric_columns` is provided, a new column
+    `<metric>_delta`, one for each `metric` in `metric_columns`, will be computed as the difference
+    between the perturbed results and the baseline results for the column `metric` and added to the
+    returned dataframe.
     """
     baseline_dfs = []
     perturbation_dfs = []
@@ -178,7 +189,7 @@ def load_results_dicts(
             results_dict = json.loads(filepath.read_text())
             results_dict_flattened = flatten(results_dict, reducer="underscore")
             perturbation_df = pd.DataFrame(results_dict_flattened)
-            if baseline_df is not None and metric_column is not None:
+            if baseline_df is not None:
                 # The perturbation and baseline data should pertain to the same examples.
                 if not np.array_equal(
                     baseline_df.eval_example_idx, perturbation_df.eval_example_idx
@@ -186,9 +197,11 @@ def load_results_dicts(
                     raise ValueError(
                         "The perturbation and baseline data do not correspond to same examples!"
                     )
-                perturbation_df[f"{metric_column}_delta"] = (
-                    perturbation_df[metric_column] - baseline_df[metric_column]
-                )
+                if metric_columns is not None:
+                    for metric in metric_columns:
+                        perturbation_df[f"{metric}_delta"] = (
+                            perturbation_df[metric] - baseline_df[metric]
+                        )
             perturbation_dfs.append(perturbation_df)
     baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
     perturbed_df = pd.concat(perturbation_dfs, ignore_index=True)

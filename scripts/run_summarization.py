@@ -548,8 +548,12 @@ def main():
             if examples[text_column][i] is not None and examples[summary_column][i] is not None:
                 if data_args.dataset_name == "multi_news":
                     text, summary = util.preprocess_multi_news(
-                        examples[text_column][i],
-                        examples[summary_column][i],
+                        example=examples[i],
+                        doc_sep_token=doc_sep_token,
+                    )
+                elif data_args.dataset_name == "multi_x_science_sum":
+                    text, summary = util.preprocess_multi_x_science_sum(
+                        example=examples[i],
                         doc_sep_token=doc_sep_token,
                     )
                 else:
@@ -747,8 +751,9 @@ def main():
     bertscore = load_metric("bertscore")
 
     def postprocess_text(preds, labels):
-        preds = [pred.strip() for pred in preds]
-        labels = [label.strip() for label in labels]
+        # Clean text by removing whitespace, newlines and tabs
+        preds = [" ".join(pred.strip().split()) for pred in preds]
+        labels = [" ".join(label.strip().split()) for label in labels]
 
         # rougeLSum expects newline after each sentence
         preds = ["\n".join(nltk.sent_tokenize(pred)) for pred in preds]
