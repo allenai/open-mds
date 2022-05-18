@@ -11,19 +11,21 @@ torch = "^1.11.0"
 transformers = "^4.18.0"
 tokenizers = "^0.12.1"
 datasets = "^2.1.0"
+flatten-dict = "^0.4.2"
 sentencepiece = { version = "^0.1.96", optional = true }
 protobuf = { version = "^3.20.1", optional = true }
 rouge-score = {version = "^0.0.4", optional = true }
+bert-score = {version = "^0.3.11", optional = true }
 py7zr = {version = "^0.18.5", optional = true }
 nltk = { version = "^3.7", optional = true }
 
 [tool.poetry.extras]
 # Extra dependencies required for summarization tasks.
 # Taken from: https://github.com/huggingface/transformers/blob/main/examples/pytorch/summarization/requirements.txt
-summarization = ["sentencepiece", "protobuf", "rouge-score", "nltk", "py7zr"]
+summarization = ["sentencepiece", "protobuf", "rouge-score", "bert-score", "nltk", "py7zr"]
 
 [tool.poetry.dev-dependencies]
-black = "^22.3.0"
+black = { version = "^22.3.0", extras = ["jupyter"] }
 flake8 = "^4.0.1"
 mypy = "^0.950"
 pytest = "^7.1.2"

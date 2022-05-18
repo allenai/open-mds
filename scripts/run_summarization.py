@@ -733,8 +733,9 @@ def main():
         pad_to_multiple_of=8 if training_args.fp16 else None,
     )
 
-    # Metric
-    metric = load_metric("rouge")
+    # Metrics
+    rouge = load_metric("rouge")
+    bertscore = load_metric("bertscore")
 
     def postprocess_text(preds, labels):
         preds = [pred.strip() for pred in preds]
@@ -761,20 +762,31 @@ def main():
         # Some simple post-processing
         decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
-        result = metric.compute(
+        # Compute and post-process rouge results
+        rouge_results = rouge.compute(
             predictions=decoded_preds,
             references=decoded_labels,
             use_stemmer=True,
             use_aggregator=False,
         )
-
-        # Extract a few results from ROUGE
-        for key, value in result.items():
-            result[key] = {
+        for key, value in rouge_results.items():
+            rouge_results[key] = {
                 "precision": [round(score.precision * 100, 4) for score in value],
                 "recall": [round(score.recall * 100, 4) for score in value],
                 "fmeasure": [round(score.fmeasure * 100, 4) for score in value],
             }
+
+        # Compute and post-process bertscore results
+        bertscore_results = bertscore.compute(
+            predictions=decoded_preds, references=decoded_labels, lang="en"
+        )
+        for key, value in bertscore_results.items():
+            if key == "hashcode":
+                continue
+            bertscore_results[key] = [round(score * 100, 4) for score in value]
+
+        # Collect results in final dict
+        results = {"rouge": rouge_results, "bertscore": bertscore_results}
 
         if inputs is not None:
             # TODO (John): We'd like to strip all special tokens but in some cases that would
@@ -791,23 +803,21 @@ def main():
             )
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
-            result["num_docs"] = num_original_docs
-            result["example_idx"] = list(range(len(decoded_inputs)))
-            result["perturbation"] = data_args.perturbation
-            result["per_perturbed"] = data_args.per_perturbed
-            result["seed"] = training_args.seed
-            result["model_name_or_path"] = model_args.model_name_or_path
-
-            result["inputs"] = decoded_inputs
-            result["preds"] = decoded_preds
-            result["labels"] = decoded_labels
+            results["num_docs"] = num_original_docs
+            results["example_idx"] = list(range(len(decoded_inputs)))
+            results["perturbation"] = data_args.perturbation
+            results["per_perturbed"] = data_args.per_perturbed
+            results["seed"] = training_args.seed
+            results["model_name_or_path"] = model_args.model_name_or_path
+            results["labels"] = decoded_labels
+            results["preds"] = decoded_preds
 
         # Add the mean length of reference and generated summaries.
         label_lens = [np.count_nonzero(label != tokenizer.pad_token_id) for label in labels]
         prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
-        result["label_len"] = np.mean(label_lens)
-        result["pred_len"] = np.mean(prediction_lens)
-        return result
+        results["label_len"] = np.mean(label_lens)
+        results["gen_len"] = np.mean(prediction_lens)
+        return results
 
     # Initialize our Trainer
     trainer = Seq2SeqTrainer(

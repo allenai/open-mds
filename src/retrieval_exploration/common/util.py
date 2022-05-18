@@ -1,9 +1,17 @@
+import json
+from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
+import pandas as pd
+from flatten_dict import flatten
 from transformers import PreTrainedTokenizer
 
+# Local constants
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
+_BASELINE_DIR = "baseline"
+_PERTURBATIONS_DIR = "perturbations"
+_RESULTS_FILENAME = "all_results.json"
 
 
 def split_docs(text: str, doc_sep_token: str) -> List[str]:
@@ -130,3 +138,58 @@ def get_num_original_docs(
             original_num_docs /= 1 + per_perturbed
             original_num_docs = np.floor(original_num_docs)
     return original_num_docs.astype(int).tolist()
+
+
+def load_results_dicts(
+    data_dir: str, metric_column: Optional[str] = None
+) -> Tuple[Optional[pd.DataFrame], pd.DataFrame]:
+    """Loads the result dictionaries at `data_dir`. Assumes this directory is organized as follows:
+
+    data_dir
+    ├── model_1
+    │   ├── baseline
+    │   └── perturbations
+    |       ├── perturbation_1
+    |       |   └── all_results.json
+    │       └── perturbation_2
+    |           └── ...
+    ├── model_2
+    │   └── ...
+    └── ...
+
+    If the subdirectory `"baseline"` is present and `metric_column` is provided, a new column,
+    `"{metric_column}_delta"` will be computed as the difference between the perturbed results
+    and the baseline results for that column name and added to the returned dataframe.
+    """
+    baseline_dfs = []
+    perturbation_dfs = []
+    for model_dir in Path(data_dir).iterdir():
+        baseline_df = None
+        baseline_dir = Path(model_dir) / _BASELINE_DIR
+        if baseline_dir.is_dir():
+            filepath = baseline_dir / _RESULTS_FILENAME
+            results_dict = json.loads(filepath.read_text())
+            results_dict_flattened = flatten(results_dict, reducer="underscore")
+            baseline_df = pd.DataFrame(results_dict_flattened)
+            baseline_dfs.append(baseline_df)
+
+        perturbation_dir = Path(model_dir) / _PERTURBATIONS_DIR
+        for filepath in Path(perturbation_dir).glob(f"**/{_RESULTS_FILENAME}"):
+            results_dict = json.loads(filepath.read_text())
+            results_dict_flattened = flatten(results_dict, reducer="underscore")
+            perturbation_df = pd.DataFrame(results_dict_flattened)
+            if baseline_df is not None and metric_column is not None:
+                # The perturbation and baseline data should pertain to the same examples.
+                if not np.array_equal(
+                    baseline_df.eval_example_idx, perturbation_df.eval_example_idx
+                ):
+                    raise ValueError(
+                        "The perturbation and baseline data do not correspond to same examples!"
+                    )
+                perturbation_df[f"{metric_column}_delta"] = (
+                    perturbation_df[metric_column] - baseline_df[metric_column]
+                )
+            perturbation_dfs.append(perturbation_df)
+    baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
+    perturbed_df = pd.concat(perturbation_dfs, ignore_index=True)
+    return baseline_df, perturbed_df
