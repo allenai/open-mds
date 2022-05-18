@@ -435,6 +435,15 @@ def main():
         use_auth_token=True if model_args.use_auth_token else None,
     )
 
+    # Use summarization specific params if present in the config
+    task_specific_params = model.config.task_specific_params.get("summarization", {})
+    if task_specific_params:
+        logger.info(
+            f"Using summarization specific params from model config: {task_specific_params}"
+            " (note, some of these may be overridden by arguments passed to this script)."
+        )
+        model.config.update(task_specific_params)
+
     model.resize_token_embeddings(len(tokenizer))
 
     if model.config.decoder_start_token_id is None and isinstance(
