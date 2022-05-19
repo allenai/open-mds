@@ -436,13 +436,12 @@ def main():
     )
 
     # Use summarization specific params if present in the config
-    task_specific_params = model.config.task_specific_params.get("summarization", {})
-    if task_specific_params:
+    task_specific_params = util.get_task_specific_params(model.config, task="summarization")
+    if task_specific_params is not None:
         logger.info(
-            f"Using summarization specific params from model config: {task_specific_params}"
-            " (note, some of these may be overridden by arguments passed to this script)."
+            "Using summarization specific params from model config (note, some of these may be"
+            " overridden by arguments passed to this script)."
         )
-        model.config.update(task_specific_params)
 
     model.resize_token_embeddings(len(tokenizer))
 
