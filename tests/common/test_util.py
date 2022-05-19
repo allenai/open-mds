@@ -26,18 +26,16 @@ def test_preprocess_multi_news() -> None:
         # so we should make sure it doesn't trip up our logic.
         f"Document numero dos. {util._DOC_SEP_TOKENS['multi_news']}",
     ]
+
     document = f" {util._DOC_SEP_TOKENS['multi_news']} ".join(docs)
-    example = {
-        "document": document,
-        "summary": "This is the summary.",
-    }
+    summary = "This is the summary."
 
     expected_text, expected_summary = (
         "Document numero uno. <doc-sep> Document numero dos.",
         "This is the summary.",
     )
     actual_text, actual_summary = util.preprocess_multi_news(
-        example=example, doc_sep_token=doc_sep_token
+        text=document, summary=summary, doc_sep_token=doc_sep_token
     )
     assert expected_text == actual_text
     assert expected_summary == actual_summary
@@ -46,18 +44,19 @@ def test_preprocess_multi_news() -> None:
 def test_preprocess_multi_x_science_sum() -> None:
     doc_sep_token = "<doc-sep>"
 
-    example = {
-        "abstract": "This is the query abstract.",
-        "ref_abstracts": {"abstract": ["This is a cited abstract."]},
-        "related_work": "This is the related work.",
-    }
+    abstract = "This is the query abstract."
+    ref_abstracts = {"abstract": ["This is a cited abstract."]}
+    related_work = "This is the related work."
 
     expected_text, expected_summary = (
         "This is the query abstract. <doc-sep> This is a cited abstract.",
         "This is the related work.",
     )
     actual_text, actual_summary = util.preprocess_multi_x_science_sum(
-        example=example, doc_sep_token=doc_sep_token
+        text=abstract,
+        summary=related_work,
+        ref_abstracts=ref_abstracts,
+        doc_sep_token=doc_sep_token,
     )
     assert expected_text == actual_text
     assert expected_summary == actual_summary

@@ -548,12 +548,15 @@ def main():
             if examples[text_column][i] is not None and examples[summary_column][i] is not None:
                 if data_args.dataset_name == "multi_news":
                     text, summary = util.preprocess_multi_news(
-                        example=examples[i],
+                        text=examples[text_column][i],
+                        summary=examples[summary_column][i],
                         doc_sep_token=doc_sep_token,
                     )
                 elif data_args.dataset_name == "multi_x_science_sum":
                     text, summary = util.preprocess_multi_x_science_sum(
-                        example=examples[i],
+                        text=examples[text_column][i],
+                        summary=examples[summary_column][i],
+                        ref_abstracts=examples["ref_abstracts"][i],
                         doc_sep_token=doc_sep_token,
                     )
                 else:
