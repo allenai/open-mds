@@ -58,3 +58,7 @@ mkdocs.yml
 # slurm
 
 slurm-*.out
+
+# directory used to save the outputs of scripts
+
+output/
