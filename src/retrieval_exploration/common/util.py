@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict
 
 import numpy as np
 import pandas as pd
@@ -24,20 +24,21 @@ def split_docs(text: str, doc_sep_token: str) -> List[str]:
     ]
 
 
-def preprocess_multi_news(example, doc_sep_token: str) -> Tuple[str, str]:
+def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
     """Given an `example` dict, returns a tuple of strings containing the text and summary."""
-    text = example["document"]
     text = text.strip(_DOC_SEP_TOKENS["multi_news"]).strip()
     text = text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token)
-    summary = example["summary"].strip()
+    summary = summary.strip()
     return text, summary
 
 
-def preprocess_multi_x_science_sum(example, doc_sep_token: str) -> Tuple[str, str]:
+def preprocess_multi_x_science_sum(
+    text: str, summary: str, ref_abstracts: Dict[str, List[str]], doc_sep_token: str
+) -> Tuple[str, str]:
     """Given an `example` dict, returns a tuple of strings containing the text and summary."""
-    ref_abstracts = [abstract.strip() for abstract in example["ref_abstracts"]["abstract"]]
-    text = f" {doc_sep_token} ".join([example["abstract"].strip()] + ref_abstracts)
-    summary = example["related_work"].strip()
+    abstracts = [abstract.strip() for abstract in ref_abstracts["abstract"]]
+    text = f" {doc_sep_token} ".join([text.strip()] + abstracts)
+    summary = summary.strip()
     return text, summary
 
 
