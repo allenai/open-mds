@@ -46,7 +46,7 @@ def test_preprocess_multi_x_science_sum() -> None:
     doc_sep_token = "<doc-sep>"
 
     abstract = "This is the query abstract."
-    ref_abstracts = {"abstract": ["This is a cited abstract."]}
+    ref_abstract = {"abstract": ["This is a cited abstract."]}
     related_work = "This is the related work."
 
     expected_text, expected_summary = (
@@ -56,7 +56,7 @@ def test_preprocess_multi_x_science_sum() -> None:
     actual_text, actual_summary = util.preprocess_multi_x_science_sum(
         text=abstract,
         summary=related_work,
-        ref_abstracts=ref_abstracts,
+        ref_abstract=ref_abstract,
         doc_sep_token=doc_sep_token,
     )
     assert expected_text == actual_text

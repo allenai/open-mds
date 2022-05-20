@@ -555,7 +555,7 @@ def main():
                     text, summary = util.preprocess_multi_x_science_sum(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
-                        ref_abstracts=examples["ref_abstracts"][i],
+                        ref_abstract=examples["ref_abstract"][i],
                         doc_sep_token=doc_sep_token,
                     )
                 else:
@@ -801,6 +801,8 @@ def main():
             model_type="microsoft/deberta-large-mnli",
             rescale_with_baseline=True,
             use_fast_tokenizer=True,
+            device="cuda",
+            batch_size=32
         )
         for key, value in bertscore_results.items():
             if key == "hashcode":
@@ -831,6 +833,8 @@ def main():
             results["per_perturbed"] = data_args.per_perturbed
             results["seed"] = training_args.seed
             results["model_name_or_path"] = model_args.model_name_or_path
+            results["doc_sep_token"] = doc_sep_token
+            results["inputs"] = decoded_inputs
             results["labels"] = decoded_labels
             results["preds"] = decoded_preds
 

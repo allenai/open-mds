@@ -33,10 +33,10 @@ def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[
 
 
 def preprocess_multi_x_science_sum(
-    text: str, summary: str, ref_abstracts: Dict[str, List[str]], doc_sep_token: str
+    text: str, summary: str, ref_abstract: Dict[str, List[str]], doc_sep_token: str
 ) -> Tuple[str, str]:
     """Given an `example` dict, returns a tuple of strings containing the text and summary."""
-    abstracts = [abstract.strip() for abstract in ref_abstracts["abstract"]]
+    abstracts = [abstract.strip() for abstract in ref_abstract["abstract"]]
     text = f" {doc_sep_token} ".join([text.strip()] + abstracts)
     summary = summary.strip()
     return text, summary
