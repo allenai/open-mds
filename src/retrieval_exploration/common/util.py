@@ -1,11 +1,11 @@
 import json
 from pathlib import Path
-from typing import List, Optional, Tuple, Union, Dict
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from flatten_dict import flatten
-from transformers import PreTrainedTokenizer, PretrainedConfig
+from transformers import PretrainedConfig, PreTrainedTokenizer
 
 # Local constants
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
@@ -42,7 +42,7 @@ def preprocess_multi_x_science_sum(
     return text, summary
 
 
-def get_task_specific_params(config: PretrainedConfig, task: str) -> None:
+def get_task_specific_params(config: PretrainedConfig, task: str) -> Dict[str, Any]:
     task_specific_params = None
     if config.task_specific_params is not None:
         task_specific_params = config.task_specific_params.get(task)
