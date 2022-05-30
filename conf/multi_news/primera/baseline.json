@@ -20,5 +20,5 @@
     "config_name": "./allenai/PRIMERA-multinews-fix",
     "per_perturbed": null,
     "perturbation": null,
-    "max_eval_samples": 16
+    "max_eval_samples": null
 }
