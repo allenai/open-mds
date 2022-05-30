@@ -4,7 +4,7 @@
     "text_column": "document",
     "summary_column": "summary",
     "max_source_length": 4096,
-    "max_target_length": 1024,
+    "max_target_length": 768,
     "output_dir": "./output/multinews/primera/perturbations/addition",
     "overwrite_output_dir": true,
     "do_eval": true,
