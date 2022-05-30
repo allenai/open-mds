@@ -42,7 +42,7 @@ def preprocess_multi_x_science_sum(
     return text, summary
 
 
-def get_task_specific_params(config: PretrainedConfig, task: str) -> Dict[str, Any]:
+def get_task_specific_params(config: PretrainedConfig, task: str) -> Optional[Dict[str, Any]]:
     task_specific_params = None
     if config.task_specific_params is not None:
         task_specific_params = config.task_specific_params.get(task)
