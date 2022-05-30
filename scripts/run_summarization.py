@@ -802,7 +802,7 @@ def main():
             rescale_with_baseline=True,
             use_fast_tokenizer=True,
             device="cuda",
-            batch_size=32
+            batch_size=32,
         )
         for key, value in bertscore_results.items():
             if key == "hashcode":
