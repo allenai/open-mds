@@ -62,3 +62,7 @@ slurm-*.out
 # directory used to save the outputs of scripts
 
 output/
+
+# a location to stick temporary stuff to avoid git tracking it
+
+tmp/
