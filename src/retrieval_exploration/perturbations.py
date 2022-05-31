@@ -127,10 +127,6 @@ def random_addition(
     seed : `int`, optional (default=None)
         If provided, will locally set the seed of the `random` module with this value.
     """
-    # Instantiate an instance of `Random` to we can create a generator with its own local seed
-    # See: https://stackoverflow.com/a/37356024/6578628
-    rng = random.Random(seed)
-
     if not per_perturbed:
         return inputs
 
