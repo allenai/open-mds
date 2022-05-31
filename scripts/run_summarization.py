@@ -269,6 +269,15 @@ class DataTrainingArguments:
             "help": "Percent of input documents to perturb. Has no effect if perturbation is None."
         },
     )
+    perturbed_seed: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": (
+                "Random seed that will be set locally when perturbing inputs.",
+                " Has no effect if perturbation is None.",
+            )
+        },
+    )
 
     def __post_init__(self):
         if self.dataset_name is None and self.train_file is None and self.validation_file is None:
