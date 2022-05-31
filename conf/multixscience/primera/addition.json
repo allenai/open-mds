@@ -1,5 +1,6 @@
 {
     "model_name_or_path": "allenai/PRIMERA-multixscience",
+    "config_name": "./allenai/PRIMERA-multixscience-fix",
     "dataset_name": "multi_x_science_sum",
     "text_column": "abstract",
     "summary_column": "related_work",
@@ -12,12 +13,11 @@
     "per_device_eval_batch_size": 8,
     "seed": 42,
     "fp16": true,
-    "predict_with_generate": true,
     "group_by_length": true,
     "include_inputs_for_metrics": true,
     "sortish_sampler": true,
+    "predict_with_generate": true,
     "generation_num_beams": 5,
-    "config_name": "./allenai/PRIMERA-multixscience-fix",
     "per_perturbed": 0.1,
     "perturbation": "addition",
     "max_eval_samples": null

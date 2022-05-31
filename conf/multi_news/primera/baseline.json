@@ -1,5 +1,6 @@
 {
     "model_name_or_path": "allenai/PRIMERA-multinews",
+    "config_name": "./allenai/PRIMERA-multinews-fix",
     "dataset_name": "multi_news",
     "text_column": "document",
     "summary_column": "summary",
@@ -12,12 +13,11 @@
     "per_device_eval_batch_size": 8,
     "seed": 42,
     "fp16": true,
-    "predict_with_generate": true,
     "group_by_length": true,
     "include_inputs_for_metrics": true,
     "sortish_sampler": true,
+    "predict_with_generate": true,
     "generation_num_beams": 5,
-    "config_name": "./allenai/PRIMERA-multinews-fix",
     "per_perturbed": null,
     "perturbation": null,
     "max_eval_samples": null
