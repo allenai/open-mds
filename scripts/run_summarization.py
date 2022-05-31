@@ -269,6 +269,15 @@ class DataTrainingArguments:
             "help": "Percent of input documents to perturb. Has no effect if perturbation is None."
         },
     )
+    perturbed_seed: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": (
+                "Random seed that will be set locally when perturbing inputs.",
+                " Has no effect if perturbation is None.",
+            )
+        },
+    )
 
     def __post_init__(self):
         if self.dataset_name is None and self.train_file is None and self.validation_file is None:
@@ -831,6 +840,7 @@ def main():
             results["example_idx"] = list(range(len(decoded_inputs)))
             results["perturbation"] = data_args.perturbation
             results["per_perturbed"] = data_args.per_perturbed
+            results["perturbed_seed"] = data_args.perturbed_seed
             results["seed"] = training_args.seed
             results["model_name_or_path"] = model_args.model_name_or_path
             results["doc_sep_token"] = doc_sep_token
