@@ -18,7 +18,8 @@
     "sortish_sampler": true,
     "predict_with_generate": true,
     "generation_num_beams": 5,
-    "per_perturbed": 0.1,
     "perturbation": "duplication",
+    "per_perturbed": 0.1,
+    "perturbed_seed": 42,
     "max_eval_samples": null
 }
