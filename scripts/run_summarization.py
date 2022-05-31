@@ -840,6 +840,7 @@ def main():
             results["example_idx"] = list(range(len(decoded_inputs)))
             results["perturbation"] = data_args.perturbation
             results["per_perturbed"] = data_args.per_perturbed
+            results["perturbed_seed"] = data_args.perturbed_seed
             results["seed"] = training_args.seed
             results["model_name_or_path"] = model_args.model_name_or_path
             results["doc_sep_token"] = doc_sep_token
