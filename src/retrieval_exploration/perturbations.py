@@ -28,6 +28,8 @@ def _sample_random_docs(
         The number of documents to sample (without replacement) from `inputs`.
     exclude : `List[int]`, optional (default=None)
         If provided, will not sample from the examples at these indices in `inputs`.
+    seed : `int`, optional (default=None)
+        If provided, will locally set the seed of the `random` module with this value.
     """
     # Instantiate an instance of `Random` to we can create a generator with its own local seed
     # See: https://stackoverflow.com/a/37356024/6578628
@@ -85,6 +87,8 @@ def random_shuffle(
         The token that separates individual documents in `inputs`.
     per_perturbed : `float`, optional (default=None)
         Has no effect. Exists for consistency with other perturbation functions.
+    seed : `int`, optional (default=None)
+        If provided, will locally set the seed of the `random` module with this value.
     """
     # Instantiate an instance of `Random` to we can create a generator with its own local seed
     # See: https://stackoverflow.com/a/37356024/6578628
@@ -120,6 +124,8 @@ def random_addition(
     per_perturbed : `float`, optional (default=None)
         The percentage of documents in each example that should be randomly replaced with a document
         sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
+    seed : `int`, optional (default=None)
+        If provided, will locally set the seed of the `random` module with this value.
     """
     # Instantiate an instance of `Random` to we can create a generator with its own local seed
     # See: https://stackoverflow.com/a/37356024/6578628
@@ -167,6 +173,8 @@ def random_deletion(
     per_perturbed : `float`, optional (default=None)
         The percentage of documents in each example that should be randomly replaced with a document
         sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
+    seed : `int`, optional (default=None)
+        If provided, will locally set the seed of the `random` module with this value.
     """
     # Instantiate an instance of `Random` to we can create a generator with its own local seed
     # See: https://stackoverflow.com/a/37356024/6578628
@@ -215,6 +223,8 @@ def random_duplication(
     per_perturbed : `float`, optional (default=None)
         The percentage of documents in each example that should be randomly replaced with a document
         sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
+    seed : `int`, optional (default=None)
+        If provided, will locally set the seed of the `random` module with this value.
     """
     # Instantiate an instance of `Random` to we can create a generator with its own local seed
     # See: https://stackoverflow.com/a/37356024/6578628
@@ -259,6 +269,8 @@ def random_replacement(
     per_perturbed : `float`, optional (default=None)
         The percentage of documents in each example that should be randomly replaced with a document
         sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
+    seed : `int`, optional (default=None)
+        If provided, will locally set the seed of the `random` module with this value.
     """
     # Instantiate an instance of `Random` to we can create a generator with its own local seed
     # See: https://stackoverflow.com/a/37356024/6578628
