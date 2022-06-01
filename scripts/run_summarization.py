@@ -269,15 +269,6 @@ class DataTrainingArguments:
             "help": "Percent of input documents to perturb. Has no effect if perturbation is None."
         },
     )
-    perturbed_seed: Optional[int] = field(
-        default=None,
-        metadata={
-            "help": (
-                "Random seed that will be set locally when perturbing inputs.",
-                " Has no effect if perturbation is None.",
-            )
-        },
-    )
 
     def __post_init__(self):
         if self.dataset_name is None and self.train_file is None and self.validation_file is None:
@@ -799,6 +790,7 @@ def main():
                 "precision": [round(score.precision * 100, 4) for score in value],
                 "recall": [round(score.recall * 100, 4) for score in value],
                 "fmeasure": [round(score.fmeasure * 100, 4) for score in value],
+                "fmeasure_mean": round(np.mean([score.fmeasure for score in value]) * 100, 4),
             }
 
         # Compute and post-process bertscore results
@@ -813,10 +805,14 @@ def main():
             device="cuda",
             batch_size=32,
         )
+        bertscore_results["f1_avg"] = np.mean(bertscore_results["f1"])
         for key, value in bertscore_results.items():
             if key == "hashcode":
                 continue
-            bertscore_results[key] = [round(score * 100, 4) for score in value]
+            if isinstance(value, list):
+                bertscore_results[key] = [round(score * 100, 4) for score in value]
+            else:
+                bertscore_results[key] = round(value * 100, 4)
 
         # Collect results in final dict
         results = {"rouge": rouge_results, "bertscore": bertscore_results}
@@ -840,7 +836,6 @@ def main():
             results["example_idx"] = list(range(len(decoded_inputs)))
             results["perturbation"] = data_args.perturbation
             results["per_perturbed"] = data_args.per_perturbed
-            results["perturbed_seed"] = data_args.perturbed_seed
             results["seed"] = training_args.seed
             results["model_name_or_path"] = model_args.model_name_or_path
             results["doc_sep_token"] = doc_sep_token
