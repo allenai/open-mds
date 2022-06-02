@@ -1,6 +1,5 @@
 {
     "model_name_or_path": "allenai/PRIMERA-multixscience",
-    "config_name": "./allenai/PRIMERA-multixscience-fix",
     "dataset_name": "multi_x_science_sum",
     "text_column": "abstract",
     "summary_column": "related_work",
@@ -21,5 +20,5 @@
     "perturbation": "addition",
     "per_perturbed": 0.1,
     "perturbed_seed": 42,
-    "max_eval_samples": null
+    "max_eval_samples": 2533
 }

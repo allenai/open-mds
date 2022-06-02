@@ -1,11 +1,11 @@
 {
-    "model_name_or_path": "allenai/PRIMERA-multinews",
-    "dataset_name": "multi_news",
-    "text_column": "document",
-    "summary_column": "summary",
+    "model_name_or_path": "allenai/PRIMERA-multixscience",
+    "dataset_name": "multi_x_science_sum",
+    "text_column": "abstract",
+    "summary_column": "related_work",
     "max_source_length": 4096,
-    "max_target_length": 768,
-    "output_dir": "./output/multinews/primera/perturbations/addition",
+    "max_target_length": 512,
+    "output_dir": "./output/debug",
     "overwrite_output_dir": true,
     "do_eval": true,
     "per_device_train_batch_size": 1,
@@ -17,8 +17,7 @@
     "sortish_sampler": true,
     "predict_with_generate": true,
     "generation_num_beams": 5,
-    "perturbation": "addition",
+    "perturbation": "duplication",
     "per_perturbed": 0.1,
-    "perturbed_seed": 42,
-    "max_eval_samples": 2811
+    "max_eval_samples": 32
 }

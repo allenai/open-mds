@@ -1,12 +1,11 @@
 {
     "model_name_or_path": "allenai/PRIMERA-multinews",
-    "config_name": "./allenai/PRIMERA-multinews-fix",
     "dataset_name": "multi_news",
     "text_column": "document",
     "summary_column": "summary",
     "max_source_length": 4096,
     "max_target_length": 768,
-    "output_dir": "./output/multinews/primera/debug",
+    "output_dir": "./output/multinews/primera/baseline",
     "overwrite_output_dir": true,
     "do_eval": true,
     "per_device_train_batch_size": 1,
@@ -21,5 +20,5 @@
     "perturbation": null,
     "per_perturbed": null,
     "perturbed_seed": 42,
-    "max_eval_samples": null
+    "max_eval_samples": 2811
 }
