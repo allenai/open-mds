@@ -20,5 +20,5 @@
     "perturbation": "addition",
     "per_perturbed": 0.1,
     "perturbed_seed": 42,
-    "max_eval_samples": null
+    "max_eval_samples": 2811
 }

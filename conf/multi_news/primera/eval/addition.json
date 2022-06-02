@@ -1,6 +1,5 @@
 {
     "model_name_or_path": "allenai/PRIMERA-multinews",
-    "config_name": "./allenai/PRIMERA-multinews-fix",
     "dataset_name": "multi_news",
     "text_column": "document",
     "summary_column": "summary",
@@ -21,5 +20,5 @@
     "perturbation": "addition",
     "per_perturbed": 0.1,
     "perturbed_seed": 42,
-    "max_eval_samples": null
+    "max_eval_samples": 2811
 }
