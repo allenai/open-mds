@@ -611,7 +611,10 @@ def main():
                 seed=data_args.perturbation_seed,
             )
             logger.info(
-                "Input documents of each example will be shuffled with strategy {} before training/evaluation."
+                (
+                    f"Input documents in each example will be shuffled with sampling strategy"
+                    f" '{data_args.sampling_strategy}' before training/evaluation."
+                )
             )
         elif data_args.perturbation == "addition":
             inputs = perturbations.addition(
@@ -624,7 +627,7 @@ def main():
             logger.info(
                 (
                     f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
-                    " added before training/evaluation."
+                    f" added with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
         elif data_args.perturbation == "deletion":
@@ -638,7 +641,7 @@ def main():
             logger.info(
                 (
                     f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
-                    " removed before training/evaluation."
+                    f" removed with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
         elif data_args.perturbation == "duplication":
@@ -652,7 +655,7 @@ def main():
             logger.info(
                 (
                     f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
-                    " duplicated before training/evaluation."
+                    f" duplicated with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
         elif data_args.perturbation is None:
