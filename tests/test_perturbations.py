@@ -197,6 +197,39 @@ def test_addition() -> None:
             # That the total document count increased by the expected amount
             assert expected_num_perturbed == actual_num_perturbed
 
+    # A simple example to see if addition with a non-random strategy works
+    inputs = [
+        f"this is a story about a dog {doc_sep_token} this is a story about a cat",
+        f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar",
+    ]
+    targets = ["this is a story about a cat", "this is a story about a cat"]
+
+    expected = [
+        f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token} this is another story about a cat",
+        f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar {doc_sep_token} this is a story about a cat",
+    ]
+    actual = perturbations.addition(
+        inputs=inputs,
+        doc_sep_token=doc_sep_token,
+        targets=targets,
+        perturbed_frac=0.10,
+        strategy="similar",
+    )
+    assert expected == actual
+
+    expected = [
+        f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token} this looks purposfully dissimilar",
+        f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar {doc_sep_token} this is a story about a dog",
+    ]
+    actual = perturbations.addition(
+        inputs=inputs,
+        doc_sep_token=doc_sep_token,
+        targets=targets,
+        perturbed_frac=0.10,
+        strategy="dissimilar",
+    )
+    assert expected == actual
+
 
 def test_deletion() -> None:
     num_docs = 16
