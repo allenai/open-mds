@@ -44,6 +44,9 @@ git clone https://github.com/allenai/retrieval-exploration
 cd retrieval-exploration
 
 # Install the package with poetry
-poetry install
+poetry install --all-extras
+
+# To install only with task-specific dependencies, use the extras argument
+poetry install --extras summarization
 ```
 
