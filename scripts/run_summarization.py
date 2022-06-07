@@ -601,7 +601,9 @@ def main():
 
         inputs = [prefix + inp for inp in inputs]
 
-        if data_args.perturbation == "shuffle":
+        if data_args.perturbation is None:
+            logger.info("No perturbations will be applied.")
+        elif data_args.perturbation == "shuffle":
             inputs = perturbations.shuffle(
                 inputs=inputs,
                 doc_sep_token=doc_sep_token,
@@ -658,8 +660,6 @@ def main():
                     f" duplicated with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
-        elif data_args.perturbation is None:
-            logger.info("No perturbations will be applied.")
         else:
             raise ValueError(
                 f"Got an unexpected value for --perturbation: {data_args.perturbation}"
