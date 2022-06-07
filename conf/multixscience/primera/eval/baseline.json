@@ -18,7 +18,7 @@
     "predict_with_generate": true,
     "generation_num_beams": 5,
     "perturbation": null,
-    "per_perturbed": null,
+    "perturbed_frac": null,
     "perturbed_seed": 42,
     "max_eval_samples": 2533
 }

@@ -261,12 +261,18 @@ class DataTrainingArguments:
     )
     perturbation: Optional[str] = field(
         default=None,
-        metadata={"help": "The pertubation strategy to use."},
+        metadata={"help": "The pertubation to apply."},
     )
-    per_perturbed: Optional[float] = field(
+    perturbed_frac: Optional[float] = field(
         default=None,
         metadata={
             "help": "Percent of input documents to perturb. Has no effect if perturbation is None."
+        },
+    )
+    sampling_strategy: str = field(
+        default="random",
+        metadata={
+            "help": "The sampling strategy to use for the perturbation. Has no effect if perturbation is None."
         },
     )
     perturbed_seed: Optional[int] = field(
@@ -580,7 +586,7 @@ def main():
                     text,
                     doc_sep_token=doc_sep_token,
                     perturbation=data_args.perturbation,
-                    per_perturbed=data_args.per_perturbed,
+                    perturbed_frac=data_args.perturbed_frac,
                 )
                 text = util.truncate_multi_doc(
                     text,
@@ -595,65 +601,65 @@ def main():
 
         inputs = [prefix + inp for inp in inputs]
 
-        if data_args.perturbation == "shuffle":
-            inputs = perturbations.random_shuffle(
-                inputs,
+        if data_args.perturbation is None:
+            logger.info("No perturbations will be applied.")
+        elif data_args.perturbation == "shuffle":
+            inputs = perturbations.shuffle(
+                inputs=inputs,
                 doc_sep_token=doc_sep_token,
-                per_perturbed=data_args.per_perturbed,
-            )
-            logger.info(
-                "Input documents of each example will be randomly shuffled before training/evaluation."
-            )
-        elif data_args.perturbation == "addition":
-            inputs = perturbations.random_addition(
-                inputs,
-                doc_sep_token=doc_sep_token,
-                per_perturbed=data_args.per_perturbed,
+                targets=targets,
+                perturbed_frac=data_args.perturbed_frac,
+                strategy=data_args.sampling_strategy,
+                seed=data_args.perturbation_seed,
             )
             logger.info(
                 (
-                    f"{data_args.per_perturbed:.2%} of input documents in each example will be"
-                    " added before training/evaluation."
+                    f"Input documents in each example will be shuffled with sampling strategy"
+                    f" '{data_args.sampling_strategy}' before training/evaluation."
+                )
+            )
+        elif data_args.perturbation == "addition":
+            inputs = perturbations.addition(
+                inputs=inputs,
+                doc_sep_token=doc_sep_token,
+                targets=targets,
+                perturbed_frac=data_args.perturbed_frac,
+                strategy=data_args.sampling_strategy,
+            )
+            logger.info(
+                (
+                    f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
+                    f" added with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
         elif data_args.perturbation == "deletion":
-            inputs = perturbations.random_deletion(
-                inputs,
+            inputs = perturbations.deletion(
+                inputs=inputs,
                 doc_sep_token=doc_sep_token,
-                per_perturbed=data_args.per_perturbed,
+                targets=targets,
+                perturbed_frac=data_args.perturbed_frac,
+                strategy=data_args.sampling_strategy,
             )
             logger.info(
                 (
-                    f"{data_args.per_perturbed:.2%} of input documents in each example will be"
-                    " removed before training/evaluation."
+                    f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
+                    f" removed with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
         elif data_args.perturbation == "duplication":
-            inputs = perturbations.random_duplication(
-                inputs,
+            inputs = perturbations.duplication(
+                inputs=inputs,
                 doc_sep_token=doc_sep_token,
-                per_perturbed=data_args.per_perturbed,
+                targets=targets,
+                perturbed_frac=data_args.perturbed_frac,
+                strategy=data_args.sampling_strategy,
             )
             logger.info(
                 (
-                    f"{data_args.per_perturbed:.2%} of input documents in each example will be"
-                    " duplicated before training/evaluation."
+                    f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
+                    f" duplicated with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
-        elif data_args.perturbation == "replacement":
-            inputs = perturbations.random_replacement(
-                inputs,
-                doc_sep_token=doc_sep_token,
-                per_perturbed=data_args.per_perturbed,
-            )
-            logger.info(
-                (
-                    f"{data_args.per_perturbed:.2%} of input documents in each instance replaced"
-                    " with a randomly sampled document."
-                )
-            )
-        elif data_args.perturbation is None:
-            logger.info("No perturbations will be applied.")
         else:
             raise ValueError(
                 f"Got an unexpected value for --perturbation: {data_args.perturbation}"
@@ -837,14 +843,15 @@ def main():
                 inputs=decoded_inputs,
                 doc_sep_token=doc_sep_token,
                 perturbation=data_args.perturbation,
-                per_perturbed=data_args.per_perturbed,
+                perturbed_frac=data_args.perturbed_frac,
             )
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
             results["num_docs"] = num_original_docs
             results["example_idx"] = list(range(len(decoded_inputs)))
             results["perturbation"] = data_args.perturbation
-            results["per_perturbed"] = data_args.per_perturbed
+            results["perturbed_frac"] = data_args.perturbed_frac
+            results["sampling_strategy"] = data_args.sampling_strategy
             results["perturbed_seed"] = data_args.perturbed_seed
             results["seed"] = training_args.seed
             results["model_name_or_path"] = model_args.model_name_or_path
