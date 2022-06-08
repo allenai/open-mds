@@ -54,9 +54,7 @@ from retrieval_exploration.common import util
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.19.0.dev0")
 
-require_version(
-    "datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt"
-)
+require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt")
 
 logger = logging.getLogger(__name__)
 
@@ -102,15 +100,11 @@ class ModelArguments:
     )
     use_fast_tokenizer: bool = field(
         default=True,
-        metadata={
-            "help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."
-        },
+        metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
     )
     model_revision: str = field(
         default="main",
-        metadata={
-            "help": "The specific model version to use (can be a branch name, tag name or commit id)."
-        },
+        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
     )
     use_auth_token: bool = field(
         default=False,
@@ -142,21 +136,15 @@ class DataTrainingArguments:
     )
     dataset_config_name: Optional[str] = field(
         default=None,
-        metadata={
-            "help": "The configuration name of the dataset to use (via the datasets library)."
-        },
+        metadata={"help": "The configuration name of the dataset to use (via the datasets library)."},
     )
     text_column: Optional[str] = field(
         default=None,
-        metadata={
-            "help": "The name of the column in the datasets containing the full texts (for summarization)."
-        },
+        metadata={"help": "The name of the column in the datasets containing the full texts (for summarization)."},
     )
     summary_column: Optional[str] = field(
         default=None,
-        metadata={
-            "help": "The name of the column in the datasets containing the summaries (for summarization)."
-        },
+        metadata={"help": "The name of the column in the datasets containing the summaries (for summarization)."},
     )
     train_file: Optional[str] = field(
         default=None, metadata={"help": "The input training data file (a jsonlines or csv file)."}
@@ -171,8 +159,7 @@ class DataTrainingArguments:
     test_file: Optional[str] = field(
         default=None,
         metadata={
-            "help": "An optional input test data file to evaluate the metrics (rouge) on "
-            "(a jsonlines or csv file)."
+            "help": "An optional input test data file to evaluate the metrics (rouge) on " "(a jsonlines or csv file)."
         },
     )
     overwrite_cache: bool = field(
@@ -265,15 +252,11 @@ class DataTrainingArguments:
     )
     perturbed_frac: Optional[float] = field(
         default=None,
-        metadata={
-            "help": "Percent of input documents to perturb. Has no effect if perturbation is None."
-        },
+        metadata={"help": "Percent of input documents to perturb. Has no effect if perturbation is None."},
     )
     sampling_strategy: str = field(
         default="random",
-        metadata={
-            "help": "The sampling strategy to use for the perturbation. Has no effect if perturbation is None."
-        },
+        metadata={"help": "The sampling strategy to use for the perturbation. Has no effect if perturbation is None."},
     )
     perturbed_seed: Optional[int] = field(
         default=None,
@@ -326,9 +309,7 @@ def main():
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
-        model_args, data_args, training_args = parser.parse_json_file(
-            json_file=os.path.abspath(sys.argv[1])
-        )
+        model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
@@ -366,11 +347,7 @@ def main():
 
     # Detecting last checkpoint.
     last_checkpoint = None
-    if (
-        os.path.isdir(training_args.output_dir)
-        and training_args.do_train
-        and not training_args.overwrite_output_dir
-    ):
+    if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
         if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
             raise ValueError(
@@ -460,9 +437,7 @@ def main():
 
     model.resize_token_embeddings(len(tokenizer))
 
-    if model.config.decoder_start_token_id is None and isinstance(
-        tokenizer, (MBartTokenizer, MBartTokenizerFast)
-    ):
+    if model.config.decoder_start_token_id is None and isinstance(tokenizer, (MBartTokenizer, MBartTokenizerFast)):
         if isinstance(tokenizer, MBartTokenizer):
             model.config.decoder_start_token_id = tokenizer.lang_code_to_id[data_args.lang]
         else:
@@ -501,9 +476,7 @@ def main():
     elif training_args.do_predict:
         column_names = raw_datasets["test"].column_names
     else:
-        logger.info(
-            "There is nothing to do. Please pass `do_train`, `do_eval` and/or `do_predict`."
-        )
+        logger.info("There is nothing to do. Please pass `do_train`, `do_eval` and/or `do_predict`.")
         return
 
     if isinstance(tokenizer, tuple(MULTILINGUAL_TOKENIZERS)):
@@ -517,9 +490,7 @@ def main():
         # For multilingual translation models like mBART-50 and M2M100 we need to force the target language token
         # as the first generated token. We ask the user to explicitly provide this as --forced_bos_token argument.
         forced_bos_token_id = (
-            tokenizer.lang_code_to_id[data_args.forced_bos_token]
-            if data_args.forced_bos_token is not None
-            else None
+            tokenizer.lang_code_to_id[data_args.forced_bos_token] if data_args.forced_bos_token is not None else None
         )
         model.config.forced_bos_token_id = forced_bos_token_id
 
@@ -546,9 +517,7 @@ def main():
     max_target_length = data_args.max_target_length
     padding = "max_length" if data_args.pad_to_max_length else False
 
-    if training_args.label_smoothing_factor > 0 and not hasattr(
-        model, "prepare_decoder_input_ids_from_labels"
-    ):
+    if training_args.label_smoothing_factor > 0 and not hasattr(model, "prepare_decoder_input_ids_from_labels"):
         logger.warning(
             "label_smoothing is enabled but the `prepare_decoder_input_ids_from_labels` method is not defined for"
             f"`{model.__class__.__name__}`. This will lead to loss being calculated twice and will take up more memory"
@@ -610,7 +579,7 @@ def main():
                 targets=targets,
                 perturbed_frac=data_args.perturbed_frac,
                 strategy=data_args.sampling_strategy,
-                seed=data_args.perturbation_seed,
+                seed=data_args.perturbed_seed,
             )
             logger.info(
                 (
@@ -625,6 +594,7 @@ def main():
                 targets=targets,
                 perturbed_frac=data_args.perturbed_frac,
                 strategy=data_args.sampling_strategy,
+                seed=data_args.perturbed_seed,
             )
             logger.info(
                 (
@@ -639,6 +609,7 @@ def main():
                 targets=targets,
                 perturbed_frac=data_args.perturbed_frac,
                 strategy=data_args.sampling_strategy,
+                seed=data_args.perturbed_seed,
             )
             logger.info(
                 (
@@ -653,6 +624,7 @@ def main():
                 targets=targets,
                 perturbed_frac=data_args.perturbed_frac,
                 strategy=data_args.sampling_strategy,
+                seed=data_args.perturbed_seed,
             )
             logger.info(
                 (
@@ -661,26 +633,19 @@ def main():
                 )
             )
         else:
-            raise ValueError(
-                f"Got an unexpected value for --perturbation: {data_args.perturbation}"
-            )
+            raise ValueError(f"Got an unexpected value for --perturbation: {data_args.perturbation}")
 
-        model_inputs = tokenizer(
-            inputs, max_length=data_args.max_source_length, padding=padding, truncation=True
-        )
+        model_inputs = tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
 
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
-            labels = tokenizer(
-                targets, max_length=max_target_length, padding=padding, truncation=True
-            )
+            labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
         if padding == "max_length" and data_args.ignore_pad_token_for_loss:
             labels["input_ids"] = [
-                [(l if l != tokenizer.pad_token_id else -100) for l in label]
-                for label in labels["input_ids"]
+                [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
             ]
 
         model_inputs["labels"] = labels["input_ids"]
@@ -890,9 +855,7 @@ def main():
 
         metrics = train_result.metrics
         max_train_samples = (
-            data_args.max_train_samples
-            if data_args.max_train_samples is not None
-            else len(train_dataset)
+            data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
         )
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
@@ -907,21 +870,11 @@ def main():
         if training_args.generation_max_length is not None
         else data_args.val_max_target_length
     )
-    num_beams = (
-        data_args.num_beams
-        if data_args.num_beams is not None
-        else training_args.generation_num_beams
-    )
+    num_beams = data_args.num_beams if data_args.num_beams is not None else training_args.generation_num_beams
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
-        metrics = trainer.evaluate(
-            max_length=max_length, num_beams=num_beams, metric_key_prefix="eval"
-        )
-        max_eval_samples = (
-            data_args.max_eval_samples
-            if data_args.max_eval_samples is not None
-            else len(eval_dataset)
-        )
+        metrics = trainer.evaluate(max_length=max_length, num_beams=num_beams, metric_key_prefix="eval")
+        max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
 
         trainer.log_metrics("eval", metrics)
@@ -935,9 +888,7 @@ def main():
         )
         metrics = predict_results.metrics
         max_predict_samples = (
-            data_args.max_predict_samples
-            if data_args.max_predict_samples is not None
-            else len(predict_dataset)
+            data_args.max_predict_samples if data_args.max_predict_samples is not None else len(predict_dataset)
         )
         metrics["predict_samples"] = min(max_predict_samples, len(predict_dataset))
 
@@ -952,9 +903,7 @@ def main():
                     clean_up_tokenization_spaces=True,
                 )
                 predictions = [pred.strip() for pred in predictions]
-                output_prediction_file = os.path.join(
-                    training_args.output_dir, "generated_predictions.txt"
-                )
+                output_prediction_file = os.path.join(training_args.output_dir, "generated_predictions.txt")
                 with open(output_prediction_file, "w") as writer:
                     writer.write("\n".join(predictions))
 
