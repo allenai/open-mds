@@ -45,7 +45,7 @@ jobs:
           poetry run mypy .
       - name: Test with pytest
         run: |
-          poetry run pytest tests --cov-report=xml --cov ./seq2rel --cov-config=.coveragerc
+          poetry run pytest tests --cov-report=xml --cov ./src --cov-config=.coveragerc
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2.1.0
         with:
