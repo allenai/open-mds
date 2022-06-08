@@ -1,6 +1,5 @@
 {
     "model_name_or_path": "allenai/PRIMERA-multixscience",
-    "config_name": "./allenai/PRIMERA-multixscience-fix",
     "dataset_name": "multi_x_science_sum",
     "text_column": "abstract",
     "summary_column": "related_work",
