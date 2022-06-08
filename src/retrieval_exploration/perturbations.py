@@ -45,15 +45,11 @@ def _randomly_sample_docs(
         inputs = [example for example in inputs if example != query]
 
     # Sample all documents if k is not provided
-    total_num_docs = sum(
-        len(util.split_docs(example, doc_sep_token=doc_sep_token)) for example in inputs
-    )
+    total_num_docs = sum(len(util.split_docs(example, doc_sep_token=doc_sep_token)) for example in inputs)
     k = k or total_num_docs
     # Check that we have enough documents to sample from
     if total_num_docs < k:
-        raise ValueError(
-            f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}."
-        )
+        raise ValueError(f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}.")
 
     random_docs = []
     while True:
@@ -83,9 +79,7 @@ def _lexically_sample_docs(
     target: Optional[str] = None,
 ):
     if strategy not in ["similar", "dissimilar"]:
-        raise ValueError(
-            f"Got unknown sampling strategy: {strategy}. Expected one of {['similar', 'dissimilar']}"
-        )
+        raise ValueError(f"Got unknown sampling strategy: {strategy}. Expected one of {['similar', 'dissimilar']}")
     if not query and not target:
         raise ValueError("Must provide either a `query` or a `target`.")
 
@@ -97,15 +91,11 @@ def _lexically_sample_docs(
         query_docs = util.split_docs(query, doc_sep_token=doc_sep_token)
 
     # Sample all documents if k is not provided
-    total_num_docs = sum(
-        len(util.split_docs(example, doc_sep_token=doc_sep_token)) for example in inputs
-    )
+    total_num_docs = sum(len(util.split_docs(example, doc_sep_token=doc_sep_token)) for example in inputs)
     k = k or total_num_docs
     # Check that we have enough documents to sample from
     if total_num_docs < k:
-        raise ValueError(
-            f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}."
-        )
+        raise ValueError(f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}.")
 
     rouge = datasets.load_metric("rouge")
 
@@ -115,17 +105,25 @@ def _lexically_sample_docs(
 
         # If a target is provided, we look for lexical overlap between it and the input documents.
         # Otherwise we use the documents of the query.
-        scores = []
-        for doc in input_docs:
-            if target:
-                references = [target]
-            else:
-                references = query_docs
-            score = rouge.compute(
-                references=references, predictions=[doc] * len(references), use_stemmer=True
-            )["rouge2"].mid.recall.item()
-            scores.append(score)
-
+        if target:
+            scores = rouge.compute(
+                references=[target] * len(input_docs),
+                predictions=input_docs,
+                rouge_types=["rouge2"],
+                use_aggregator=False,
+                use_stemmer=True,
+            )
+            scores = [score.recall for score in scores["rouge2"]]
+        else:
+            scores = [
+                rouge.compute(
+                    references=query_docs,
+                    predictions=[doc] * len(query_docs),
+                    rouge_types=["rouge2"],
+                    use_stemmer=True,
+                )["rouge2"].mid.recall.item()
+                for doc in input_docs
+            ]
         scored_docs.extend(zip(input_docs, scores))
 
     # Return the the top k most similar (or dissimilar) documents
@@ -164,9 +162,7 @@ def shuffle(
     """
     if strategy not in ["random", "similar", "dissimilar"]:
         raise ValueError(
-            (
-                f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}"
-            )
+            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}")
         )
 
     # Need an iterable, but an empty list as default value is bad practice
@@ -223,9 +219,7 @@ def addition(
     """
     if strategy not in ["random", "similar", "dissimilar"]:
         raise ValueError(
-            (
-                f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}"
-            )
+            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}")
         )
 
     # No-op if perturbed_frac is None or falsey
@@ -289,9 +283,7 @@ def deletion(
     """
     if strategy not in ["random", "similar", "dissimilar"]:
         raise ValueError(
-            (
-                f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}"
-            )
+            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}")
         )
 
     # No-op if perturbed_frac is None or falsey
@@ -360,9 +352,7 @@ def duplication(
     """
     if strategy not in ["random", "similar", "dissimilar"]:
         raise ValueError(
-            (
-                f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}"
-            )
+            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}")
         )
 
     # No-op if perturbed_frac is None or falsey

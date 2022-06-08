@@ -33,9 +33,12 @@ pytest-cov = "^3.0.0"
 coverage = "^6.3.2"
 codecov = "^2.1.12"
 
-# This configuration is adapted from: https://github.com/allenai/allennlp/blob/main/pyproject.toml
+# This configuration is adapted from: 
+# - https://github.com/allenai/allennlp/blob/main/pyproject.toml
+# - https://github.com/huggingface/transformers/blob/main/pyproject.toml
 [tool.black]
-line-length = 100
+line-length = 119
+target-version = ['py35']
 
 include = '\.pyi?$'
 
@@ -57,13 +60,3 @@ exclude = '''
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-
-# accelerate
-# datasets >= 1.8.0
-# sentencepiece != 0.1.92
-# protobuf
-# rouge-score
-# nltk
-# py7zr
-# torch >= 1.3

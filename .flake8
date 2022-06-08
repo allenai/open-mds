@@ -1,6 +1,8 @@
-# This config is adapted from: https://github.com/allenai/allennlp/blob/main/.flake8
+# This configuration is adapted from: 
+# - https://github.com/allenai/allennlp/blob/main/.flake8
+# - https://github.com/huggingface/transformers/blob/main/pyproject.toml
 [flake8]
-max-line-length = 115
+max-line-length = 119
 
 ignore =
     # these rules don't play well with black

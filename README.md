@@ -1,6 +1,7 @@
 # Retrieval Exploration
 
 [![ci](https://github.com/allenai/retrieval-exploration/actions/workflows/ci.yml/badge.svg)](https://github.com/allenai/retrieval-exploration/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/allenai/retrieval-exploration/branch/main/graph/badge.svg?token=YTQEI2VMSA)](https://codecov.io/gh/allenai/retrieval-exploration)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
 ## Installation

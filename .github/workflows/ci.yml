@@ -45,13 +45,9 @@ jobs:
           poetry run mypy .
       - name: Test with pytest
         run: |
-          poetry run pytest tests --cov-report=xml --cov ./seq2rel --cov-config=.coveragerc
+          poetry run pytest tests --cov-config=.coveragerc --cov ./src --cov-report=xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2.1.0
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.xml
-          # Ignore codecov failures as the codecov server is not
-          # very reliable but we don't want to report a failure
-          # in the github UI just because the coverage report failed to
-          # be published.
-          fail_ci_if_error: false

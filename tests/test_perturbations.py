@@ -183,9 +183,7 @@ def test_addition() -> None:
     # Test the cases where a fraction of documents should be perturbed.
     for perturbed_frac in [0.1, 0.22, 0.5, 1.0]:
         expected_num_perturbed = num_docs + math.ceil(perturbed_frac * num_docs)
-        perturbed = perturbations.addition(
-            inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac
-        )
+        perturbed = perturbations.addition(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
         # Because the perturbation is random we check other properties of the perturbed inputs.
         for input_example, perturbed_example in zip(inputs, perturbed):
             actual_num_perturbed = len(util.split_docs(perturbed_example, doc_sep_token))
@@ -246,9 +244,7 @@ def test_deletion() -> None:
     # Test the cases where a fraction of documents should be perturbed.
     for perturbed_frac in [0.1, 0.22, 0.5, 1.0]:
         expected_num_perturbed = num_docs - math.ceil(perturbed_frac * num_docs)
-        perturbed = perturbations.deletion(
-            inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac
-        )
+        perturbed = perturbations.deletion(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
 
         # Because the perturbation is random we check other properties of the perturbed inputs.
         for input_example, perturbed_example in zip(inputs, perturbed):
@@ -301,19 +297,14 @@ def test_duplication() -> None:
     # Test the cases where a fraction of documents should be perturbed.
     for perturbed_frac in [0.1, 0.22, 0.5, 1.0]:
         expected_num_perturbed = math.ceil(perturbed_frac * num_docs)
-        perturbed = perturbations.duplication(
-            inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac
-        )
+        perturbed = perturbations.duplication(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
 
         # Because the perturbation is random we check other properties of the perturbed inputs.
         for input_example, perturbed_example in zip(inputs, perturbed):
             # That the pertubation was actually applied
             assert input_example != perturbed_example
             # That that perturbed example has only the documents from the input
-            assert (
-                expected_num_perturbed
-                == len(util.split_docs(perturbed_example, doc_sep_token)) - num_docs
-            )
+            assert expected_num_perturbed == len(util.split_docs(perturbed_example, doc_sep_token)) - num_docs
             for input_doc, perturbed_doc in zip(
                 input_example.split(doc_sep_token), perturbed_example.split(doc_sep_token)
             ):

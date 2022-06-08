@@ -115,9 +115,7 @@ def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
     text = f" {doc_sep_token} ".join(docs)
 
     expected = "I am document one. <doc-sep> I am document two. I am a little longer"
-    actual = util.truncate_multi_doc(
-        text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer
-    )
+    actual = util.truncate_multi_doc(text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer)
     assert expected == actual
     assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
 
@@ -128,12 +126,8 @@ def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
     ]
     text = f" {doc_sep_token} ".join(docs)
 
-    expected = (
-        "I am document one. I am the same length <doc-sep> I am document two. I am the same length"
-    )
-    actual = util.truncate_multi_doc(
-        text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer
-    )
+    expected = "I am document one. I am the same length <doc-sep> I am document two. I am the same length"
+    actual = util.truncate_multi_doc(text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer)
     assert expected == actual
     assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
 
@@ -156,9 +150,7 @@ def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
     assert expected == actual
     assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
 
-    expected = (
-        "I am document one. I <doc-sep> I am document two. I <doc-sep> I am document three. I"
-    )
+    expected = "I am document one. I <doc-sep> I am document two. I <doc-sep> I am document three. I"
     actual = util.truncate_multi_doc(
         text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer, num_docs=3
     )
@@ -171,9 +163,7 @@ def test_get_global_attention_mask() -> None:
     input_ids = [[117, 0, 6, 42], [0, 2, 117, 24]]
     token_ids = [117, 42]
     expected_global_attention_mask = [[1, 0, 0, 1], [0, 0, 1, 0]]
-    actual_global_attention_mask = util.get_global_attention_mask(
-        input_ids=input_ids, token_ids=token_ids
-    )
+    actual_global_attention_mask = util.get_global_attention_mask(input_ids=input_ids, token_ids=token_ids)
     assert expected_global_attention_mask == actual_global_attention_mask
 
     # Test the case when input_ids is empty
@@ -196,27 +186,21 @@ def test_get_num_original_docs():
 
     # Test the case where no perturbations are applied
     assert util.get_num_original_docs(inputs, doc_sep_token) == [num_docs]
-    assert util.get_num_original_docs(
-        inputs, doc_sep_token, perturbation="addition", per_perturbed=None
-    ) == [num_docs]
+    assert util.get_num_original_docs(inputs, doc_sep_token, perturbation="addition", perturbed_frac=None) == [
+        num_docs
+    ]
 
     # Test the case with addition
     expected = [num_docs - 2]
-    actual = util.get_num_original_docs(
-        inputs, doc_sep_token, perturbation="addition", per_perturbed=0.10
-    )
+    actual = util.get_num_original_docs(inputs, doc_sep_token, perturbation="addition", perturbed_frac=0.10)
     assert expected == actual
 
     # Test the case with deletion
     expected = [num_docs + 2]
-    actual = util.get_num_original_docs(
-        inputs, doc_sep_token, perturbation="deletion", per_perturbed=0.1
-    )
+    actual = util.get_num_original_docs(inputs, doc_sep_token, perturbation="deletion", perturbed_frac=0.1)
     assert expected == actual
 
     # Test the case where the inputs are a string
     expected = [num_docs + 2]
-    actual = util.get_num_original_docs(
-        inputs[0], doc_sep_token, perturbation="deletion", per_perturbed=0.1
-    )
+    actual = util.get_num_original_docs(inputs[0], doc_sep_token, perturbation="deletion", perturbed_frac=0.1)
     assert expected == actual
