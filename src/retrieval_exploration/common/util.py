@@ -129,10 +129,10 @@ def get_num_original_docs(
     inputs: Union[str, List[str]],
     doc_sep_token: str,
     perturbation: Optional[str] = None,
-    per_perturbed: Optional[float] = None,
+    perturbed_frac: Optional[float] = None,
 ) -> List[int]:
     """Returns the number of original documents in each example from `inputs` given the applied
-    `perturbation` and fraction of documents perturbed, `per_perturbed`.
+    `perturbation` and fraction of documents perturbed, `perturbed_frac`.
 
     # Parameters
 
@@ -140,7 +140,7 @@ def get_num_original_docs(
         The input text provided to the model.
     doc_sep_token : `str`
         The token that separates individual documents in `inputs`.
-    per_perturbed : `float`, optional (default=None)
+    perturbed_frac : `float`, optional (default=None)
         The percentage of documents in each example that was perturbed.
     """
     if isinstance(inputs, str):
@@ -148,14 +148,14 @@ def get_num_original_docs(
     # Compute the number of documents in each example
     num_docs = [len(split_docs(input_, doc_sep_token)) for input_ in inputs]
     # If a perturbation was applied, determine the number of documents before perturbation
-    per_perturbed = per_perturbed or 0.0
+    perturbed_frac = perturbed_frac or 0.0
     original_num_docs = np.asarray(num_docs).astype(float)
-    if perturbation is not None and per_perturbed > 0.0:
+    if perturbation is not None and perturbed_frac > 0.0:
         if perturbation == "deletion":
-            original_num_docs /= 1 - per_perturbed
+            original_num_docs /= 1 - perturbed_frac
             original_num_docs = np.ceil(original_num_docs)
         else:
-            original_num_docs /= 1 + per_perturbed
+            original_num_docs /= 1 + perturbed_frac
             original_num_docs = np.floor(original_num_docs)
     return original_num_docs.astype(int).tolist()
 
