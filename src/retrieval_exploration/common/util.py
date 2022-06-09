@@ -19,9 +19,7 @@ def split_docs(text: str, doc_sep_token: str) -> List[str]:
     returns a list of each individual documents. Ignores any documents that are empty.
     order of documents in each example.
     """
-    return [
-        doc.strip() for doc in text.strip(doc_sep_token).strip().split(doc_sep_token) if doc.strip()
-    ]
+    return [doc.strip() for doc in text.strip(doc_sep_token).strip().split(doc_sep_token) if doc.strip()]
 
 
 def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
@@ -68,9 +66,7 @@ def get_doc_sep_token(tokenizer: PreTrainedTokenizer) -> str:
     elif tokenizer.eos_token is not None:
         return tokenizer.eos_token
     else:
-        raise ValueError(
-            f"Could not determine a suitable document sperator token '{tokenizer.name_or_path}'"
-        )
+        raise ValueError(f"Could not determine a suitable document sperator token '{tokenizer.name_or_path}'")
 
 
 def truncate_multi_doc(
@@ -119,9 +115,7 @@ def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) 
     """
 
     # TODO (John): Ideally this would be vectorized
-    global_attention_mask = [
-        [1 if token_id in token_ids else 0 for token_id in batch] for batch in input_ids
-    ]
+    global_attention_mask = [[1 if token_id in token_ids else 0 for token_id in batch] for batch in input_ids]
     return global_attention_mask
 
 
@@ -201,17 +195,11 @@ def load_results_dicts(
             perturbation_df = pd.DataFrame(results_dict_flattened)
             if baseline_df is not None:
                 # The perturbation and baseline data should pertain to the same examples.
-                if not np.array_equal(
-                    baseline_df.eval_example_idx, perturbation_df.eval_example_idx
-                ):
-                    raise ValueError(
-                        "The perturbation and baseline data do not correspond to same examples!"
-                    )
+                if not np.array_equal(baseline_df.eval_example_idx, perturbation_df.eval_example_idx):
+                    raise ValueError("The perturbation and baseline data do not correspond to same examples!")
                 if metric_columns is not None:
                     for metric in metric_columns:
-                        perturbation_df[f"{metric}_delta"] = (
-                            perturbation_df[metric] - baseline_df[metric]
-                        )
+                        perturbation_df[f"{metric}_delta"] = perturbation_df[metric] - baseline_df[metric]
             perturbation_dfs.append(perturbation_df)
     baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
     perturbed_df = pd.concat(perturbation_dfs, ignore_index=True)

@@ -136,7 +136,7 @@ def _lexically_sample_docs(
     return [doc for doc, _ in scored_docs]
 
 
-def shuffle(
+def sorting(
     inputs: List[str],
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
