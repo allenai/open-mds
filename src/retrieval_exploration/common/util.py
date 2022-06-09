@@ -4,14 +4,18 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from flatten_dict import flatten
+import flatten_dict
 from transformers import PretrainedConfig, PreTrainedTokenizer
 
 # Local constants
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
+
 _BASELINE_DIR = "baseline"
 _PERTURBATIONS_DIR = "perturbations"
+
 _RESULTS_FILENAME = "all_results.json"
+_TRAINER_STATE_FILENAME = "trainer_state.json"
+_LOG_HISTORY_KEY = "log_history"
 
 
 def split_docs(text: str, doc_sep_token: str) -> List[str]:
@@ -19,9 +23,7 @@ def split_docs(text: str, doc_sep_token: str) -> List[str]:
     returns a list of each individual documents. Ignores any documents that are empty.
     order of documents in each example.
     """
-    return [
-        doc.strip() for doc in text.strip(doc_sep_token).strip().split(doc_sep_token) if doc.strip()
-    ]
+    return [doc.strip() for doc in text.strip(doc_sep_token).strip().split(doc_sep_token) if doc.strip()]
 
 
 def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
@@ -68,9 +70,7 @@ def get_doc_sep_token(tokenizer: PreTrainedTokenizer) -> str:
     elif tokenizer.eos_token is not None:
         return tokenizer.eos_token
     else:
-        raise ValueError(
-            f"Could not determine a suitable document sperator token '{tokenizer.name_or_path}'"
-        )
+        raise ValueError(f"Could not determine a suitable document sperator token '{tokenizer.name_or_path}'")
 
 
 def truncate_multi_doc(
@@ -119,9 +119,7 @@ def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) 
     """
 
     # TODO (John): Ideally this would be vectorized
-    global_attention_mask = [
-        [1 if token_id in token_ids else 0 for token_id in batch] for batch in input_ids
-    ]
+    global_attention_mask = [[1 if token_id in token_ids else 0 for token_id in batch] for batch in input_ids]
     return global_attention_mask
 
 
@@ -160,6 +158,17 @@ def get_num_original_docs(
     return original_num_docs.astype(int).tolist()
 
 
+def _read_result_dict(results_dict: Union[Dict[str, Any], List[Dict[str, Any]]], **kwargs) -> pd.DataFrame:
+    """Reads an arbitrary dictionary or list of dictionaries, flattens it by joining all nested keys
+    with a `'_'`, and returns it as a single pandas DataFrame. `**kwargs` are passed to `pd.DataFrame`.
+    """
+    if isinstance(results_dict, list):
+        dfs = (pd.DataFrame(flatten_dict.flatten(rd, reducer="underscore"), **kwargs) for rd in results_dict)
+        return pd.concat(dfs, ignore_index=True)
+    else:
+        return pd.DataFrame(flatten_dict.flatten(results_dict, reducer="underscore"), **kwargs)
+
+
 def load_results_dicts(
     data_dir: str, metric_columns: Optional[List[str]] = None
 ) -> Tuple[Optional[pd.DataFrame], pd.DataFrame]:
@@ -182,36 +191,56 @@ def load_results_dicts(
     between the perturbed results and the baseline results for the column `metric` and added to the
     returned dataframe.
     """
+
     baseline_dfs = []
     perturbation_dfs = []
+
     for model_dir in Path(data_dir).iterdir():
         baseline_df = None
         baseline_dir = Path(model_dir) / _BASELINE_DIR
         if baseline_dir.is_dir():
-            filepath = baseline_dir / _RESULTS_FILENAME
-            results_dict = json.loads(filepath.read_text())
-            results_dict_flattened = flatten(results_dict, reducer="underscore")
-            baseline_df = pd.DataFrame(results_dict_flattened)
+            # We need to parse different files depending if the model was trained or not.
+            # These files require slightly different parsing strategies.
+            if (baseline_dir / _TRAINER_STATE_FILENAME).is_file():
+                filepath = baseline_dir / _TRAINER_STATE_FILENAME
+                results_dict = json.loads(filepath.read_text())
+                # TODO: This makes the assumption that logging happens ONLY at the end of training,
+                # in which case all other elements in the log_history are evaluations. Load each
+                # as a separate DataFrame and concatenate them.
+                results_dict = results_dict[_LOG_HISTORY_KEY][:-1]
+            elif (baseline_dir / _RESULTS_FILENAME).is_file():
+                filepath = baseline_dir / _RESULTS_FILENAME
+                results_dict = json.loads(filepath.read_text())
+
+            else:
+                raise ValueError(
+                    f"Did not find any of the expected files in {baseline_dir}. Looking for one of"
+                    f" {_RESULTS_FILENAME} or {_TRAINER_STATE_FILENAME}."
+                )
+            baseline_df = _read_result_dict(results_dict)
             baseline_dfs.append(baseline_df)
 
         perturbation_dir = Path(model_dir) / _PERTURBATIONS_DIR
-        for filepath in Path(perturbation_dir).glob(f"**/{_RESULTS_FILENAME}"):
+        filepaths = list(Path(perturbation_dir).glob(f"**/{_TRAINER_STATE_FILENAME}"))
+        if filepaths:
+            train = True
+        else:
+            train = False
+            filepaths = list(Path(perturbation_dir).glob(f"**/{_RESULTS_FILENAME}"))
+
+        for filepath in filepaths:
             results_dict = json.loads(filepath.read_text())
-            results_dict_flattened = flatten(results_dict, reducer="underscore")
-            perturbation_df = pd.DataFrame(results_dict_flattened)
+            if train:
+                perturbation_df = _read_result_dict(results_dict[_LOG_HISTORY_KEY][:-1])
+            else:
+                perturbation_df = _read_result_dict(results_dict)
             if baseline_df is not None:
                 # The perturbation and baseline data should pertain to the same examples.
-                if not np.array_equal(
-                    baseline_df.eval_example_idx, perturbation_df.eval_example_idx
-                ):
-                    raise ValueError(
-                        "The perturbation and baseline data do not correspond to same examples!"
-                    )
+                if not np.array_equal(baseline_df.eval_example_idx, perturbation_df.eval_example_idx):
+                    raise ValueError("The perturbation and baseline data do not correspond to same examples!")
                 if metric_columns is not None:
                     for metric in metric_columns:
-                        perturbation_df[f"{metric}_delta"] = (
-                            perturbation_df[metric] - baseline_df[metric]
-                        )
+                        perturbation_df[f"{metric}_delta"] = perturbation_df[metric] - baseline_df[metric]
             perturbation_dfs.append(perturbation_df)
     baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
     perturbed_df = pd.concat(perturbation_dfs, ignore_index=True)
