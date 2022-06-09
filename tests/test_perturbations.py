@@ -122,8 +122,8 @@ def test_lexically_sample_docs() -> None:
     assert any(example.strip() in sampled_docs for example in inputs[1].split(doc_sep_token))
 
 
-def test_shuffle() -> None:
-    # We need a large number of documents to make it unlikely a random shuffle gives us same order
+def test_sorting() -> None:
+    # We need a large number of documents to make it unlikely a random sort gives us same order
     num_docs = 128
     doc_sep_token = "<doc-sep>"
     inputs = [
@@ -131,7 +131,7 @@ def test_shuffle() -> None:
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs, num_docs * 2)),
     ]
 
-    perturbed = perturbations.shuffle(inputs, doc_sep_token=doc_sep_token)
+    perturbed = perturbations.sorting(inputs, doc_sep_token=doc_sep_token)
 
     # Because the perturbation is random we check other properties of the perturbed inputs.
     for input_example, perturbed_example in zip(inputs, perturbed):
@@ -150,7 +150,7 @@ def test_shuffle() -> None:
     targets = ["this is a story about a cat"]
 
     expected = [f"this is a story about a cat {doc_sep_token} this is a story about a dog"]
-    actual = perturbations.shuffle(
+    actual = perturbations.sorting(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
         targets=targets,
@@ -159,7 +159,7 @@ def test_shuffle() -> None:
     assert expected == actual
 
     expected = [f"this is a story about a dog {doc_sep_token} this is a story about a cat"]
-    actual = perturbations.shuffle(
+    actual = perturbations.sorting(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
         targets=targets,

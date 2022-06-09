@@ -589,8 +589,8 @@ def main():
 
         if data_args.perturbation is None:
             logger.info("No perturbations will be applied.")
-        elif data_args.perturbation == "shuffle":
-            inputs = perturbations.shuffle(
+        elif data_args.perturbation == "sorting":
+            inputs = perturbations.sorting(
                 inputs=inputs,
                 doc_sep_token=doc_sep_token,
                 targets=targets,
@@ -600,7 +600,7 @@ def main():
             )
             logger.info(
                 (
-                    f"Input documents in each example will be shuffled with sampling strategy"
+                    f"Input documents in each example will be sorted with sampling strategy"
                     f" '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
