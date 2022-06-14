@@ -1,11 +1,13 @@
 import copy
 import math
 import random
-
 from itertools import zip_longest
 from typing import List, Optional, Tuple
 
 import datasets
+import nlpaug.augmenter.word as naw
+import nltk
+import torch
 
 from retrieval_exploration.common import util
 
@@ -371,11 +373,10 @@ def duplication(
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
-        # The absolute number of documents to add
+        # The absolute number of documents to perturb
         k = math.ceil(perturbed_frac * len(input_docs))
 
         if strategy == "random":
-            # Randomly sample k documents (without replacement) which we will repeat in the input
             repeaters = rng.sample(input_docs, k)
         else:
             repeaters = _lexically_sample_docs(
@@ -387,5 +388,67 @@ def duplication(
             )
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs + repeaters))
+
+    return perturbed_inputs
+
+
+def backtranslation(
+    inputs: List[str],
+    doc_sep_token: str,
+    targets: Optional[List[str]] = None,
+    perturbed_frac: Optional[float] = None,
+    strategy: str = "random",
+    seed: Optional[int] = None,
+) -> List[str]:
+    if strategy not in ["random", "similar", "dissimilar"]:
+        raise ValueError(
+            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}")
+        )
+
+    # No-op if perturbed_frac is None or falsey
+    if not perturbed_frac:
+        return inputs
+
+    # Need an iterable, but an empty list as default value is bad practice
+    targets = targets or []
+
+    # Instantiate an instance of `Random` so we can create a generator with its own local seed
+    # See: https://stackoverflow.com/a/37356024/6578628
+    rng = random.Random(seed)
+
+    # Load the back-translation augmenter
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    aug = naw.BackTranslationAug(device=device)
+
+    perturbed_inputs = []
+    for example, target in zip_longest(inputs, targets):
+
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+
+        # The absolute number of documents to perturb
+        k = math.ceil(perturbed_frac * len(input_docs))
+
+        if strategy == "random":
+            sampled_docs = rng.sample(input_docs, k)
+        else:
+            sampled_docs = _lexically_sample_docs(
+                inputs=[example],
+                doc_sep_token=doc_sep_token,
+                k=k,
+                strategy=strategy,
+                target=target,
+            )
+
+        # Back translate the sampled documents
+        back_translated_docs = []
+        for doc in sampled_docs:
+            sents = nltk.sent_tokenize(doc)
+            back_translated_sents = aug.augment(sents)
+            back_translated_docs.append(" ".join(sent.strip() for sent in back_translated_sents))
+
+        for sampled, translated in zip(sampled_docs, back_translated_docs):
+            input_docs[input_docs.index(sampled)] = translated.strip()
+
+        perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
 
     return perturbed_inputs

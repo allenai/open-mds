@@ -1,5 +1,8 @@
 import copy
+import random
+
 import math
+import requests
 
 from retrieval_exploration import perturbations
 from retrieval_exploration.common import util
@@ -181,7 +184,7 @@ def test_addition() -> None:
     assert expected == actual
 
     # Test the cases where a fraction of documents should be perturbed.
-    for perturbed_frac in [0.1, 0.22, 0.5, 1.0]:
+    for perturbed_frac in [0.1, 0.5, 1.0]:
         expected_num_perturbed = num_docs + math.ceil(perturbed_frac * num_docs)
         perturbed = perturbations.addition(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
         # Because the perturbation is random we check other properties of the perturbed inputs.
@@ -242,18 +245,19 @@ def test_deletion() -> None:
     assert expected == actual
 
     # Test the cases where a fraction of documents should be perturbed.
-    for perturbed_frac in [0.1, 0.22, 0.5, 1.0]:
+    for perturbed_frac in [0.1, 0.5, 1.0]:
         expected_num_perturbed = num_docs - math.ceil(perturbed_frac * num_docs)
         perturbed = perturbations.deletion(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
 
         # Because the perturbation is random we check other properties of the perturbed inputs.
         for input_example, perturbed_example in zip(inputs, perturbed):
-            actual_num_perturbed = len(util.split_docs(perturbed_example, doc_sep_token))
+            perturbed_docs = util.split_docs(perturbed_example, doc_sep_token)
+            actual_num_perturbed = len(perturbed_docs)
 
             # That the pertubation was actually applied
             assert input_example != perturbed_example
-            # That all perturbed examples are in the input example
-            assert perturbed_example in perturbed_example
+            # That all perturbed docs are in the input example
+            assert all(doc in input_example for doc in perturbed_docs)
             # That the total document count decreased by the expected amount
             assert expected_num_perturbed == actual_num_perturbed
 
@@ -295,7 +299,7 @@ def test_duplication() -> None:
     assert expected == actual
 
     # Test the cases where a fraction of documents should be perturbed.
-    for perturbed_frac in [0.1, 0.22, 0.5, 1.0]:
+    for perturbed_frac in [0.1, 0.5, 1.0]:
         expected_num_perturbed = math.ceil(perturbed_frac * num_docs)
         perturbed = perturbations.duplication(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
 
@@ -338,3 +342,40 @@ def test_duplication() -> None:
         strategy="dissimilar",
     )
     assert expected == actual
+
+
+def test_backtranslation() -> None:
+    # Use a lesser number of documents because the translation is slow
+    num_docs = 4
+    doc_sep_token = "<doc-sep>"
+
+    # Create random text so that back translation doesn't create identical text.
+    url = "https://www.mit.edu/~ecprice/wordlist.10000"
+    words = requests.get(url).text.splitlines()
+    inputs = [
+        f" {doc_sep_token} ".join(" ".join(random.sample(words, 16)) for _ in range(num_docs)),
+        f" {doc_sep_token} ".join(" ".join(random.sample(words, 16)) for _ in range(num_docs, num_docs * 2)),
+    ]
+
+    # Test a simple case where perturbed_frac is 0.0 and so this is a no-op
+    expected = copy.deepcopy(inputs)
+    actual = perturbations.backtranslation(inputs, doc_sep_token=doc_sep_token, perturbed_frac=0.0)
+    assert expected == actual
+
+    # Test the cases where a fraction of documents should be perturbed.
+    for perturbed_frac in [0.1, 0.5, 1.0]:
+        expected_num_perturbed = math.ceil(perturbed_frac * num_docs)
+        perturbed = perturbations.backtranslation(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
+
+        # Because the perturbation is random we check other properties of the perturbed inputs.
+        for input_example, perturbed_example in zip(inputs, perturbed):
+            input_docs = util.split_docs(input_example, doc_sep_token)
+            perturbed_docs = util.split_docs(perturbed_example, doc_sep_token)
+            actual_num_perturbed = len([doc for doc in perturbed_docs if doc not in input_docs])
+
+            # That the pertubation was actually applied
+            assert input_example != perturbed_example
+            # That the total document count did not change
+            assert len(input_docs) == len(perturbed_docs)
+            # That the expected number of documents were perturbed
+            assert expected_num_perturbed == actual_num_perturbed
