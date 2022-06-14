@@ -1,13 +1,26 @@
 import copy
 import math
 import random
-
 from itertools import zip_longest
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import datasets
+from transformers import pipeline
 
 from retrieval_exploration.common import util
+
+
+def _back_translate(inputs: Union[str, List[str]]) -> List[str]:
+    forward_translator = pipeline(task="translation", model="Helsinki-NLP/opus-mt-en-de")
+    backward_translator = pipeline(task="translation", model="Helsinki-NLP/opus-mt-de-en")
+
+    if isinstance(inputs, str):
+        inputs = [inputs]
+
+    translated_docs = [doc["translation_text"] for doc in forward_translator(inputs)]
+    translated_docs = [doc["translation_text"] for doc in backward_translator(translated_docs)]
+
+    return translated_docs
 
 
 def _randomly_sample_docs(
@@ -371,11 +384,10 @@ def duplication(
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
-        # The absolute number of documents to add
+        # The absolute number of documents to perturb
         k = math.ceil(perturbed_frac * len(input_docs))
 
         if strategy == "random":
-            # Randomly sample k documents (without replacement) which we will repeat in the input
             repeaters = rng.sample(input_docs, k)
         else:
             repeaters = _lexically_sample_docs(
@@ -387,5 +399,58 @@ def duplication(
             )
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs + repeaters))
+
+    return perturbed_inputs
+
+
+def back_translation(
+    inputs: List[str],
+    doc_sep_token: str,
+    targets: Optional[List[str]] = None,
+    perturbed_frac: Optional[float] = None,
+    strategy: str = "random",
+    seed: Optional[int] = None,
+) -> List[str]:
+    if strategy not in ["random", "similar", "dissimilar"]:
+        raise ValueError(
+            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}")
+        )
+
+    # No-op if perturbed_frac is None or falsey
+    if not perturbed_frac:
+        return inputs
+
+    # Need an iterable, but an empty list as default value is bad practice
+    targets = targets or []
+
+    # Instantiate an instance of `Random` so we can create a generator with its own local seed
+    # See: https://stackoverflow.com/a/37356024/6578628
+    rng = random.Random(seed)
+
+    perturbed_inputs = []
+    for example, target in zip_longest(inputs, targets):
+
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+
+        # The absolute number of documents to perturb
+        k = math.ceil(perturbed_frac * len(input_docs))
+
+        if strategy == "random":
+            sampled_docs = rng.sample(input_docs, k)
+        else:
+            sampled_docs = _lexically_sample_docs(
+                inputs=[example],
+                doc_sep_token=doc_sep_token,
+                k=k,
+                strategy=strategy,
+                target=target,
+            )
+
+        # Back translate the sampled documents
+        translated_docs = _back_translate(sampled_docs)
+        for sampled, translated in zip(sampled_docs, translated_docs):
+            input_docs[input_docs.index(sampled)] = translated.strip()
+
+        perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
 
     return perturbed_inputs
