@@ -2,25 +2,14 @@ import copy
 import math
 import random
 from itertools import zip_longest
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import datasets
-from transformers import pipeline
+import nlpaug.augmenter.word as naw
+import nltk
+import torch
 
 from retrieval_exploration.common import util
-
-
-def _back_translate(inputs: Union[str, List[str]]) -> List[str]:
-    forward_translator = pipeline(task="translation", model="Helsinki-NLP/opus-mt-en-de")
-    backward_translator = pipeline(task="translation", model="Helsinki-NLP/opus-mt-de-en")
-
-    if isinstance(inputs, str):
-        inputs = [inputs]
-
-    translated_docs = [doc["translation_text"] for doc in forward_translator(inputs)]
-    translated_docs = [doc["translation_text"] for doc in backward_translator(translated_docs)]
-
-    return translated_docs
 
 
 def _randomly_sample_docs(
@@ -427,6 +416,10 @@ def back_translation(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    # Load the back-translation augmenter
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    aug = naw.BackTranslationAug(device=device)
+
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
 
@@ -447,8 +440,13 @@ def back_translation(
             )
 
         # Back translate the sampled documents
-        translated_docs = _back_translate(sampled_docs)
-        for sampled, translated in zip(sampled_docs, translated_docs):
+        back_translated_docs = []
+        for doc in sampled_docs:
+            sents = nltk.sent_tokenize(doc)
+            back_translated_sents = aug.augment(sents)
+            back_translated_docs.append(" ".join(sent.strip() for sent in back_translated_sents))
+
+        for sampled, translated in zip(sampled_docs, back_translated_docs):
             input_docs[input_docs.index(sampled)] = translated.strip()
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
