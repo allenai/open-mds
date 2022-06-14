@@ -344,7 +344,7 @@ def test_duplication() -> None:
     assert expected == actual
 
 
-def test_back_translation() -> None:
+def test_backtranslation() -> None:
     # Use a lesser number of documents because the translation is slow
     num_docs = 4
     doc_sep_token = "<doc-sep>"
@@ -359,13 +359,13 @@ def test_back_translation() -> None:
 
     # Test a simple case where perturbed_frac is 0.0 and so this is a no-op
     expected = copy.deepcopy(inputs)
-    actual = perturbations.back_translation(inputs, doc_sep_token=doc_sep_token, perturbed_frac=0.0)
+    actual = perturbations.backtranslation(inputs, doc_sep_token=doc_sep_token, perturbed_frac=0.0)
     assert expected == actual
 
     # Test the cases where a fraction of documents should be perturbed.
     for perturbed_frac in [0.1, 0.5, 1.0]:
         expected_num_perturbed = math.ceil(perturbed_frac * num_docs)
-        perturbed = perturbations.back_translation(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
+        perturbed = perturbations.backtranslation(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
 
         # Because the perturbation is random we check other properties of the perturbed inputs.
         for input_example, perturbed_example in zip(inputs, perturbed):

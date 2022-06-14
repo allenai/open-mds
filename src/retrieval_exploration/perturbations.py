@@ -392,7 +392,7 @@ def duplication(
     return perturbed_inputs
 
 
-def back_translation(
+def backtranslation(
     inputs: List[str],
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
