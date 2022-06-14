@@ -649,6 +649,21 @@ def main():
                     f" duplicated with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
+        elif data_args.perturbation == "backtranslation":
+            inputs = perturbations.backtranslation(
+                inputs=inputs,
+                doc_sep_token=doc_sep_token,
+                targets=targets,
+                perturbed_frac=data_args.perturbed_frac,
+                strategy=data_args.sampling_strategy,
+                seed=data_args.perturbed_seed,
+            )
+            logger.info(
+                (
+                    f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
+                    f" back translated with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
+                )
+            )
         else:
             raise ValueError(f"Got an unexpected value for --perturbation: {data_args.perturbation}")
 
