@@ -9,6 +9,8 @@ import nlpaug.augmenter.word as naw
 import nltk
 import torch
 
+import more_itertools
+
 from retrieval_exploration.common import util
 
 
@@ -417,8 +419,8 @@ def backtranslation(
     rng = random.Random(seed)
 
     # Load the back-translation augmenter
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    aug = naw.BackTranslationAug(device=device)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    aug = naw.BackTranslationAug(device=device, max_length=256)
 
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
@@ -439,15 +441,16 @@ def backtranslation(
                 target=target,
             )
 
-        # Back translate the sampled documents
-        back_translated_docs = []
-        for doc in sampled_docs:
-            sents = nltk.sent_tokenize(doc)
-            back_translated_sents = aug.augment(sents)
-            back_translated_docs.append(" ".join(sent.strip() for sent in back_translated_sents))
+        # Back translate the sampled documents. To take advantage of batching, we will
+        # collect the sentences of all documents, pass them to the model, and then unflatten them.
+        unflattened_sents = [nltk.sent_tokenize(doc) for doc in sampled_docs]
+        back_translated_sents = aug.augment(list(more_itertools.flatten(unflattened_sents)))
+        back_translated_docs = util.unflatten(
+            back_translated_sents, lengths=[len(sents) for sents in unflattened_sents]
+        )
 
         for sampled, translated in zip(sampled_docs, back_translated_docs):
-            input_docs[input_docs.index(sampled)] = translated.strip()
+            input_docs[input_docs.index(sampled)] = " ".join(sent.strip() for sent in translated)
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
 

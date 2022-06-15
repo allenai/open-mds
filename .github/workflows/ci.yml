@@ -31,6 +31,9 @@ jobs:
       - name: Install dependencies with Poetry
         run: |
           poetry install --all-extras
+      - name: Download required NLTK data 
+        run: |
+          poetry run python -m nltk.downloader punkt
       - name: Format code with black
         run: |
           poetry run black .
