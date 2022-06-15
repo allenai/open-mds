@@ -11,7 +11,7 @@ from datasets import load_dataset
 
 
 def test_randomly_sample_docs() -> None:
-    num_docs = 16
+    num_docs = 8
     doc_sep_token = "<doc-sep>"
     inputs = [
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
@@ -127,7 +127,7 @@ def test_lexically_sample_docs() -> None:
 
 def test_sorting() -> None:
     # We need a large number of documents to make it unlikely a random sort gives us same order
-    num_docs = 128
+    num_docs = 64
     doc_sep_token = "<doc-sep>"
     inputs = [
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
@@ -172,7 +172,7 @@ def test_sorting() -> None:
 
 
 def test_addition() -> None:
-    num_docs = 16
+    num_docs = 8
     doc_sep_token = "<doc-sep>"
     inputs = [
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
@@ -233,7 +233,7 @@ def test_addition() -> None:
 
 
 def test_deletion() -> None:
-    num_docs = 16
+    num_docs = 8
     doc_sep_token = "<doc-sep>"
     inputs = [
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
@@ -287,7 +287,7 @@ def test_deletion() -> None:
 
 
 def test_duplication() -> None:
-    num_docs = 16
+    num_docs = 8
     doc_sep_token = "<doc-sep>"
     inputs = [
         f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
@@ -353,8 +353,8 @@ def test_backtranslation() -> None:
     url = "https://www.mit.edu/~ecprice/wordlist.10000"
     words = requests.get(url).text.splitlines()
     inputs = [
-        f" {doc_sep_token} ".join(" ".join(random.sample(words, 16)) for _ in range(num_docs)),
-        f" {doc_sep_token} ".join(" ".join(random.sample(words, 16)) for _ in range(num_docs, num_docs * 2)),
+        f" {doc_sep_token} ".join(" ".join(random.sample(words, 24)) for _ in range(num_docs)),
+        f" {doc_sep_token} ".join(" ".join(random.sample(words, 24)) for _ in range(num_docs, num_docs * 2)),
     ]
 
     # Test a simple case where perturbed_frac is 0.0 and so this is a no-op
