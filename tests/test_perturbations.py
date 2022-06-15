@@ -353,8 +353,8 @@ def test_backtranslation() -> None:
     url = "https://www.mit.edu/~ecprice/wordlist.10000"
     words = requests.get(url).text.splitlines()
     inputs = [
-        f" {doc_sep_token} ".join(" ".join(random.sample(words, 16)) for _ in range(num_docs)),
-        f" {doc_sep_token} ".join(" ".join(random.sample(words, 16)) for _ in range(num_docs, num_docs * 2)),
+        f" {doc_sep_token} ".join(" ".join(random.sample(words, 24)) for _ in range(num_docs)),
+        f" {doc_sep_token} ".join(" ".join(random.sample(words, 24)) for _ in range(num_docs, num_docs * 2)),
     ]
 
     # Test a simple case where perturbed_frac is 0.0 and so this is a no-op
