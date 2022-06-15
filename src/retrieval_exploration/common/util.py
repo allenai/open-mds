@@ -18,6 +18,15 @@ _TRAINER_STATE_FILENAME = "trainer_state.json"
 _LOG_HISTORY_KEY = "log_history"
 
 
+def unflatten(iterable, lengths):
+    unflattened = []
+    for i in range(len(lengths)):
+        start = lengths[i - 1] if i >= 1 else 0
+        end = start + lengths[i]
+        unflattened.append(iterable[start:end])
+    return unflattened
+
+
 def split_docs(text: str, doc_sep_token: str) -> List[str]:
     """Given `text`, a string which contains the input documents seperated by `doc_sep_token`,
     returns a list of each individual documents. Ignores any documents that are empty.
