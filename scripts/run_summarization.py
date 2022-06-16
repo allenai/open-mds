@@ -27,10 +27,12 @@ from typing import Optional
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
-from datasets import load_dataset, load_metric
-
 import transformers
+from bart_score import BARTScorer
+from datasets import load_dataset, load_metric
 from filelock import FileLock
+from retrieval_exploration import perturbations
+from retrieval_exploration.common import util
 from transformers import (
     AutoConfig,
     AutoModelForSeq2SeqLM,
@@ -48,9 +50,6 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode, send_example_telemetry
 from transformers.utils.versions import require_version
-from retrieval_exploration import perturbations
-from retrieval_exploration.common import util
-
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.20.0.dev0")
@@ -763,6 +762,7 @@ def main():
     # Metrics
     rouge = load_metric("rouge")
     bertscore = load_metric("bertscore")
+    bartscore = BARTScorer(device=training_args.device, checkpoint="facebook/bart-large-cnn")
 
     def postprocess_text(preds, labels):
         # Clean text by removing whitespace, newlines and tabs
@@ -814,10 +814,11 @@ def main():
             model_type="microsoft/deberta-large-mnli",
             rescale_with_baseline=True,
             use_fast_tokenizer=True,
-            device="cuda",
-            batch_size=32,
+            device=training_args.device,
+            # We can generally afford to use a batch size 4X greater than the eval batch size
+            batch_size=training_args.per_device_eval_batch_size * 4,
         )
-        bertscore_results["f1_avg"] = np.mean(bertscore_results["f1"])
+        bertscore_results["f1_mean"] = np.mean(bertscore_results["f1"])
         for key, value in bertscore_results.items():
             if key == "hashcode":
                 continue
@@ -826,8 +827,21 @@ def main():
             else:
                 bertscore_results[key] = round(value * 100, 4)
 
+        bartscore_results = bartscore.score(
+            srcs=decoded_labels,
+            tgts=decoded_preds,
+            # We can generally afford to use a batch size 4X greater than the eval batch size
+            batch_size=training_args.per_device_eval_batch_size * 4,
+        )
+        # Exponentiate to get scores between 0 and 1
+        bartscore_results = np.exp(bartscore_results).tolist()
+        bartscore_results = {
+            "score": [round(score * 100, 4) for score in bartscore_results],
+            "mean": round(np.mean(bartscore_results) * 100, 4),
+        }
+
         # Collect results in final dict
-        results = {"rouge": rouge_results, "bertscore": bertscore_results}
+        results = {"rouge": rouge_results, "bertscore": bertscore_results, "bartscore": bartscore_results}
 
         if inputs is not None:
             # TODO (John): We'd like to strip all special tokens but in some cases that would
