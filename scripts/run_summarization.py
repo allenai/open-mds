@@ -811,8 +811,7 @@ def main():
             references=decoded_labels,
             lang="en",
             # These are mostly based on the recommendations in https://github.com/Tiiiger/bert_score
-            model_type="microsoft/deberta-large-mnli",
-            rescale_with_baseline=True,
+            model_type="microsoft/deberta-xlarge-mnli",
             use_fast_tokenizer=True,
             device=training_args.device,
             # We can generally afford to use a batch size 4X greater than the eval batch size
