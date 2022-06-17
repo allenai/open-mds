@@ -343,6 +343,60 @@ def test_duplication() -> None:
     )
     assert expected == actual
 
+def test_replacement() -> None:
+    num_docs = 8
+    doc_sep_token = "<doc-sep>"
+    inputs = [
+        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
+        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs, num_docs * 2)),
+    ]
+    # Test a simple case where perturbed_frac is 0.0 and so this is a no-op
+    expected = copy.deepcopy(inputs)
+    actual = perturbations.replacement(inputs, doc_sep_token=doc_sep_token, perturbed_frac=0.0)
+    assert expected == actual
+
+    # Test the cases where a fraction of documents should be perturbed.
+    for perturbed_frac in [0.1, 0.5, 1.0]:
+        expected_num_perturbed = math.ceil(perturbed_frac * num_docs)
+        perturbed = perturbations.replacement(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
+
+        # Because the perturbation is random we check other properties of the perturbed inputs.
+        for input_example, perturbed_example in zip(inputs, perturbed):
+            input_docs = util.split_docs(input_example, doc_sep_token)
+            perturbed_docs = util.split_docs(perturbed_example, doc_sep_token)
+            actual_num_perturbed = len([doc for doc in perturbed_docs if doc.strip() not in input_docs])
+
+            # That the pertubation was actually applied
+            assert input_example != perturbed_example
+            # That the total document count did not change
+            assert len(input_docs) == len(perturbed_docs)
+            # That the expected number of documents were perturbed
+            assert expected_num_perturbed == actual_num_perturbed
+
+    # A simple example to see if replacement with a non-random strategy works
+    inputs = ["this is a story about a dog", "this is a story about a cat", "this is a story about something else"]
+    targets = ["this is a story about a cat", "this is a story about a dog", "this is a story about a dog"]
+
+    expected = ["this is a story about a cat", "this is a story about a dog", "this is a story about a dog"]
+    actual = perturbations.replacement(
+        inputs=inputs,
+        doc_sep_token=doc_sep_token,
+        targets=targets,
+        perturbed_frac=0.10,
+        strategy="similar",
+    )
+    assert expected == actual
+
+    expected = ["this is a story about something else", "this is a story about something else", "this is a story about a cat"]
+    actual = perturbations.replacement(
+        inputs=inputs,
+        doc_sep_token=doc_sep_token,
+        targets=targets,
+        perturbed_frac=0.10,
+        strategy="dissimilar",
+    )
+    assert expected == actual
+
 
 def test_backtranslation() -> None:
     # Use a lesser number of documents because the translation is slow

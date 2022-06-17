@@ -394,6 +394,56 @@ def duplication(
     return perturbed_inputs
 
 
+def replacement(
+    inputs: List[str],
+    doc_sep_token: str,
+    targets: Optional[List[str]] = None,
+    perturbed_frac: Optional[float] = None,
+    strategy: str = "random",
+    seed: Optional[int] = None,
+):
+    if strategy not in ["random", "similar", "dissimilar"]:
+        raise ValueError(
+            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}")
+        )
+
+    # No-op if perturbed_frac is None or falsey
+    if not perturbed_frac:
+        return inputs
+
+    # Need an iterable, but an empty list as default value is bad practice
+    targets = targets or []
+
+    perturbed_inputs = []
+    for example, target in zip_longest(inputs, targets):
+
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+
+        # The absolute number of documents to perturb
+        k = math.ceil(perturbed_frac * len(input_docs))
+
+        if strategy == "random":
+            sampled_docs = _randomly_sample_docs(
+                inputs=inputs, doc_sep_token=doc_sep_token, k=k, query=example, seed=seed
+            )
+        else:
+            sampled_docs = _lexically_sample_docs(
+                inputs=inputs,
+                doc_sep_token=doc_sep_token,
+                k=k,
+                strategy=strategy,
+                query=example,
+                target=target,
+            )
+
+        for i, doc in zip(random.sample(range(len(input_docs)), k), sampled_docs):
+            input_docs[i] = doc.strip()
+
+        perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
+
+    return perturbed_inputs
+
+
 def backtranslation(
     inputs: List[str],
     doc_sep_token: str,
