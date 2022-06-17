@@ -6,7 +6,7 @@ authors = ["John Giorgi <johnmgiorgi@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 torch = "^1.11.0"
 transformers = "^4.19.0"
 tokenizers = "^0.12.1"
