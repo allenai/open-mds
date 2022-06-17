@@ -17,6 +17,10 @@ def test_split_docs() -> None:
     expected = ["This does not contain doc_sep_token"]
     assert expected == actual
 
+    actual = util.split_docs("This is ends with characters from doc_sep_token sep", doc_sep_token=doc_sep_token)
+    expected = ["This is ends with characters from doc_sep_token sep"]
+    assert expected == actual
+
 
 def test_preprocess_multi_news() -> None:
     doc_sep_token = "<doc-sep>"
