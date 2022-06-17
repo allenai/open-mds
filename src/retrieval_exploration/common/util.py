@@ -1,10 +1,11 @@
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import flatten_dict
 import numpy as np
 import pandas as pd
-import flatten_dict
 from transformers import PretrainedConfig, PreTrainedTokenizer
 
 # Local constants
@@ -32,7 +33,10 @@ def split_docs(text: str, doc_sep_token: str) -> List[str]:
     returns a list of each individual documents. Ignores any documents that are empty.
     order of documents in each example.
     """
-    return [doc.strip() for doc in text.strip(doc_sep_token).strip().split(doc_sep_token) if doc.strip()]
+    # It's possible to have a doc_sep_token at the very end of the string. Strip it here
+    # so that we get the correct number of documents when we split on doc_sep_token.
+    text = re.sub(rf"{doc_sep_token}$", "", text.strip())
+    return [doc.strip() for doc in text.split(doc_sep_token) if doc.strip()]
 
 
 def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
