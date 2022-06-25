@@ -14,13 +14,13 @@ datasets = "^2.1.0"
 flatten-dict = "^0.4.2"
 sacremoses = "^0.0.53"
 sentencepiece = "^0.1.96"
-nlpaug = "^1.1.10"
+nlpaug = {git = "https://github.com/JohnGiorgi/nlpaug.git", rev = "patch-2"}
 more-itertools = "^8.13.0"
 nltk = "^3.7"
-py7zr = {version = "^0.18.5", optional = true }
-protobuf = { version = "^3.20.1", optional = true }
-rouge-score = {version = "^0.0.4", optional = true }
-bert-score = {version = "^0.3.11", optional = true }
+py7zr = {version = "^0.18.5", optional = true}
+protobuf = {version = "^3.20.1", optional = true}
+rouge-score = {version = "^0.0.4", optional = true}
+bert-score = {version = "^0.3.11", optional = true}
 bart-score = {git = "https://github.com/JohnGiorgi/BARTScore.git", rev = "main", optional = true}
 
 [tool.poetry.extras]
@@ -29,7 +29,7 @@ bart-score = {git = "https://github.com/JohnGiorgi/BARTScore.git", rev = "main",
 summarization = ["py7zr", "protobuf", "rouge-score", "bert-score", "bart-score"]
 
 [tool.poetry.dev-dependencies]
-black = { version = "^22.3.0", extras = ["jupyter"] }
+black = {version = "^22.3.0", extras = ["jupyter"]}
 flake8 = "^4.0.1"
 mypy = "^0.960"
 pytest = "^7.1.2"
