@@ -470,7 +470,12 @@ def backtranslation(
 
     # Load the back-translation augmenter
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    aug = naw.BackTranslationAug(device=device, max_length=256)
+    aug = naw.BackTranslationAug(
+        from_model_name="Helsinki-NLP/opus-mt-en-sv",
+        to_model_name="Helsinki-NLP/opus-mt-sv-en",
+        device=device,
+        max_length=256,
+    )
 
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
