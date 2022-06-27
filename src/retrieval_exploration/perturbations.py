@@ -471,8 +471,8 @@ def backtranslation(
     # Load the back-translation augmenter
     device = "cuda" if torch.cuda.is_available() else "cpu"
     aug = naw.BackTranslationAug(
-        from_model_name="Helsinki-NLP/opus-mt-en-sv",
-        to_model_name="Helsinki-NLP/opus-mt-sv-en",
+        from_model_name="Helsinki-NLP/opus-mt-en-da",
+        to_model_name="Helsinki-NLP/opus-mt-da-en",
         device=device,
         max_length=256,
     )
