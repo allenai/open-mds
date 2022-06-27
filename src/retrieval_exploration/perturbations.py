@@ -76,7 +76,7 @@ def _randomly_sample_docs(
     return random_docs
 
 
-def _lexically_sample_docs(
+def _semantically_sample_docs(
     inputs: List[str],
     doc_sep_token: str,
     strategy: str,
@@ -177,7 +177,7 @@ def sorting(
         if strategy == "random":
             rng.shuffle(input_docs)
         else:
-            input_docs = _lexically_sample_docs(
+            input_docs = _semantically_sample_docs(
                 inputs=[example],
                 doc_sep_token=doc_sep_token,
                 strategy=strategy,
@@ -239,7 +239,7 @@ def addition(
                 inputs=inputs, doc_sep_token=doc_sep_token, k=k, query=example, seed=seed
             )
         else:
-            sampled_docs = _lexically_sample_docs(
+            sampled_docs = _semantically_sample_docs(
                 inputs=inputs,
                 doc_sep_token=doc_sep_token,
                 k=k,
@@ -305,7 +305,7 @@ def deletion(
         if strategy == "random":
             to_delete = rng.sample(range(len(input_docs)), k)
         else:
-            sampled_docs = _lexically_sample_docs(
+            sampled_docs = _semantically_sample_docs(
                 inputs=[example],
                 doc_sep_token=doc_sep_token,
                 k=k,
@@ -374,7 +374,7 @@ def duplication(
         if strategy == "random":
             repeaters = rng.sample(input_docs, k)
         else:
-            repeaters = _lexically_sample_docs(
+            repeaters = _semantically_sample_docs(
                 inputs=[example],
                 doc_sep_token=doc_sep_token,
                 k=k,
@@ -420,7 +420,7 @@ def replacement(
                 inputs=inputs, doc_sep_token=doc_sep_token, k=k, query=example, seed=seed
             )
         else:
-            sampled_docs = _lexically_sample_docs(
+            sampled_docs = _semantically_sample_docs(
                 inputs=inputs,
                 doc_sep_token=doc_sep_token,
                 k=k,
@@ -481,7 +481,7 @@ def backtranslation(
         if strategy == "random":
             sampled_docs = rng.sample(input_docs, k)
         else:
-            sampled_docs = _lexically_sample_docs(
+            sampled_docs = _semantically_sample_docs(
                 inputs=[example],
                 doc_sep_token=doc_sep_token,
                 k=k,
