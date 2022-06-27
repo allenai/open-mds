@@ -15,6 +15,8 @@ from retrieval_exploration.common import util
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
 
+_SEMANTIC_SIMILARITY_MODEL = "all-MiniLM-L6-v2"
+
 
 def _randomly_sample_docs(
     inputs: List[str],
@@ -103,7 +105,7 @@ def _semantically_sample_docs(
     if total_num_docs < k:
         raise ValueError(f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}.")
 
-    embedder = SentenceTransformer("all-MiniLM-L6-v2")
+    embedder = SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     scored_docs: List[Tuple[str, float]] = []
     for example in inputs:
