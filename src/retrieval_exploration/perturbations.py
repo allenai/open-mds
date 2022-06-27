@@ -19,6 +19,7 @@ _SEMANTIC_SIMILARITY_MODEL = "all-MiniLM-L6-v2"
 
 def _randomly_sample_docs(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     k: Optional[int] = None,
     query: Optional[str] = None,
@@ -79,11 +80,13 @@ def _randomly_sample_docs(
 
 def _semantically_sample_docs(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     strategy: str,
     k: Optional[int] = None,
     query: Optional[str] = None,
     target: Optional[str] = None,
+    embedder: Optional[SentenceTransformer] = None,
 ):
     if strategy not in ["similar", "dissimilar"]:
         raise ValueError(f"Got unknown sampling strategy: {strategy}. Expected one of {['similar', 'dissimilar']}")
@@ -105,20 +108,20 @@ def _semantically_sample_docs(
         raise ValueError(f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}.")
 
     # Embed all input documents
-    embedder = SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    embedder = SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL, device=device) if embedder is None else embedder
 
-    input_docs = [util.split_docs(example, doc_sep_token=doc_sep_token) for example in inputs]
-    input_docs = list(more_itertools.flatten(input_docs))
-    input_docs_embeddings = embedder.encode(input_docs, convert_to_tensor=True)
-
-    # If a target is provided, we look for lexical overlap between it and the input documents.
-    # Otherwise we use the documents of the query.
+    input_docs = list(
+        more_itertools.flatten(util.split_docs(example, doc_sep_token=doc_sep_token) for example in inputs)
+    )
+    # If target is provided, look for docs most similar to it. Otherwise we look for docs most similar to the query.
+    # Batch all inputs (and use a large batch size) to make this as fast as possible on GPU.
     if target:
-        query_embedding = embedder.encode(target, convert_to_tensor=True)
-        scores = cos_sim(query_embedding, input_docs_embeddings)[0]
+        embeddings = embedder.encode([target] + input_docs, batch_size=256, convert_to_tensor=True)
+        scores = cos_sim(embeddings[0], embeddings[1:])[0]
     else:
-        query_embedding = embedder.encode(query_docs, convert_to_tensor=True)
-        scores = cos_sim(query_embedding, input_docs_embeddings)
+        embeddings = embedder.encode(query_docs + input_docs, batch_size=256, convert_to_tensor=True)
+        scores = cos_sim(embeddings[: len(query_docs)], embeddings[len(query_docs) :])
         scores = torch.mean(scores, axis=0)
 
     # Return the the top k most similar (or dissimilar) documents
@@ -128,6 +131,7 @@ def _semantically_sample_docs(
 
 def sorting(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -162,8 +166,13 @@ def sorting(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    if strategy != "random":
+        embedder = SentenceTransformer(
+            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
+        )
+
     perturbed_inputs = []
-    for example, target in tqdm(zip_longest(inputs, targets)):
+    for example, target in tqdm(zip_longest(inputs, targets), desc="Perturbing inputs"):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
@@ -171,10 +180,7 @@ def sorting(
             rng.shuffle(input_docs)
         else:
             input_docs = _semantically_sample_docs(
-                inputs=[example],
-                doc_sep_token=doc_sep_token,
-                strategy=strategy,
-                target=target,
+                inputs=[example], doc_sep_token=doc_sep_token, strategy=strategy, target=target, embedder=embedder
             )
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
@@ -184,6 +190,7 @@ def sorting(
 
 def addition(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -219,8 +226,13 @@ def addition(
     # Need an iterable, but an empty list as default value is bad practice
     targets = targets or []
 
+    if strategy != "random":
+        embedder = SentenceTransformer(
+            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
+        )
+
     perturbed_inputs = []
-    for example, target in tqdm(zip_longest(inputs, targets)):
+    for example, target in tqdm(zip_longest(inputs, targets), desc="Perturbing inputs"):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
@@ -239,6 +251,7 @@ def addition(
                 strategy=strategy,
                 query=example,
                 target=target,
+                embedder=embedder,
             )
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs + sampled_docs))
@@ -248,6 +261,7 @@ def addition(
 
 def deletion(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -287,6 +301,11 @@ def deletion(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    if strategy != "random":
+        embedder = SentenceTransformer(
+            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
+        )
+
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
 
@@ -304,6 +323,7 @@ def deletion(
                 k=k,
                 strategy=strategy,
                 target=target,
+                embedder=embedder,
             )
             to_delete = [input_docs.index(doc) for doc in sampled_docs]
 
@@ -317,6 +337,7 @@ def deletion(
 
 def duplication(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -356,6 +377,11 @@ def duplication(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    if strategy != "random":
+        embedder = SentenceTransformer(
+            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
+        )
+
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
 
@@ -373,6 +399,7 @@ def duplication(
                 k=k,
                 strategy=strategy,
                 target=target,
+                embedder=embedder,
             )
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs + repeaters))
@@ -382,6 +409,7 @@ def duplication(
 
 def replacement(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -399,6 +427,11 @@ def replacement(
 
     # Need an iterable, but an empty list as default value is bad practice
     targets = targets or []
+
+    if strategy != "random":
+        embedder = SentenceTransformer(
+            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
+        )
 
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
@@ -420,6 +453,7 @@ def replacement(
                 strategy=strategy,
                 query=example,
                 target=target,
+                embedder=embedder,
             )
 
         for i, doc in zip(random.sample(range(len(input_docs)), k), sampled_docs):
@@ -432,6 +466,7 @@ def replacement(
 
 def backtranslation(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -453,6 +488,11 @@ def backtranslation(
     # Instantiate an instance of `Random` so we can create a generator with its own local seed
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
+
+    if strategy != "random":
+        embedder = SentenceTransformer(
+            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
+        )
 
     # Load the back-translation augmenter
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -480,6 +520,7 @@ def backtranslation(
                 k=k,
                 strategy=strategy,
                 target=target,
+                embedder=embedder,
             )
 
         # Back translate the sampled documents. To take advantage of batching, we will
