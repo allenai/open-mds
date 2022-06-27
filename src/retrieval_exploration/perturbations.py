@@ -143,12 +143,12 @@ def _semantically_sample_docs(
     # Batch all inputs (and use a large batch size) to make this as fast as possible on GPU.
     if target:
         embeddings = embedder.encode(
-            [target] + input_docs, batch_size=512, convert_to_tensor=True, normalize_embedding=True
+            [target] + input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True
         )
         scores = st.util.dot_score(embeddings[0], embeddings[1:])[0]
     else:
         embeddings = embedder.encode(
-            query_docs + input_docs, batch_size=512, convert_to_tensor=True, normalize_embedding=True
+            query_docs + input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True
         )
         scores = st.util.dot_score(embeddings[: len(query_docs)], embeddings[len(query_docs) :])
         scores = torch.mean(scores, axis=0)
