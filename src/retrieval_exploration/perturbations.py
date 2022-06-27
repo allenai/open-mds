@@ -12,6 +12,8 @@ import torch
 import more_itertools
 
 from retrieval_exploration.common import util
+from sentence_transformers import SentenceTransformer
+from sentence_transformers.util import cos_sim
 
 
 def _randomly_sample_docs(
@@ -101,34 +103,25 @@ def _lexically_sample_docs(
     if total_num_docs < k:
         raise ValueError(f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}.")
 
-    rouge = datasets.load_metric("rouge")
+    embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
     scored_docs: List[Tuple[str, float]] = []
     for example in inputs:
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+        input_docs_embeddings = embedder.encode(input_docs, convert_to_tensor=True)
 
         # If a target is provided, we look for lexical overlap between it and the input documents.
         # Otherwise we use the documents of the query.
         if target:
-            scores = rouge.compute(
-                references=[target] * len(input_docs),
-                predictions=input_docs,
-                rouge_types=["rouge2"],
-                use_aggregator=False,
-                use_stemmer=True,
-            )
-            scores = [score.recall for score in scores["rouge2"]]
+            query_embedding = embedder.encode(target, convert_to_tensor=True)
+            scores = cos_sim(query_embedding, input_docs_embeddings)[0]
+
         else:
-            scores = [
-                rouge.compute(
-                    references=query_docs,
-                    predictions=[doc] * len(query_docs),
-                    rouge_types=["rouge2"],
-                    use_stemmer=True,
-                )["rouge2"].mid.recall.item()
-                for doc in input_docs
-            ]
-        scored_docs.extend(zip(input_docs, scores))
+            query_embedding = embedder.encode(query_docs, convert_to_tensor=True)
+            scores = cos_sim(query_embedding, input_docs_embeddings)
+            scores = torch.mean(scores, axis=0)
+
+        scored_docs.extend(zip(input_docs, scores.tolist()))
 
     # Return the the top k most similar (or dissimilar) documents
     scored_docs = sorted(
