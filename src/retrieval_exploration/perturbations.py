@@ -7,9 +7,8 @@ from typing import List, Optional
 import more_itertools
 import nlpaug.augmenter.word as naw
 import nltk
+import sentence_transformers as st
 import torch
-from sentence_transformers import SentenceTransformer
-from sentence_transformers.util import cos_sim
 from tqdm import tqdm
 
 from retrieval_exploration.common import util
@@ -27,7 +26,7 @@ def _randomly_sample_docs(
 ) -> List[str]:
     """Given `inputs`, a list of strings where each string contains the input documents seperated
     by `doc_sep_token` of one example from the dataset, randomly samples `k` documents without
-    replacement. Note that documents will NOT be sampled from the `query` example in `inputs`.
+    replacement. Note that any documents in `query` (if provided) will NOT be sampled from `inputs`.
 
     # Parameters
 
@@ -38,7 +37,7 @@ def _randomly_sample_docs(
         that documents are seperated by `doc_sep_token`.
     doc_sep_token : `str`
         The token that separates individual documents in `inputs`.
-    k : `int`
+    k : `int`, optional (default=None)
         The number of documents to sample (without replacement) from `inputs`.
     seed : `int`, optional (default=None)
         If provided, will locally set the seed of the `random` module with this value.
@@ -86,8 +85,34 @@ def _semantically_sample_docs(
     k: Optional[int] = None,
     query: Optional[str] = None,
     target: Optional[str] = None,
-    embedder: Optional[SentenceTransformer] = None,
+    embedder: Optional[st.SentenceTransformer] = None,
 ):
+    """Given `inputs`, a list of strings where each string contains the input documents seperated
+    by `doc_sep_token` of one example from the dataset, samples `k` documents, without replacement, according to
+    semantic similarity. Documents will be compared to `target` if provided, or to the documents in `query`
+    otherwise (must provide one or the other, but not both). Note that any documents in `query` (if provided) will
+    NOT be sampled from `inputs`.
+
+    # Parameters
+
+    inputs : `List[str]`
+        A list of strings, each string containing the input documents for one example. It is assumed
+        that documents are seperated by `doc_sep_token`.
+    doc_sep_token : `str`
+        The token that separates individual documents in `inputs`.
+    strategy : `str`
+        The strategy to use for sampling. Must be one of `"random"`, `"similar"`, or `"disimilar"`.
+    k : `int`, optional (default=None)
+        The number of documents to sample (without replacement) from `inputs`.
+    query : `str`, optional (default=None)
+        If provided, semantic similarity is determined by comparing to these documents. Documents will NOT be
+        sampled from this example in `inputs`.
+    target : `str`, optional (default=None)
+        If provided, semantic similarity is determined by comparing to this document.
+    embedder : `st.SentenceTransformer`, optional (default=None)
+        If provided, use this st.SentenceTransformer model to compute semantic similarity. Otherwise, use
+        `_SEMANTIC_SIMILARITY_MODEL`.
+    """
     if strategy not in ["similar", "dissimilar"]:
         raise ValueError(f"Got unknown sampling strategy: {strategy}. Expected one of {['similar', 'dissimilar']}")
     if not query and not target:
@@ -109,7 +134,7 @@ def _semantically_sample_docs(
 
     # Embed all input documents
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    embedder = SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL, device=device) if embedder is None else embedder
+    embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL, device=device) if embedder is None else embedder
 
     input_docs = list(
         more_itertools.flatten(util.split_docs(example, doc_sep_token=doc_sep_token) for example in inputs)
@@ -117,11 +142,15 @@ def _semantically_sample_docs(
     # If target is provided, look for docs most similar to it. Otherwise we look for docs most similar to the query.
     # Batch all inputs (and use a large batch size) to make this as fast as possible on GPU.
     if target:
-        embeddings = embedder.encode([target] + input_docs, batch_size=256, convert_to_tensor=True)
-        scores = cos_sim(embeddings[0], embeddings[1:])[0]
+        embeddings = embedder.encode(
+            [target] + input_docs, batch_size=512, convert_to_tensor=True, normalize_embedding=True
+        )
+        scores = st.util.dot_score(embeddings[0], embeddings[1:])[0]
     else:
-        embeddings = embedder.encode(query_docs + input_docs, batch_size=256, convert_to_tensor=True)
-        scores = cos_sim(embeddings[: len(query_docs)], embeddings[len(query_docs) :])
+        embeddings = embedder.encode(
+            query_docs + input_docs, batch_size=512, convert_to_tensor=True, normalize_embedding=True
+        )
+        scores = st.util.dot_score(embeddings[: len(query_docs)], embeddings[len(query_docs) :])
         scores = torch.mean(scores, axis=0)
 
     # Return the the top k most similar (or dissimilar) documents
@@ -166,8 +195,9 @@ def sorting(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = SentenceTransformer(
+        embedder = st.SentenceTransformer(
             _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
         )
 
@@ -226,8 +256,9 @@ def addition(
     # Need an iterable, but an empty list as default value is bad practice
     targets = targets or []
 
+    # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = SentenceTransformer(
+        embedder = st.SentenceTransformer(
             _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
         )
 
@@ -301,8 +332,9 @@ def deletion(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = SentenceTransformer(
+        embedder = st.SentenceTransformer(
             _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
         )
 
@@ -377,8 +409,9 @@ def duplication(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = SentenceTransformer(
+        embedder = st.SentenceTransformer(
             _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
         )
 
@@ -428,8 +461,9 @@ def replacement(
     # Need an iterable, but an empty list as default value is bad practice
     targets = targets or []
 
+    # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = SentenceTransformer(
+        embedder = st.SentenceTransformer(
             _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
         )
 
@@ -489,8 +523,9 @@ def backtranslation(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = SentenceTransformer(
+        embedder = st.SentenceTransformer(
             _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
         )
 
