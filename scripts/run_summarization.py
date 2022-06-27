@@ -745,7 +745,6 @@ def main():
                 remove_columns=column_names,
                 load_from_cache_file=not data_args.overwrite_cache,
                 desc="Running tokenizer on validation dataset",
-                batch_size=2048,
             )
 
     if training_args.do_predict:
