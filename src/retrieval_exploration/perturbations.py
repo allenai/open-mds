@@ -133,8 +133,7 @@ def _semantically_sample_docs(
         raise ValueError(f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}.")
 
     # Embed all input documents
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL, device=device) if embedder is None else embedder
+    embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL) if embedder is None else embedder
 
     input_docs = list(
         more_itertools.flatten(util.split_docs(example, doc_sep_token=doc_sep_token) for example in inputs)
@@ -197,9 +196,7 @@ def sorting(
 
     # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = st.SentenceTransformer(
-            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
-        )
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     perturbed_inputs = []
     for example, target in tqdm(zip_longest(inputs, targets), desc="Perturbing inputs"):
@@ -258,9 +255,7 @@ def addition(
 
     # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = st.SentenceTransformer(
-            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
-        )
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     perturbed_inputs = []
     for example, target in tqdm(zip_longest(inputs, targets), desc="Perturbing inputs"):
@@ -334,9 +329,7 @@ def deletion(
 
     # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = st.SentenceTransformer(
-            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
-        )
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
@@ -411,9 +404,7 @@ def duplication(
 
     # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = st.SentenceTransformer(
-            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
-        )
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
@@ -463,9 +454,7 @@ def replacement(
 
     # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = st.SentenceTransformer(
-            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
-        )
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
@@ -525,9 +514,7 @@ def backtranslation(
 
     # Load the sentence embedding model, if needed
     if strategy != "random":
-        embedder = st.SentenceTransformer(
-            _SEMANTIC_SIMILARITY_MODEL, device="cuda" if torch.cuda.is_available() else "cpu"
-        )
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     # Load the back-translation augmenter
     device = "cuda" if torch.cuda.is_available() else "cpu"
