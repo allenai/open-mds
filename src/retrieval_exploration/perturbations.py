@@ -2,18 +2,17 @@ import copy
 import math
 import random
 from itertools import zip_longest
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
-import datasets
+import more_itertools
 import nlpaug.augmenter.word as naw
 import nltk
 import torch
-
-import more_itertools
-
-from retrieval_exploration.common import util
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
+from tqdm import tqdm
+
+from retrieval_exploration.common import util
 
 _SEMANTIC_SIMILARITY_MODEL = "all-MiniLM-L6-v2"
 
@@ -105,34 +104,26 @@ def _semantically_sample_docs(
     if total_num_docs < k:
         raise ValueError(f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}.")
 
+    # Embed all input documents
     embedder = SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
-    scored_docs: List[Tuple[str, float]] = []
-    for example in inputs:
-        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
-        input_docs_embeddings = embedder.encode(input_docs, convert_to_tensor=True)
+    input_docs = [util.split_docs(example, doc_sep_token=doc_sep_token) for example in inputs]
+    input_docs = list(more_itertools.flatten(input_docs))
+    input_docs_embeddings = embedder.encode(input_docs, convert_to_tensor=True)
 
-        # If a target is provided, we look for lexical overlap between it and the input documents.
-        # Otherwise we use the documents of the query.
-        if target:
-            query_embedding = embedder.encode(target, convert_to_tensor=True)
-            scores = cos_sim(query_embedding, input_docs_embeddings)[0]
-
-        else:
-            query_embedding = embedder.encode(query_docs, convert_to_tensor=True)
-            scores = cos_sim(query_embedding, input_docs_embeddings)
-            scores = torch.mean(scores, axis=0)
-
-        scored_docs.extend(zip(input_docs, scores.tolist()))
+    # If a target is provided, we look for lexical overlap between it and the input documents.
+    # Otherwise we use the documents of the query.
+    if target:
+        query_embedding = embedder.encode(target, convert_to_tensor=True)
+        scores = cos_sim(query_embedding, input_docs_embeddings)[0]
+    else:
+        query_embedding = embedder.encode(query_docs, convert_to_tensor=True)
+        scores = cos_sim(query_embedding, input_docs_embeddings)
+        scores = torch.mean(scores, axis=0)
 
     # Return the the top k most similar (or dissimilar) documents
-    scored_docs = sorted(
-        scored_docs,
-        key=lambda x: x[1],
-        reverse=True if strategy == "similar" else False,
-    )
-    scored_docs = scored_docs[:k]
-    return [doc for doc, _ in scored_docs]
+    indices = torch.topk(scores, k=k, largest=True if strategy == "similar" else False).indices
+    return [input_docs[i] for i in indices]
 
 
 def sorting(
@@ -172,7 +163,7 @@ def sorting(
     rng = random.Random(seed)
 
     perturbed_inputs = []
-    for example, target in zip_longest(inputs, targets):
+    for example, target in tqdm(zip_longest(inputs, targets)):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
@@ -229,7 +220,7 @@ def addition(
     targets = targets or []
 
     perturbed_inputs = []
-    for example, target in zip_longest(inputs, targets):
+    for example, target in tqdm(zip_longest(inputs, targets)):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
