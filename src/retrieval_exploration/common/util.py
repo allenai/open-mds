@@ -106,15 +106,12 @@ def truncate_multi_doc(
     num_docs = num_docs or len(input_docs)
     # -2 to make room for the special tokens, -(len(docs) - 1) to make room for the doc sep tokens.
     max_doc_length = (max_length - 2 - (num_docs - 1)) // num_docs
-    truncated_docs = []
-    for doc in input_docs:
-        # Truncate each doc to its maximum allowed length
-        truncated_docs.append(
-            tokenizer.convert_tokens_to_string(
-                tokenizer.tokenize(doc, max_length=max_doc_length, truncation=True)
-                # Going to join everything on a space at the end, so strip it off here.
-            ).strip()
-        )
+    # Truncate each doc to its maximum allowed length
+    truncated_docs = [
+        # Going to join everything on a space at the end, so strip it off here.
+        tokenizer.convert_tokens_to_string(tokenizer.tokenize(doc, max_length=max_doc_length, truncation=True)).strip()
+        for doc in input_docs
+    ]
     return f" {doc_sep_token} ".join(truncated_docs)
 
 
