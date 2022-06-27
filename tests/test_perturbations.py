@@ -343,6 +343,7 @@ def test_duplication() -> None:
     )
     assert expected == actual
 
+
 def test_replacement() -> None:
     num_docs = 8
     doc_sep_token = "<doc-sep>"
@@ -387,7 +388,11 @@ def test_replacement() -> None:
     )
     assert expected == actual
 
-    expected = ["this is a story about something else", "this is a story about something else", "this is a story about a cat"]
+    expected = [
+        "this is a story about something else",
+        "this is a story about something else",
+        "this is a story about a cat",
+    ]
     actual = perturbations.replacement(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
