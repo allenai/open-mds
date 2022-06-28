@@ -1,6 +1,7 @@
 import copy
 import math
 import random
+from functools import lru_cache
 from itertools import zip_longest
 from typing import List, Optional
 
@@ -14,6 +15,27 @@ from tqdm import tqdm
 from retrieval_exploration.common import util
 
 _SEMANTIC_SIMILARITY_MODEL = "all-MiniLM-L6-v2"
+
+
+@lru_cache(maxsize=None)
+def _get_doc_embeddings(input_docs: List[str], embedder: st.SentenceTransformer) -> torch.Tensor:
+    # embedding_hash = f"{hash(tuple(input_docs))}_{hash(embedder)}"
+    # embeddings_dir = Path.home() / ".cache/retrieval"
+    # embeddings_dir.mkdir(parents=True, exist_ok=True)
+    # embeddings_fp = embeddings_dir / f"{embedding_hash}.pkl"
+    # if embeddings_fp.is_file():
+    #     with open(embeddings_fp, "rb") as f:
+    #         input_doc_embeddings = pickle.load(f)["input_doc_embeddings"]
+    # else:
+    #     input_doc_embeddings = embedder.encode(
+    #         input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True
+    #     )
+
+    #     with open(embeddings_fp, "wb") as f:
+    #         pickle.dump({"input_doc_embeddings": input_doc_embeddings}, f, protocol=pickle.HIGHEST_PROTOCOL)
+    # return input_doc_embeddings
+
+    return embedder.encode(input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True)
 
 
 def _randomly_sample_docs(
@@ -118,15 +140,12 @@ def _semantically_sample_docs(
     if not query and not target:
         raise ValueError("Must provide either a `query` or a `target`.")
 
-    # If query is provided, remove it from the possible inputs
-    query_docs = []
-    if query is not None:
-        inputs = copy.deepcopy(inputs)
-        inputs = [example for example in inputs if example != query]
-        query_docs = util.split_docs(query, doc_sep_token=doc_sep_token)
+    query_docs = [] if query is None else util.split_docs(query, doc_sep_token=doc_sep_token)
 
     # Sample all documents if k is not provided
-    total_num_docs = sum(len(util.split_docs(example, doc_sep_token=doc_sep_token)) for example in inputs)
+    total_num_docs = sum(len(util.split_docs(example, doc_sep_token=doc_sep_token)) for example in inputs) - len(
+        query_docs
+    )
     k = k or total_num_docs
     # Check that we have enough documents to sample from
     if total_num_docs < k:
@@ -140,16 +159,22 @@ def _semantically_sample_docs(
     )
     # If target is provided, look for docs most similar to it. Otherwise we look for docs most similar to the query.
     # Batch all inputs (and use a large batch size) to make this as fast as possible on GPU.
+    input_doc_embeddings = _get_doc_embeddings(tuple(input_docs), embedder=embedder).to(embedder.device)
+
+    # Don't return any documents from the query
+    if query is not None:
+        input_docs_idx, input_docs = zip(
+            *[(i, input_doc) for i, input_doc in enumerate(input_docs) if input_doc not in query_docs]
+        )
+        indices = torch.tensor(input_docs_idx, device=embedder.device)
+        input_doc_embeddings = torch.index_select(input_doc_embeddings, 0, indices)
+
     if target:
-        embeddings = embedder.encode(
-            [target] + input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True
-        )
-        scores = st.util.dot_score(embeddings[0], embeddings[1:])[0]
+        query_embedding = embedder.encode(target, convert_to_tensor=True, normalize_embeddings=True)
+        scores = st.util.dot_score(query_embedding, input_doc_embeddings)[0]
     else:
-        embeddings = embedder.encode(
-            query_docs + input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True
-        )
-        scores = st.util.dot_score(embeddings[: len(query_docs)], embeddings[len(query_docs) :])
+        query_embedding = embedder.encode(query_docs, convert_to_tensor=True, normalize_embeddings=True)
+        scores = st.util.dot_score(query_embedding, input_doc_embeddings)
         scores = torch.mean(scores, axis=0)
 
     # Return the the top k most similar (or dissimilar) documents
