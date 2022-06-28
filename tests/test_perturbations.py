@@ -65,7 +65,7 @@ def test_randomly_sample_docs() -> None:
     assert all(example.strip() in random_docs for example in inputs[1].split(doc_sep_token))
 
 
-def test_lexically_sample_docs() -> None:
+def test_semantically_sample_docs() -> None:
     # Need to load an actual dataset here to reliably get rouge scores > 0.
     doc_sep_token = "|||||"
     dataset = load_dataset("multi_news", split="validation")
@@ -76,7 +76,7 @@ def test_lexically_sample_docs() -> None:
 
     # Choose a k greater than the total number of documents WITH a query
     with pytest.raises(ValueError):
-        _ = perturbations._lexically_sample_docs(
+        _ = perturbations._semantically_sample_docs(
             inputs=inputs,
             doc_sep_token=doc_sep_token,
             k=sum(num_docs[1:]) + 1,
@@ -85,7 +85,7 @@ def test_lexically_sample_docs() -> None:
         )
     # Choose a k greater than the total number of documents WITHOUT a query
     with pytest.raises(ValueError):
-        _ = perturbations._lexically_sample_docs(
+        _ = perturbations._semantically_sample_docs(
             inputs=inputs,
             doc_sep_token=doc_sep_token,
             k=sum(num_docs) + 1,
@@ -94,14 +94,14 @@ def test_lexically_sample_docs() -> None:
 
     # Provide neither a query nor a target
     with pytest.raises(ValueError):
-        _ = perturbations._lexically_sample_docs(
+        _ = perturbations._semantically_sample_docs(
             inputs=inputs,
             doc_sep_token=doc_sep_token,
             strategy="similar",
         )
 
     # Sample documents with a query
-    sampled_docs = perturbations._lexically_sample_docs(
+    sampled_docs = perturbations._semantically_sample_docs(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
         k=num_docs[1] - 1,
@@ -113,7 +113,7 @@ def test_lexically_sample_docs() -> None:
     assert all(doc in " ".join(inputs) for doc in sampled_docs)
 
     # Sample documents with a target
-    sampled_docs = perturbations._lexically_sample_docs(
+    sampled_docs = perturbations._semantically_sample_docs(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
         k=sum(num_docs) - 1,

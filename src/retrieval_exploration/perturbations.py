@@ -1,21 +1,34 @@
 import copy
 import math
 import random
+from functools import lru_cache
 from itertools import zip_longest
-from typing import List, Optional, Tuple
-
-import datasets
-import nlpaug.augmenter.word as naw
-import nltk
-import torch
+from typing import List, Optional
 
 import more_itertools
+import nlpaug.augmenter.word as naw
+import nltk
+import sentence_transformers as st
+import torch
+from tqdm import tqdm
 
 from retrieval_exploration.common import util
+
+_SEMANTIC_SIMILARITY_MODEL = "all-MiniLM-L6-v2"
+
+
+@lru_cache(maxsize=None)
+def _get_doc_embeddings(input_docs: List[str], embedder: st.SentenceTransformer) -> torch.Tensor:
+    """Return a `torch.Tensor` containing the embeddings of `input_docs` obtained using the SentenceTransformer
+    model `embedder`. The embeddings are cached, so that subsequent calls to this function with the same arguments
+    will not re-compute them.
+    """
+    return embedder.encode(input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True)
 
 
 def _randomly_sample_docs(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     k: Optional[int] = None,
     query: Optional[str] = None,
@@ -23,7 +36,7 @@ def _randomly_sample_docs(
 ) -> List[str]:
     """Given `inputs`, a list of strings where each string contains the input documents seperated
     by `doc_sep_token` of one example from the dataset, randomly samples `k` documents without
-    replacement. Note that documents will NOT be sampled from the `query` example in `inputs`.
+    replacement. Note that any documents in `query` (if provided) will NOT be sampled from `inputs`.
 
     # Parameters
 
@@ -34,7 +47,7 @@ def _randomly_sample_docs(
         that documents are seperated by `doc_sep_token`.
     doc_sep_token : `str`
         The token that separates individual documents in `inputs`.
-    k : `int`
+    k : `int`, optional (default=None)
         The number of documents to sample (without replacement) from `inputs`.
     seed : `int`, optional (default=None)
         If provided, will locally set the seed of the `random` module with this value.
@@ -74,74 +87,92 @@ def _randomly_sample_docs(
     return random_docs
 
 
-def _lexically_sample_docs(
+def _semantically_sample_docs(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     strategy: str,
     k: Optional[int] = None,
     query: Optional[str] = None,
     target: Optional[str] = None,
+    embedder: Optional[st.SentenceTransformer] = None,
 ):
+    """Given `inputs`, a list of strings where each string contains the input documents seperated
+    by `doc_sep_token` of one example from the dataset, samples `k` documents, without replacement, according to
+    semantic similarity. Documents will be compared to `target` if provided, or to the documents in `query`
+    otherwise (must provide one or the other, but not both). Note that any documents in `query` (if provided) will
+    NOT be sampled from `inputs`.
+
+    # Parameters
+
+    inputs : `List[str]`
+        A list of strings, each string containing the input documents for one example. It is assumed
+        that documents are seperated by `doc_sep_token`.
+    doc_sep_token : `str`
+        The token that separates individual documents in `inputs`.
+    strategy : `str`
+        The strategy to use for sampling. Must be one of `"random"`, `"similar"`, or `"disimilar"`.
+    k : `int`, optional (default=None)
+        The number of documents to sample (without replacement) from `inputs`.
+    query : `str`, optional (default=None)
+        If provided, semantic similarity is determined by comparing to these documents. Documents will NOT be
+        sampled from this example in `inputs`.
+    target : `str`, optional (default=None)
+        If provided, semantic similarity is determined by comparing to this document.
+    embedder : `st.SentenceTransformer`, optional (default=None)
+        If provided, use this st.SentenceTransformer model to compute semantic similarity. Otherwise, use
+        `_SEMANTIC_SIMILARITY_MODEL`.
+    """
     if strategy not in ["similar", "dissimilar"]:
         raise ValueError(f"Got unknown sampling strategy: {strategy}. Expected one of {['similar', 'dissimilar']}")
     if not query and not target:
         raise ValueError("Must provide either a `query` or a `target`.")
 
-    # If query is provided, remove it from the possible inputs
-    query_docs = []
-    if query is not None:
-        inputs = copy.deepcopy(inputs)
-        inputs = [example for example in inputs if example != query]
-        query_docs = util.split_docs(query, doc_sep_token=doc_sep_token)
+    query_docs = [] if query is None else util.split_docs(query, doc_sep_token=doc_sep_token)
 
     # Sample all documents if k is not provided
-    total_num_docs = sum(len(util.split_docs(example, doc_sep_token=doc_sep_token)) for example in inputs)
+    total_num_docs = sum(len(util.split_docs(example, doc_sep_token=doc_sep_token)) for example in inputs) - len(
+        query_docs
+    )
     k = k or total_num_docs
     # Check that we have enough documents to sample from
     if total_num_docs < k:
         raise ValueError(f"Not enough documents to sample {k} without replacement. Only have {total_num_docs}.")
 
-    rouge = datasets.load_metric("rouge")
+    # Embed all input documents
+    embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL) if embedder is None else embedder
 
-    scored_docs: List[Tuple[str, float]] = []
-    for example in inputs:
-        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+    input_docs = list(
+        more_itertools.flatten(util.split_docs(example, doc_sep_token=doc_sep_token) for example in inputs)
+    )
+    # If target is provided, look for docs most similar to it. Otherwise we look for docs most similar to the query.
+    # Cache all inputs document embeddings to make this as fast as possible.
+    input_doc_embeddings = _get_doc_embeddings(tuple(input_docs), embedder=embedder).to(embedder.device)
 
-        # If a target is provided, we look for lexical overlap between it and the input documents.
-        # Otherwise we use the documents of the query.
-        if target:
-            scores = rouge.compute(
-                references=[target] * len(input_docs),
-                predictions=input_docs,
-                rouge_types=["rouge2"],
-                use_aggregator=False,
-                use_stemmer=True,
-            )
-            scores = [score.recall for score in scores["rouge2"]]
-        else:
-            scores = [
-                rouge.compute(
-                    references=query_docs,
-                    predictions=[doc] * len(query_docs),
-                    rouge_types=["rouge2"],
-                    use_stemmer=True,
-                )["rouge2"].mid.recall.item()
-                for doc in input_docs
-            ]
-        scored_docs.extend(zip(input_docs, scores))
+    # Don't return any documents from the query
+    if query is not None:
+        input_docs_idx, input_docs = zip(
+            *[(i, input_doc) for i, input_doc in enumerate(input_docs) if input_doc not in query_docs]
+        )
+        indices = torch.tensor(input_docs_idx, device=embedder.device)
+        input_doc_embeddings = torch.index_select(input_doc_embeddings, 0, indices)
+
+    if target:
+        query_embedding = embedder.encode(target, convert_to_tensor=True, normalize_embeddings=True)
+        scores = st.util.dot_score(query_embedding, input_doc_embeddings)[0]
+    else:
+        query_embedding = embedder.encode(query_docs, convert_to_tensor=True, normalize_embeddings=True)
+        scores = st.util.dot_score(query_embedding, input_doc_embeddings)
+        scores = torch.mean(scores, axis=0)
 
     # Return the the top k most similar (or dissimilar) documents
-    scored_docs = sorted(
-        scored_docs,
-        key=lambda x: x[1],
-        reverse=True if strategy == "similar" else False,
-    )
-    scored_docs = scored_docs[:k]
-    return [doc for doc, _ in scored_docs]
+    indices = torch.topk(scores, k=k, largest=True if strategy == "similar" else False).indices
+    return [input_docs[i] for i in indices]
 
 
 def sorting(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -176,19 +207,20 @@ def sorting(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    # Load the sentence embedding model, if needed
+    if strategy != "random":
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
+
     perturbed_inputs = []
-    for example, target in zip_longest(inputs, targets):
+    for example, target in tqdm(zip_longest(inputs, targets), desc="Perturbing inputs"):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
         if strategy == "random":
             rng.shuffle(input_docs)
         else:
-            input_docs = _lexically_sample_docs(
-                inputs=[example],
-                doc_sep_token=doc_sep_token,
-                strategy=strategy,
-                target=target,
+            input_docs = _semantically_sample_docs(
+                inputs=[example], doc_sep_token=doc_sep_token, strategy=strategy, target=target, embedder=embedder
             )
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
@@ -198,6 +230,7 @@ def sorting(
 
 def addition(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -233,8 +266,12 @@ def addition(
     # Need an iterable, but an empty list as default value is bad practice
     targets = targets or []
 
+    # Load the sentence embedding model, if needed
+    if strategy != "random":
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
+
     perturbed_inputs = []
-    for example, target in zip_longest(inputs, targets):
+    for example, target in tqdm(zip_longest(inputs, targets), desc="Perturbing inputs"):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
@@ -246,13 +283,14 @@ def addition(
                 inputs=inputs, doc_sep_token=doc_sep_token, k=k, query=example, seed=seed
             )
         else:
-            sampled_docs = _lexically_sample_docs(
+            sampled_docs = _semantically_sample_docs(
                 inputs=inputs,
                 doc_sep_token=doc_sep_token,
                 k=k,
                 strategy=strategy,
                 query=example,
                 target=target,
+                embedder=embedder,
             )
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs + sampled_docs))
@@ -262,6 +300,7 @@ def addition(
 
 def deletion(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -301,6 +340,10 @@ def deletion(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    # Load the sentence embedding model, if needed
+    if strategy != "random":
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
+
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
 
@@ -312,12 +355,13 @@ def deletion(
         if strategy == "random":
             to_delete = rng.sample(range(len(input_docs)), k)
         else:
-            sampled_docs = _lexically_sample_docs(
+            sampled_docs = _semantically_sample_docs(
                 inputs=[example],
                 doc_sep_token=doc_sep_token,
                 k=k,
                 strategy=strategy,
                 target=target,
+                embedder=embedder,
             )
             to_delete = [input_docs.index(doc) for doc in sampled_docs]
 
@@ -331,6 +375,7 @@ def deletion(
 
 def duplication(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -370,6 +415,10 @@ def duplication(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    # Load the sentence embedding model, if needed
+    if strategy != "random":
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
+
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
 
@@ -381,12 +430,13 @@ def duplication(
         if strategy == "random":
             repeaters = rng.sample(input_docs, k)
         else:
-            repeaters = _lexically_sample_docs(
+            repeaters = _semantically_sample_docs(
                 inputs=[example],
                 doc_sep_token=doc_sep_token,
                 k=k,
                 strategy=strategy,
                 target=target,
+                embedder=embedder,
             )
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs + repeaters))
@@ -396,6 +446,7 @@ def duplication(
 
 def replacement(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -414,6 +465,10 @@ def replacement(
     # Need an iterable, but an empty list as default value is bad practice
     targets = targets or []
 
+    # Load the sentence embedding model, if needed
+    if strategy != "random":
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
+
     perturbed_inputs = []
     for example, target in zip_longest(inputs, targets):
 
@@ -427,13 +482,14 @@ def replacement(
                 inputs=inputs, doc_sep_token=doc_sep_token, k=k, query=example, seed=seed
             )
         else:
-            sampled_docs = _lexically_sample_docs(
+            sampled_docs = _semantically_sample_docs(
                 inputs=inputs,
                 doc_sep_token=doc_sep_token,
                 k=k,
                 strategy=strategy,
                 query=example,
                 target=target,
+                embedder=embedder,
             )
 
         for i, doc in zip(random.sample(range(len(input_docs)), k), sampled_docs):
@@ -446,6 +502,7 @@ def replacement(
 
 def backtranslation(
     inputs: List[str],
+    *,
     doc_sep_token: str,
     targets: Optional[List[str]] = None,
     perturbed_frac: Optional[float] = None,
@@ -468,6 +525,10 @@ def backtranslation(
     # See: https://stackoverflow.com/a/37356024/6578628
     rng = random.Random(seed)
 
+    # Load the sentence embedding model, if needed
+    if strategy != "random":
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
+
     # Load the back-translation augmenter
     device = "cuda" if torch.cuda.is_available() else "cpu"
     aug = naw.BackTranslationAug(
@@ -488,12 +549,13 @@ def backtranslation(
         if strategy == "random":
             sampled_docs = rng.sample(input_docs, k)
         else:
-            sampled_docs = _lexically_sample_docs(
+            sampled_docs = _semantically_sample_docs(
                 inputs=[example],
                 doc_sep_token=doc_sep_token,
                 k=k,
                 strategy=strategy,
                 target=target,
+                embedder=embedder,
             )
 
         # Back translate the sampled documents. To take advantage of batching, we will

@@ -824,13 +824,14 @@ def main():
         bertscore_results = bertscore.compute(
             predictions=decoded_preds,
             references=decoded_labels,
-            lang="en",
             # These are mostly based on the recommendations in https://github.com/Tiiiger/bert_score
             model_type="microsoft/deberta-xlarge-mnli",
-            use_fast_tokenizer=True,
-            device=training_args.device,
             # We can generally afford to use a batch size 4X greater than the eval batch size
             batch_size=training_args.per_device_eval_batch_size * 4,
+            device=training_args.device,
+            lang="en",
+            rescale_with_baseline=True,
+            use_fast_tokenizer=True,
         )
         bertscore_results["f1_mean"] = np.mean(bertscore_results["f1"])
         for key, value in bertscore_results.items():
@@ -842,8 +843,8 @@ def main():
                 bertscore_results[key] = round(value * 100, 4)
 
         bartscore_results = bartscore.score(
-            srcs=decoded_labels,
-            tgts=decoded_preds,
+            decoded_preds,
+            decoded_labels,
             # We can generally afford to use a batch size 4X greater than the eval batch size
             batch_size=training_args.per_device_eval_batch_size * 4,
         )
