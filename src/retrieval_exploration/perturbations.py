@@ -19,22 +19,10 @@ _SEMANTIC_SIMILARITY_MODEL = "all-MiniLM-L6-v2"
 
 @lru_cache(maxsize=None)
 def _get_doc_embeddings(input_docs: List[str], embedder: st.SentenceTransformer) -> torch.Tensor:
-    # embedding_hash = f"{hash(tuple(input_docs))}_{hash(embedder)}"
-    # embeddings_dir = Path.home() / ".cache/retrieval"
-    # embeddings_dir.mkdir(parents=True, exist_ok=True)
-    # embeddings_fp = embeddings_dir / f"{embedding_hash}.pkl"
-    # if embeddings_fp.is_file():
-    #     with open(embeddings_fp, "rb") as f:
-    #         input_doc_embeddings = pickle.load(f)["input_doc_embeddings"]
-    # else:
-    #     input_doc_embeddings = embedder.encode(
-    #         input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True
-    #     )
-
-    #     with open(embeddings_fp, "wb") as f:
-    #         pickle.dump({"input_doc_embeddings": input_doc_embeddings}, f, protocol=pickle.HIGHEST_PROTOCOL)
-    # return input_doc_embeddings
-
+    """Return a `torch.Tensor` containing the embeddings of `input_docs` obtained using the SentenceTransformer
+    model `embedder`. The embeddings are cached, so that subsequent calls to this function with the same arguments
+    will not re-compute them.
+    """
     return embedder.encode(input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True)
 
 
@@ -158,7 +146,7 @@ def _semantically_sample_docs(
         more_itertools.flatten(util.split_docs(example, doc_sep_token=doc_sep_token) for example in inputs)
     )
     # If target is provided, look for docs most similar to it. Otherwise we look for docs most similar to the query.
-    # Batch all inputs (and use a large batch size) to make this as fast as possible on GPU.
+    # Cache all inputs document embeddings to make this as fast as possible.
     input_doc_embeddings = _get_doc_embeddings(tuple(input_docs), embedder=embedder).to(embedder.device)
 
     # Don't return any documents from the query
