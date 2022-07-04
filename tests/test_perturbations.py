@@ -72,7 +72,7 @@ def test_semantically_sample_docs() -> None:
     inputs = dataset["document"][:4]
     targets = dataset["summary"][:4]
     # Will use the first input as query, so num of available docs for sampling is from the second
-    num_docs = [len(util.split_docs(example, doc_sep_token)) for example in inputs]
+    num_docs = [util.get_num_docs(example, doc_sep_token) for example in inputs]
 
     # Choose a k greater than the total number of documents WITH a query
     with pytest.raises(ValueError):
@@ -189,7 +189,7 @@ def test_addition() -> None:
         perturbed = perturbations.addition(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
         # Because the perturbation is random we check other properties of the perturbed inputs.
         for input_example, perturbed_example in zip(inputs, perturbed):
-            actual_num_perturbed = len(util.split_docs(perturbed_example, doc_sep_token))
+            actual_num_perturbed = util.get_num_docs(perturbed_example, doc_sep_token)
 
             # That the pertubation was actually applied
             assert input_example != perturbed_example
@@ -308,7 +308,7 @@ def test_duplication() -> None:
             # That the pertubation was actually applied
             assert input_example != perturbed_example
             # That that perturbed example has only the documents from the input
-            assert expected_num_perturbed == len(util.split_docs(perturbed_example, doc_sep_token)) - num_docs
+            assert expected_num_perturbed == util.get_num_docs(perturbed_example, doc_sep_token) - num_docs
             for input_doc, perturbed_doc in zip(
                 input_example.split(doc_sep_token), perturbed_example.split(doc_sep_token)
             ):
