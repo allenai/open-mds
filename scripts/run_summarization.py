@@ -561,30 +561,13 @@ def main():
                 else:
                     text, summary = examples[text_column][i], examples[summary_column][i]
 
-                # Rather than naively truncating the concatenated documents, we follow
-                # https://aclanthology.org/2021.naacl-main.380/ and https://arxiv.org/abs/2110.08499
-                # by truncating each document separately to statisfy the max length of the input.
-                # We need to be careful that we control for this truncation during our perturbation
-                # experiments, so we compute the number of original documents in the unperturbed
-                # input and use that to determine the allowed length of each input document.
-                num_original_docs = util.get_num_original_docs(
-                    text,
-                    doc_sep_token=doc_sep_token,
-                    perturbation=data_args.perturbation,
-                    perturbed_frac=data_args.perturbed_frac,
-                )
-                text = util.truncate_multi_doc(
-                    text,
-                    doc_sep_token=doc_sep_token,
-                    max_length=data_args.max_source_length,
-                    tokenizer=tokenizer,
-                    num_docs=num_original_docs[0],
-                )
-
                 inputs.append(text)
                 targets.append(summary)
 
         inputs = [prefix + inp for inp in inputs]
+
+        # Before we perturb, record the number of documents in each instance
+        model_inputs = {"num_docs": util.get_num_docs(inputs, doc_sep_token=doc_sep_token)}
 
         if data_args.perturbation is None:
             logger.info("No perturbations will be applied.")
@@ -681,7 +664,26 @@ def main():
         else:
             raise ValueError(f"Got an unexpected value for --perturbation: {data_args.perturbation}")
 
-        model_inputs = tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
+        # Rather than naively truncating the concatenated documents, we follow
+        # https://aclanthology.org/2021.naacl-main.380/ and https://arxiv.org/abs/2110.08499
+        # by truncating each document separately to statisfy the max length of the input.
+        # We need to be careful that we control for this truncation during our perturbation
+        # experiments, so we compute the number of original documents in the unperturbed
+        # input and use that to determine the allowed length of each input document.
+        inputs = [
+            util.truncate_multi_doc(
+                text,
+                doc_sep_token=doc_sep_token,
+                max_length=data_args.max_source_length,
+                tokenizer=tokenizer,
+                num_docs=num_docs,
+            )
+            for text, num_docs in zip(inputs, model_inputs["num_docs"])
+        ]
+
+        model_inputs.update(
+            tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
+        )
 
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
@@ -937,6 +939,8 @@ def main():
         metrics = trainer.evaluate(max_length=max_length, num_beams=num_beams, metric_key_prefix="eval")
         max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
+        # Record the number of documents (before perturbation) of each example in the validation set
+        metrics["num_docs"] = eval_dataset["num_docs"]
 
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
