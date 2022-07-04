@@ -13,12 +13,37 @@ def test_split_docs() -> None:
     actual = util.split_docs("", doc_sep_token=doc_sep_token)
     assert expected == actual
 
-    actual = util.split_docs("This does not contain doc_sep_token", doc_sep_token=doc_sep_token)
-    expected = ["This does not contain doc_sep_token"]
+    expected = ["Document 1", "Document 2"]
+    actual = util.split_docs(f"Document 1 {doc_sep_token} Document 2", doc_sep_token=doc_sep_token)
     assert expected == actual
 
-    actual = util.split_docs("This is ends with characters from doc_sep_token sep", doc_sep_token=doc_sep_token)
+    expected = ["This does not contain doc_sep_token"]
+    actual = util.split_docs("This does not contain doc_sep_token", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
     expected = ["This is ends with characters from doc_sep_token sep"]
+    actual = util.split_docs("This is ends with characters from doc_sep_token sep", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+
+def test_get_num_docs() -> None:
+    doc_sep_token = "<doc-sep>"
+
+    # Test the case with an empty string as input
+    expected = 0
+    actual = util.get_num_docs("", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+    expected = 2
+    actual = util.get_num_docs(f"Document 1 {doc_sep_token} Document 2", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+    expected = 1
+    actual = util.get_num_docs("This does not contain doc_sep_token", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+    expected = 1
+    actual = util.get_num_docs("This is ends with characters from doc_sep_token sep", doc_sep_token=doc_sep_token)
     assert expected == actual
 
 
