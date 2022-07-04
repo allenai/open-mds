@@ -246,20 +246,20 @@ def test_deletion() -> None:
 
     # Test the cases where a fraction of documents should be perturbed.
     for perturbed_frac in [0.1, 0.5, 1.0]:
-        expected_num_perturbed = num_docs - math.ceil(perturbed_frac * num_docs)
+        expected_num_remaining = num_docs - math.ceil(perturbed_frac * num_docs)
         perturbed = perturbations.deletion(inputs, doc_sep_token=doc_sep_token, perturbed_frac=perturbed_frac)
 
         # Because the perturbation is random we check other properties of the perturbed inputs.
         for input_example, perturbed_example in zip(inputs, perturbed):
-            perturbed_docs = util.split_docs(perturbed_example, doc_sep_token)
-            actual_num_perturbed = len(perturbed_docs)
+            perturbed_docs = util.split_docs(perturbed_example, doc_sep_token=doc_sep_token)
+            actual_num_remaining = util.get_num_docs(perturbed_example, doc_sep_token=doc_sep_token)
 
             # That the pertubation was actually applied
             assert input_example != perturbed_example
             # That all perturbed docs are in the input example
-            assert all(doc in input_example for doc in perturbed_docs)
+            assert all(doc in input_example for doc in perturbed_docs if doc)
             # That the total document count decreased by the expected amount
-            assert expected_num_perturbed == actual_num_perturbed
+            assert expected_num_remaining == actual_num_remaining
 
     # A simple example to see if deletion with a non-random strategy works
     inputs = [f"this is a story about a dog {doc_sep_token} this is a story about a cat"]
