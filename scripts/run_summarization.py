@@ -567,7 +567,7 @@ def main():
         inputs = [prefix + inp for inp in inputs]
 
         # Before we perturb, record the number of documents in each instance
-        model_inputs = {"num_docs": util.get_num_docs(inputs, doc_sep_token=doc_sep_token)}
+        num_docs = [util.get_num_docs(text, doc_sep_token=doc_sep_token) for text in inputs]
 
         if data_args.perturbation is None:
             logger.info("No perturbations will be applied.")
@@ -681,9 +681,7 @@ def main():
             for text, num_docs in zip(inputs, model_inputs["num_docs"])
         ]
 
-        model_inputs.update(
-            tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
-        )
+        model_inputs = tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
 
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
@@ -697,6 +695,7 @@ def main():
             ]
 
         model_inputs["labels"] = labels["input_ids"]
+        model_inputs["num_docs"] = num_docs
         # Add a global attention mask to models inputs. We don't bother checking if the model will
         # actually use it, as it will be ignored if not. For summarization, we place global attention
         # on the document seperator token and the bos token (if it exists).
