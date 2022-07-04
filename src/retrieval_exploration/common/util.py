@@ -36,34 +36,15 @@ def split_docs(text: str, doc_sep_token: str) -> List[str]:
     # It's possible to have a doc_sep_token at the very end of the string. Strip it here
     # so that we get the correct number of documents when we split on doc_sep_token.
     text = re.sub(rf"{doc_sep_token}$", "", text.strip())
-    return [doc.strip() for doc in text.split(doc_sep_token) if doc.strip()]
+    return [doc.strip() for doc in text.split(doc_sep_token)]
 
 
-def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
-    """Given an `example` dict, returns a tuple of strings containing the text and summary."""
-    text = text.strip(_DOC_SEP_TOKENS["multi_news"]).strip()
-    text = text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token)
-    summary = summary.strip()
-    return text, summary
-
-
-def preprocess_multi_x_science_sum(
-    text: str, summary: str, ref_abstract: Dict[str, List[str]], doc_sep_token: str
-) -> Tuple[str, str]:
-    """Given an `example` dict, returns a tuple of strings containing the text and summary."""
-    abstracts = [abstract.strip() for abstract in ref_abstract["abstract"]]
-    text = f" {doc_sep_token} ".join([text.strip()] + abstracts)
-    summary = summary.strip()
-    return text, summary
-
-
-def get_task_specific_params(config: PretrainedConfig, task: str) -> Optional[Dict[str, Any]]:
-    task_specific_params = None
-    if config.task_specific_params is not None:
-        task_specific_params = config.task_specific_params.get(task)
-        if task_specific_params:
-            config.update(task_specific_params)
-    return task_specific_params
+def get_num_docs(text: str, doc_sep_token: str) -> int:
+    """Given `text`, a string which contains the input documents seperated by `doc_sep_token`,
+    returns the number of individual documents.
+    """
+    # See: https://stackoverflow.com/a/3393470
+    return len(list(filter(bool, split_docs(text, doc_sep_token=doc_sep_token))))
 
 
 def get_doc_sep_token(tokenizer: PreTrainedTokenizer) -> str:
@@ -103,7 +84,7 @@ def truncate_multi_doc(
     # Some datasets have the doc sep token at the end of the text, so strip it before we split.
     input_docs = split_docs(text, doc_sep_token=doc_sep_token)
     # If num_docs is not provided, determine it from the input text
-    num_docs = num_docs or len(input_docs)
+    num_docs = num_docs or get_num_docs(text, doc_sep_token=doc_sep_token)
     # -2 to make room for the special tokens, -(len(docs) - 1) to make room for the doc sep tokens.
     max_doc_length = (max_length - 2 - (num_docs - 1)) // num_docs
     # Truncate each doc to its maximum allowed length
@@ -113,6 +94,33 @@ def truncate_multi_doc(
         for doc in input_docs
     ]
     return f" {doc_sep_token} ".join(truncated_docs)
+
+
+def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
+    """Given an `example` dict, returns a tuple of strings containing the text and summary."""
+    text = text.strip(_DOC_SEP_TOKENS["multi_news"]).strip()
+    text = text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token)
+    summary = summary.strip()
+    return text, summary
+
+
+def preprocess_multi_x_science_sum(
+    text: str, summary: str, ref_abstract: Dict[str, List[str]], doc_sep_token: str
+) -> Tuple[str, str]:
+    """Given an `example` dict, returns a tuple of strings containing the text and summary."""
+    abstracts = [abstract.strip() for abstract in ref_abstract["abstract"]]
+    text = f" {doc_sep_token} ".join([text.strip()] + abstracts)
+    summary = summary.strip()
+    return text, summary
+
+
+def get_task_specific_params(config: PretrainedConfig, task: str) -> Optional[Dict[str, Any]]:
+    task_specific_params = None
+    if config.task_specific_params is not None:
+        task_specific_params = config.task_specific_params.get(task)
+        if task_specific_params:
+            config.update(task_specific_params)
+    return task_specific_params
 
 
 def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) -> List[List[int]]:
@@ -154,7 +162,7 @@ def get_num_original_docs(
     if isinstance(inputs, str):
         inputs = [inputs]
     # Compute the number of documents in each example
-    num_docs = [len(split_docs(input_, doc_sep_token)) for input_ in inputs]
+    num_docs = [get_num_docs(input_, doc_sep_token=doc_sep_token) for input_ in inputs]
     # If a perturbation was applied, determine the number of documents before perturbation
     perturbed_frac = perturbed_frac or 0.0
     original_num_docs = np.asarray(num_docs).astype(float)
