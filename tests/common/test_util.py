@@ -204,32 +204,3 @@ def test_get_global_attention_mask() -> None:
     actual_global_attention_mask = util.get_global_attention_mask(input_ids=input_ids, token_ids=[])
     expected_global_attention_mask = [[0, 0, 0, 0], [0, 0, 0, 0]]
     assert expected_global_attention_mask == actual_global_attention_mask
-
-
-def test_get_num_original_docs():
-    num_docs = 16
-    doc_sep_token = "<doc-sep>"
-    inputs = [
-        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
-    ]
-
-    # Test the case where no perturbations are applied
-    assert util.get_num_original_docs(inputs, doc_sep_token) == [num_docs]
-    assert util.get_num_original_docs(inputs, doc_sep_token, perturbation="addition", perturbed_frac=None) == [
-        num_docs
-    ]
-
-    # Test the case with addition
-    expected = [num_docs - 2]
-    actual = util.get_num_original_docs(inputs, doc_sep_token, perturbation="addition", perturbed_frac=0.10)
-    assert expected == actual
-
-    # Test the case with deletion
-    expected = [num_docs + 2]
-    actual = util.get_num_original_docs(inputs, doc_sep_token, perturbation="deletion", perturbed_frac=0.1)
-    assert expected == actual
-
-    # Test the case where the inputs are a string
-    expected = [num_docs + 2]
-    actual = util.get_num_original_docs(inputs[0], doc_sep_token, perturbation="deletion", perturbed_frac=0.1)
-    assert expected == actual
