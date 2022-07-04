@@ -81,7 +81,6 @@ def truncate_multi_doc(
     is done as if there are `num_docs` number of input documents. This is useful to control
     for truncation when applying pertubations (e.g. additiion and deletion).
     """
-    # Some datasets have the doc sep token at the end of the text, so strip it before we split.
     input_docs = split_docs(text, doc_sep_token=doc_sep_token)
     # If num_docs is not provided, determine it from the input text
     num_docs = num_docs or get_num_docs(text, doc_sep_token=doc_sep_token)
@@ -139,41 +138,6 @@ def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) 
     # TODO (John): Ideally this would be vectorized
     global_attention_mask = [[1 if token_id in token_ids else 0 for token_id in batch] for batch in input_ids]
     return global_attention_mask
-
-
-def get_num_original_docs(
-    inputs: Union[str, List[str]],
-    doc_sep_token: str,
-    perturbation: Optional[str] = None,
-    perturbed_frac: Optional[float] = None,
-) -> List[int]:
-    """Returns the number of original documents in each example from `inputs` given the applied
-    `perturbation` and fraction of documents perturbed, `perturbed_frac`.
-
-    # Parameters
-
-    inputs : `List[str]`
-        The input text provided to the model.
-    doc_sep_token : `str`
-        The token that separates individual documents in `inputs`.
-    perturbed_frac : `float`, optional (default=None)
-        The percentage of documents in each example that was perturbed.
-    """
-    if isinstance(inputs, str):
-        inputs = [inputs]
-    # Compute the number of documents in each example
-    num_docs = [get_num_docs(input_, doc_sep_token=doc_sep_token) for input_ in inputs]
-    # If a perturbation was applied, determine the number of documents before perturbation
-    perturbed_frac = perturbed_frac or 0.0
-    original_num_docs = np.asarray(num_docs).astype(float)
-    if perturbation is not None and perturbed_frac > 0.0:
-        if perturbation == "deletion":
-            original_num_docs /= 1 - perturbed_frac
-            original_num_docs = np.ceil(original_num_docs)
-        else:
-            original_num_docs /= 1 + perturbed_frac
-            original_num_docs = np.floor(original_num_docs)
-    return original_num_docs.astype(int).tolist()
 
 
 def _read_result_dict(results_dict: Union[Dict[str, Any], List[Dict[str, Any]]], **kwargs) -> pd.DataFrame:
