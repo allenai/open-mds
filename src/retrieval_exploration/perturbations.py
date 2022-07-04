@@ -62,7 +62,7 @@ def _randomly_sample_docs(
         inputs = [example for example in inputs if example != query]
 
     # Sample all documents if k is not provided
-    total_num_docs = sum(len(util.split_docs(example, doc_sep_token=doc_sep_token)) for example in inputs)
+    total_num_docs = sum(util.get_num_docs(example, doc_sep_token=doc_sep_token) for example in inputs)
     k = k or total_num_docs
     # Check that we have enough documents to sample from
     if total_num_docs < k:
@@ -96,7 +96,7 @@ def _semantically_sample_docs(
     query: Optional[str] = None,
     target: Optional[str] = None,
     embedder: Optional[st.SentenceTransformer] = None,
-):
+) -> List[str]:
     """Given `inputs`, a list of strings where each string contains the input documents seperated
     by `doc_sep_token` of one example from the dataset, samples `k` documents, without replacement, according to
     semantic similarity. Documents will be compared to `target` if provided, or to the documents in `query`
@@ -131,9 +131,9 @@ def _semantically_sample_docs(
     query_docs = [] if query is None else util.split_docs(query, doc_sep_token=doc_sep_token)
 
     # Sample all documents if k is not provided
-    total_num_docs = sum(len(util.split_docs(example, doc_sep_token=doc_sep_token)) for example in inputs) - len(
-        query_docs
-    )
+    total_num_docs = sum(util.get_num_docs(example, doc_sep_token=doc_sep_token) for example in inputs)
+    if query is not None:
+        total_num_docs -= util.get_num_docs(query, doc_sep_token=doc_sep_token)
     k = k or total_num_docs
     # Check that we have enough documents to sample from
     if total_num_docs < k:
@@ -212,7 +212,9 @@ def sorting(
         embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     perturbed_inputs = []
-    for example, target in tqdm(zip_longest(inputs, targets), desc="Perturbing inputs"):
+    for example, target in tqdm(
+        zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
+    ):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
@@ -236,7 +238,7 @@ def addition(
     perturbed_frac: Optional[float] = None,
     strategy: str = "random",
     seed: Optional[int] = None,
-):
+) -> List[str]:
     """Given `inputs`, a list of strings where each string contains the input documents seperated
     by `doc_sep_token` of one example from the dataset, perturbs the input by adding `perturbed_frac`
     percent of documents in each example with a random document sampled from `inputs.`
@@ -271,12 +273,15 @@ def addition(
         embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     perturbed_inputs = []
-    for example, target in tqdm(zip_longest(inputs, targets), desc="Perturbing inputs"):
+    for example, target in tqdm(
+        zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
+    ):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+        num_docs = util.get_num_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to perturb
-        k = math.ceil(perturbed_frac * len(input_docs))
+        k = math.ceil(perturbed_frac * num_docs)
 
         if strategy == "random":
             sampled_docs = _randomly_sample_docs(
@@ -306,7 +311,7 @@ def deletion(
     perturbed_frac: Optional[float] = None,
     strategy: str = "random",
     seed: Optional[int] = None,
-):
+) -> List[str]:
     """Given `inputs`, a list of strings where each string contains the input documents seperated
     by `doc_sep_token` of one example from the dataset, perturbs the input by removing `perturbed_frac`
     percent of documents in each example at random.
@@ -345,15 +350,23 @@ def deletion(
         embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     perturbed_inputs = []
-    for example, target in zip_longest(inputs, targets):
+    for example, target in tqdm(
+        zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
+    ):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+        num_docs = util.get_num_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to perturb
-        k = math.ceil(perturbed_frac * len(input_docs))
+        k = math.ceil(perturbed_frac * num_docs)
+
+        # If we are deleting all documents, just return the empty string.
+        if k == num_docs:
+            perturbed_inputs.append("")
+            continue
 
         if strategy == "random":
-            to_delete = rng.sample(range(len(input_docs)), k)
+            to_delete = rng.sample(range(num_docs), k)
         else:
             sampled_docs = _semantically_sample_docs(
                 inputs=[example],
@@ -420,12 +433,15 @@ def duplication(
         embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     perturbed_inputs = []
-    for example, target in zip_longest(inputs, targets):
+    for example, target in tqdm(
+        zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
+    ):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+        num_docs = util.get_num_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to perturb
-        k = math.ceil(perturbed_frac * len(input_docs))
+        k = math.ceil(perturbed_frac * num_docs)
 
         if strategy == "random":
             repeaters = rng.sample(input_docs, k)
@@ -452,7 +468,7 @@ def replacement(
     perturbed_frac: Optional[float] = None,
     strategy: str = "random",
     seed: Optional[int] = None,
-):
+) -> List[str]:
     if strategy not in ["random", "similar", "dissimilar"]:
         raise ValueError(
             (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'similar', 'dissimilar']}")
@@ -470,12 +486,15 @@ def replacement(
         embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
 
     perturbed_inputs = []
-    for example, target in zip_longest(inputs, targets):
+    for example, target in tqdm(
+        zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
+    ):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+        num_docs = util.get_num_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to perturb
-        k = math.ceil(perturbed_frac * len(input_docs))
+        k = math.ceil(perturbed_frac * num_docs)
 
         if strategy == "random":
             sampled_docs = _randomly_sample_docs(
@@ -492,7 +511,7 @@ def replacement(
                 embedder=embedder,
             )
 
-        for i, doc in zip(random.sample(range(len(input_docs)), k), sampled_docs):
+        for i, doc in zip(random.sample(range(num_docs), k), sampled_docs):
             input_docs[i] = doc.strip()
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
@@ -539,12 +558,14 @@ def backtranslation(
     )
 
     perturbed_inputs = []
-    for example, target in zip_longest(inputs, targets):
+    for example, target in tqdm(
+        zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
+    ):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to perturb
-        k = math.ceil(perturbed_frac * len(input_docs))
+        k = math.ceil(perturbed_frac * util.get_num_docs(example, doc_sep_token=doc_sep_token))
 
         if strategy == "random":
             sampled_docs = rng.sample(input_docs, k)
