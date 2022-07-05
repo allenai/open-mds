@@ -9,16 +9,41 @@ def test_split_docs() -> None:
     doc_sep_token = "<doc-sep>"
 
     # Test the case with an empty string as input
-    expected: List[str] = []
+    expected: List[str] = [""]
     actual = util.split_docs("", doc_sep_token=doc_sep_token)
     assert expected == actual
 
-    actual = util.split_docs("This does not contain doc_sep_token", doc_sep_token=doc_sep_token)
-    expected = ["This does not contain doc_sep_token"]
+    expected = ["Document 1", "Document 2"]
+    actual = util.split_docs(f"Document 1 {doc_sep_token} Document 2", doc_sep_token=doc_sep_token)
     assert expected == actual
 
-    actual = util.split_docs("This is ends with characters from doc_sep_token sep", doc_sep_token=doc_sep_token)
+    expected = ["This does not contain doc_sep_token"]
+    actual = util.split_docs("This does not contain doc_sep_token", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
     expected = ["This is ends with characters from doc_sep_token sep"]
+    actual = util.split_docs("This is ends with characters from doc_sep_token sep", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+
+def test_get_num_docs() -> None:
+    doc_sep_token = "<doc-sep>"
+
+    # Test the case with an empty string as input
+    expected = 0
+    actual = util.get_num_docs("", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+    expected = 2
+    actual = util.get_num_docs(f"Document 1 {doc_sep_token} Document 2", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+    expected = 1
+    actual = util.get_num_docs("This does not contain doc_sep_token", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+    expected = 1
+    actual = util.get_num_docs("This is ends with characters from doc_sep_token sep", doc_sep_token=doc_sep_token)
     assert expected == actual
 
 
@@ -179,32 +204,3 @@ def test_get_global_attention_mask() -> None:
     actual_global_attention_mask = util.get_global_attention_mask(input_ids=input_ids, token_ids=[])
     expected_global_attention_mask = [[0, 0, 0, 0], [0, 0, 0, 0]]
     assert expected_global_attention_mask == actual_global_attention_mask
-
-
-def test_get_num_original_docs():
-    num_docs = 16
-    doc_sep_token = "<doc-sep>"
-    inputs = [
-        f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
-    ]
-
-    # Test the case where no perturbations are applied
-    assert util.get_num_original_docs(inputs, doc_sep_token) == [num_docs]
-    assert util.get_num_original_docs(inputs, doc_sep_token, perturbation="addition", perturbed_frac=None) == [
-        num_docs
-    ]
-
-    # Test the case with addition
-    expected = [num_docs - 2]
-    actual = util.get_num_original_docs(inputs, doc_sep_token, perturbation="addition", perturbed_frac=0.10)
-    assert expected == actual
-
-    # Test the case with deletion
-    expected = [num_docs + 2]
-    actual = util.get_num_original_docs(inputs, doc_sep_token, perturbation="deletion", perturbed_frac=0.1)
-    assert expected == actual
-
-    # Test the case where the inputs are a string
-    expected = [num_docs + 2]
-    actual = util.get_num_original_docs(inputs[0], doc_sep_token, perturbation="deletion", perturbed_frac=0.1)
-    assert expected == actual

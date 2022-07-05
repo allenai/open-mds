@@ -561,30 +561,13 @@ def main():
                 else:
                     text, summary = examples[text_column][i], examples[summary_column][i]
 
-                # Rather than naively truncating the concatenated documents, we follow
-                # https://aclanthology.org/2021.naacl-main.380/ and https://arxiv.org/abs/2110.08499
-                # by truncating each document separately to statisfy the max length of the input.
-                # We need to be careful that we control for this truncation during our perturbation
-                # experiments, so we compute the number of original documents in the unperturbed
-                # input and use that to determine the allowed length of each input document.
-                num_original_docs = util.get_num_original_docs(
-                    text,
-                    doc_sep_token=doc_sep_token,
-                    perturbation=data_args.perturbation,
-                    perturbed_frac=data_args.perturbed_frac,
-                )
-                text = util.truncate_multi_doc(
-                    text,
-                    doc_sep_token=doc_sep_token,
-                    max_length=data_args.max_source_length,
-                    tokenizer=tokenizer,
-                    num_docs=num_original_docs[0],
-                )
-
                 inputs.append(text)
                 targets.append(summary)
 
         inputs = [prefix + inp for inp in inputs]
+
+        # Before we perturb, record the number of documents in each instance
+        num_docs = [util.get_num_docs(text, doc_sep_token=doc_sep_token) for text in inputs]
 
         if data_args.perturbation is None:
             logger.info("No perturbations will be applied.")
@@ -681,6 +664,23 @@ def main():
         else:
             raise ValueError(f"Got an unexpected value for --perturbation: {data_args.perturbation}")
 
+        # Rather than naively truncating the concatenated documents, we follow
+        # https://aclanthology.org/2021.naacl-main.380/ and https://arxiv.org/abs/2110.08499
+        # by truncating each document separately to statisfy the max length of the input.
+        # We need to be careful that we control for this truncation during our perturbation
+        # experiments, so we compute the number of original documents in the unperturbed
+        # input and use that to determine the allowed length of each input document.
+        inputs = [
+            util.truncate_multi_doc(
+                text,
+                doc_sep_token=doc_sep_token,
+                max_length=data_args.max_source_length,
+                tokenizer=tokenizer,
+                num_docs=num_docs,
+            )
+            for text, num_docs in zip(inputs, num_docs)
+        ]
+
         model_inputs = tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
 
         # Setup the tokenizer for targets
@@ -695,6 +695,7 @@ def main():
             ]
 
         model_inputs["labels"] = labels["input_ids"]
+        model_inputs["num_docs"] = num_docs
         # Add a global attention mask to models inputs. We don't bother checking if the model will
         # actually use it, as it will be ignored if not. For summarization, we place global attention
         # on the document seperator token and the bos token (if it exists).
@@ -863,17 +864,8 @@ def main():
             # remove the doc sep token, so at the very least strip the pad token.
             decoded_inputs = tokenizer.batch_decode(inputs, skip_special_tokens=False)
             decoded_inputs = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
-            # Determine the number of input documents for all examples, which is used in our
-            # pertubation experiments.
-            num_original_docs = util.get_num_original_docs(
-                inputs=decoded_inputs,
-                doc_sep_token=doc_sep_token,
-                perturbation=data_args.perturbation,
-                perturbed_frac=data_args.perturbed_frac,
-            )
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
-            results["num_docs"] = num_original_docs
             results["example_idx"] = list(range(len(decoded_inputs)))
             results["perturbation"] = data_args.perturbation
             results["perturbed_frac"] = data_args.perturbed_frac
@@ -937,6 +929,8 @@ def main():
         metrics = trainer.evaluate(max_length=max_length, num_beams=num_beams, metric_key_prefix="eval")
         max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
+        # Record the number of documents (before perturbation) of each example in the validation set
+        metrics["num_docs"] = eval_dataset["num_docs"]
 
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
