@@ -678,7 +678,7 @@ def main():
                 tokenizer=tokenizer,
                 num_docs=num_docs,
             )
-            for text, num_docs in zip(inputs, model_inputs["num_docs"])
+            for text, num_docs in zip(inputs, num_docs)
         ]
 
         model_inputs = tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
@@ -864,17 +864,8 @@ def main():
             # remove the doc sep token, so at the very least strip the pad token.
             decoded_inputs = tokenizer.batch_decode(inputs, skip_special_tokens=False)
             decoded_inputs = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
-            # Determine the number of input documents for all examples, which is used in our
-            # pertubation experiments.
-            num_original_docs = util.get_num_original_docs(
-                inputs=decoded_inputs,
-                doc_sep_token=doc_sep_token,
-                perturbation=data_args.perturbation,
-                perturbed_frac=data_args.perturbed_frac,
-            )
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
-            results["num_docs"] = num_original_docs
             results["example_idx"] = list(range(len(decoded_inputs)))
             results["perturbation"] = data_args.perturbation
             results["perturbed_frac"] = data_args.perturbed_frac
