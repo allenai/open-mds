@@ -233,6 +233,12 @@ def load_results_dicts(
 
                 if metric_columns is not None:
                     for metric in metric_columns:
+                        # Compute the aggregated, relative difference as a percent
+                        perturbation_df[f"{metric}_rel_diff"] = (
+                            (perturbation_df[metric].mean() - baseline_df[metric].mean())
+                            / np.abs(baseline_df[metric].mean())
+                        ) * 100
+                        # Compute the per-instance absolute differences
                         perturbation_df[f"{metric}_delta"] = perturbation_df[metric] - baseline_df[metric]
             perturbation_dfs.append(perturbation_df)
     baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
