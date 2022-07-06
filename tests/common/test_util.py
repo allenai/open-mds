@@ -5,6 +5,21 @@ import pytest
 from retrieval_exploration.common import util
 
 
+def test_jaccard_similarity_score() -> None:
+    # Both strings cannot be empty
+    with pytest.raises(ValueError):
+        _ = util.jaccard_similarity_score("", "")
+
+    # One string is empty
+    assert util.jaccard_similarity_score("", "hello") == 0.0
+
+    # Strings are identical
+    assert util.jaccard_similarity_score("hello", "hello") == 1.0
+
+    # String are non-identical
+    assert util.jaccard_similarity_score("hello world", "hello you") == 1/3
+
+
 def test_split_docs() -> None:
     doc_sep_token = "<doc-sep>"
 
