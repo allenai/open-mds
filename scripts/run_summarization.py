@@ -18,6 +18,7 @@ Fine-tuning the library models for sequence to sequence.
 """
 # You can also adapt this script on your own sequence to sequence task. Pointers for this are left as comments.
 
+import copy
 import logging
 import os
 import sys
@@ -566,8 +567,11 @@ def main():
 
         inputs = [prefix + inp for inp in inputs]
 
-        # Before we perturb, record the number of documents in each instance
+        # Before we perturb...
+        # record the number of documents in each instance
         num_docs = [util.get_num_docs(text, doc_sep_token=doc_sep_token) for text in inputs]
+        # make a copy of each input, so we can determine how much it was changed by perturbation
+        pre_perturbed_inputs = copy.deepcopy(inputs)
 
         if data_args.perturbation is None:
             logger.info("No perturbations will be applied.")
@@ -664,6 +668,11 @@ def main():
         else:
             raise ValueError(f"Got an unexpected value for --perturbation: {data_args.perturbation}")
 
+        # To get a sense for the degree to which each perturbation changes the input, compute the token set ratio
+        jaccard_similarity_scores = [
+            util.jaccard_similarity_score(pre, post) for pre, post in zip(pre_perturbed_inputs, inputs)
+        ]
+
         # Rather than naively truncating the concatenated documents, we follow
         # https://aclanthology.org/2021.naacl-main.380/ and https://arxiv.org/abs/2110.08499
         # by truncating each document separately to statisfy the max length of the input.
@@ -695,7 +704,11 @@ def main():
             ]
 
         model_inputs["labels"] = labels["input_ids"]
+
+        # Retain any meta data about the input text here
         model_inputs["num_docs"] = num_docs
+        model_inputs["jaccard_similarity_scores"] = jaccard_similarity_scores
+
         # Add a global attention mask to models inputs. We don't bother checking if the model will
         # actually use it, as it will be ignored if not. For summarization, we place global attention
         # on the document seperator token and the bos token (if it exists).

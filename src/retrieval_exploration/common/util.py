@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import flatten_dict
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from transformers import PretrainedConfig, PreTrainedTokenizer
 
 # Local constants
@@ -26,6 +27,15 @@ def unflatten(iterable, lengths):
         end = start + lengths[i]
         unflattened.append(iterable[start:end])
     return unflattened
+
+
+def jaccard_similarity_score(string_1: str, string_2: str) -> float:
+    """Returns the Jaccard similarity score between two strings, using the sets of whitespace tokens."""
+    string_1_tokens = set(string_1.strip().split())
+    string_2_tokens = set(string_2.strip().split())
+    if not string_1_tokens and not string_2_tokens:
+        raise ValueError("Both strings cannot be empty.")
+    return len(string_1_tokens & string_2_tokens) / len(string_1_tokens | string_2_tokens)
 
 
 def split_docs(text: str, doc_sep_token: str) -> List[str]:
@@ -210,7 +220,7 @@ def load_results_dicts(
             train = False
             filepaths = list(Path(perturbation_dir).glob(f"**/{_RESULTS_FILENAME}"))
 
-        for filepath in filepaths:
+        for filepath in tqdm(filepaths):
             results_dict = json.loads(filepath.read_text())
             if train:
                 perturbation_df = _read_result_dict(results_dict[_LOG_HISTORY_KEY][:-1])
@@ -220,6 +230,7 @@ def load_results_dicts(
                 # The perturbation and baseline data should pertain to the same examples.
                 if not np.array_equal(baseline_df.eval_example_idx, perturbation_df.eval_example_idx):
                     raise ValueError("The perturbation and baseline data do not correspond to same examples!")
+
                 if metric_columns is not None:
                     for metric in metric_columns:
                         perturbation_df[f"{metric}_delta"] = perturbation_df[metric] - baseline_df[metric]
