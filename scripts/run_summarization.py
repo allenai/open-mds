@@ -669,7 +669,9 @@ def main():
             raise ValueError(f"Got an unexpected value for --perturbation: {data_args.perturbation}")
 
         # To get a sense for the degree to which each perturbation changes the input, compute the token set ratio
-        jaccard_similarity_scores = [util.jaccard_similarity_score(pre, post) for pre, post in zip(pre_perturbed_inputs, inputs)]
+        jaccard_similarity_scores = [
+            util.jaccard_similarity_score(pre, post) for pre, post in zip(pre_perturbed_inputs, inputs)
+        ]
 
         # Rather than naively truncating the concatenated documents, we follow
         # https://aclanthology.org/2021.naacl-main.380/ and https://arxiv.org/abs/2110.08499
