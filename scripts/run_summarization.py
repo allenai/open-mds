@@ -828,10 +828,10 @@ def main():
         )
         for key, value in rouge_results.items():
             rouge_results[key] = {
-                "precision": [round(score.precision * 100, 4) for score in value],
-                "recall": [round(score.recall * 100, 4) for score in value],
-                "fmeasure": [round(score.fmeasure * 100, 4) for score in value],
-                "fmeasure_mean": round(np.mean([score.fmeasure for score in value]) * 100, 4),
+                "precision": [score.precision * 100 for score in value],
+                "recall": [score.recall * 100 for score in value],
+                "fmeasure": [score.fmeasure * 100 for score in value],
+                "fmeasure_mean": np.mean([score.fmeasure for score in value]) * 100,
             }
 
         # Compute and post-process bertscore results
@@ -852,9 +852,9 @@ def main():
             if key == "hashcode":
                 continue
             if isinstance(value, list):
-                bertscore_results[key] = [round(score * 100, 4) for score in value]
+                bertscore_results[key] = [score * 100 for score in value]
             else:
-                bertscore_results[key] = round(value * 100, 4)
+                bertscore_results[key] = value * 100
 
         bartscore_results = bartscore.score(
             decoded_preds,
@@ -865,8 +865,8 @@ def main():
         # Exponentiate to get scores between 0 and 1
         bartscore_results = np.exp(bartscore_results).tolist()
         bartscore_results = {
-            "score": [round(score * 100, 4) for score in bartscore_results],
-            "mean": round(np.mean(bartscore_results) * 100, 4),
+            "score": [score * 100 for score in bartscore_results],
+            "mean": np.mean(bartscore_results) * 100,
         }
 
         # Collect results in final dict
