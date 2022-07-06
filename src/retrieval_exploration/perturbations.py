@@ -166,7 +166,7 @@ def _semantically_sample_docs(
         scores = torch.mean(scores, axis=0)
 
     # Return the the top k most similar (or dissimilar) documents
-    indices = torch.topk(scores, k=k, largest=True if strategy == "similar" else False).indices
+    indices = torch.topk(scores, k=k, largest=strategy == "similar", sorted=True).indices
     return [input_docs[i] for i in indices]
 
 
@@ -443,7 +443,10 @@ def duplication(
         # The absolute number of documents to perturb
         k = math.ceil(perturbed_frac * num_docs)
 
-        if strategy == "random":
+        # If we are duplicating all documents, we do not need to sample
+        if k == num_docs:
+            repeaters = input_docs
+        elif strategy == "random":
             repeaters = rng.sample(input_docs, k)
         else:
             repeaters = _semantically_sample_docs(
@@ -563,11 +566,15 @@ def backtranslation(
     ):
 
         input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+        num_docs = util.get_num_docs(example, doc_sep_token=doc_sep_token)
 
         # The absolute number of documents to perturb
         k = math.ceil(perturbed_frac * util.get_num_docs(example, doc_sep_token=doc_sep_token))
 
-        if strategy == "random":
+        # If we are backtranslating all documents, we do not need to sample
+        if k == num_docs:
+            sampled_docs = input_docs
+        elif strategy == "random":
             sampled_docs = rng.sample(input_docs, k)
         else:
             sampled_docs = _semantically_sample_docs(
