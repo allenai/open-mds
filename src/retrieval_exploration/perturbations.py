@@ -287,7 +287,7 @@ def addition(
 
         if strategy == "random":
             sampled_docs = _randomly_sample_docs(
-                inputs=inputs, doc_sep_token=doc_sep_token, k=k, query=example, seed=seed
+                inputs=inputs, doc_sep_token=doc_sep_token, query=example, k=k, seed=seed
             )
         else:
             sampled_docs = _semantically_sample_docs(
@@ -507,7 +507,7 @@ def replacement(
 
         if strategy == "random":
             sampled_docs = _randomly_sample_docs(
-                inputs=inputs, doc_sep_token=doc_sep_token, k=k, query=example, seed=seed
+                inputs=inputs, doc_sep_token=doc_sep_token, query=example, k=k, seed=seed
             )
             replace_indices = rng.sample(range(num_docs), k)
 

@@ -23,8 +23,8 @@ def test_randomly_sample_docs() -> None:
         _ = perturbations._randomly_sample_docs(
             inputs=inputs,
             doc_sep_token=doc_sep_token,
-            k=num_docs + 1,
             query=inputs[0],
+            k=num_docs + 1,
         )
     # Choose a k greater than the total number of documents WITHOUT a query
     with pytest.raises(ValueError):
@@ -38,8 +38,8 @@ def test_randomly_sample_docs() -> None:
     random_docs = perturbations._randomly_sample_docs(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
-        k=num_docs - 1,
         query=inputs[0],
+        k=num_docs - 1,
     )
     assert len(random_docs) == num_docs - 1
     assert all(example.strip() not in random_docs for example in inputs[0].split(doc_sep_token))
@@ -78,8 +78,8 @@ def test_semantically_sample_docs() -> None:
         _ = perturbations._semantically_sample_docs(
             inputs=inputs,
             doc_sep_token=doc_sep_token,
-            k=sum(num_docs[1:]) + 1,
             query=inputs[0],
+            k=sum(num_docs[1:]) + 1,
         )
     # Choose a k greater than the total number of documents WITHOUT a query
     with pytest.raises(ValueError):
