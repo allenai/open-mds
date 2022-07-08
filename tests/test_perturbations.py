@@ -444,13 +444,10 @@ def test_backtranslation() -> None:
     # A simple example to see if backtranslation with a non-random strategy works. Because it is difficult to know
     # in advance what the backtranslation will look like, we check whether the expected document is different than
     # the original document. Need to choose complicated sentences to guarantee backtranslation is not perfect.
-    inputs = [
-        (
-            f"this is a much more complicated story about a Bernese Mountain Dog {doc_sep_token}"
-            " this is a much more complicated story about a Siamese cat"
-        )
-    ]
-    targets = ["this is a story about a cat"]
+    inputs = [f"Throw a spanner in the works {doc_sep_token} A different kettle of fish"]
+    input_docs = util.split_docs(inputs[0], doc_sep_token=doc_sep_token)
+
+    targets = ["Like shooting fish in a barrel"]
 
     actual = perturbations.backtranslation(
         inputs=inputs,
@@ -460,10 +457,10 @@ def test_backtranslation() -> None:
         strategy="best-case",
     )
     actual_docs = util.split_docs(actual[0], doc_sep_token=doc_sep_token)
-    assert actual_docs[0] != inputs[0]
-    assert actual_docs[1] == inputs[1]
+    assert actual_docs[0] != input_docs[0]
+    assert actual_docs[1] == input_docs[1]
 
-    actual = perturbations.replacement(
+    actual = perturbations.backtranslation(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
         targets=targets,
@@ -471,5 +468,5 @@ def test_backtranslation() -> None:
         strategy="worst-case",
     )
     actual_docs = util.split_docs(actual[0], doc_sep_token=doc_sep_token)
-    assert actual_docs[0] == inputs[0]
-    assert actual_docs[1] != inputs[1]
+    assert actual_docs[0] == input_docs[0]
+    assert actual_docs[1] != input_docs[1]
