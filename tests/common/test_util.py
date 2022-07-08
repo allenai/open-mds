@@ -17,7 +17,7 @@ def test_jaccard_similarity_score() -> None:
     assert util.jaccard_similarity_score("hello", "hello") == 1.0
 
     # String are non-identical
-    assert util.jaccard_similarity_score("hello world", "hello you") == 1/3
+    assert util.jaccard_similarity_score("hello world", "hello you") == 1 / 3
 
 
 def test_split_docs() -> None:

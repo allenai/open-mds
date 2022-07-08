@@ -66,7 +66,6 @@ def test_randomly_sample_docs() -> None:
 
 
 def test_semantically_sample_docs() -> None:
-    # Need to load an actual dataset here to reliably get rouge scores > 0.
     doc_sep_token = "|||||"
     dataset = load_dataset("multi_news", split="validation")
     inputs = dataset["document"][:4]
@@ -81,7 +80,6 @@ def test_semantically_sample_docs() -> None:
             doc_sep_token=doc_sep_token,
             k=sum(num_docs[1:]) + 1,
             query=inputs[0],
-            strategy="similar",
         )
     # Choose a k greater than the total number of documents WITHOUT a query
     with pytest.raises(ValueError):
@@ -89,7 +87,6 @@ def test_semantically_sample_docs() -> None:
             inputs=inputs,
             doc_sep_token=doc_sep_token,
             k=sum(num_docs) + 1,
-            strategy="similar",
         )
 
     # Provide neither a query nor a target
@@ -97,16 +94,14 @@ def test_semantically_sample_docs() -> None:
         _ = perturbations._semantically_sample_docs(
             inputs=inputs,
             doc_sep_token=doc_sep_token,
-            strategy="similar",
         )
 
     # Sample documents with a query
     sampled_docs = perturbations._semantically_sample_docs(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
-        k=num_docs[1] - 1,
         query=inputs[0],
-        strategy="similar",
+        k=num_docs[1] - 1,
     )
     assert len(sampled_docs) == num_docs[1] - 1
     assert all(example.strip() not in sampled_docs for example in inputs[0].split(doc_sep_token))
@@ -116,9 +111,8 @@ def test_semantically_sample_docs() -> None:
     sampled_docs = perturbations._semantically_sample_docs(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
-        k=sum(num_docs) - 1,
         target=targets[0],
-        strategy="similar",
+        k=sum(num_docs) - 1,
     )
     assert len(sampled_docs) == sum(num_docs) - 1
     assert any(example.strip() in sampled_docs for example in inputs[0].split(doc_sep_token))
@@ -157,7 +151,7 @@ def test_sorting() -> None:
         inputs=inputs,
         doc_sep_token=doc_sep_token,
         targets=targets,
-        strategy="similar",
+        strategy="best-case",
     )
     assert expected == actual
 
@@ -166,7 +160,7 @@ def test_sorting() -> None:
         inputs=inputs,
         doc_sep_token=doc_sep_token,
         targets=targets,
-        strategy="dissimilar",
+        strategy="worst-case",
     )
     assert expected == actual
 
@@ -214,7 +208,7 @@ def test_addition() -> None:
         doc_sep_token=doc_sep_token,
         targets=targets,
         perturbed_frac=0.10,
-        strategy="similar",
+        strategy="best-case",
     )
     assert expected == actual
 
@@ -227,7 +221,7 @@ def test_addition() -> None:
         doc_sep_token=doc_sep_token,
         targets=targets,
         perturbed_frac=0.10,
-        strategy="dissimilar",
+        strategy="worst-case",
     )
     assert expected == actual
 
@@ -265,23 +259,23 @@ def test_deletion() -> None:
     inputs = [f"this is a story about a dog {doc_sep_token} this is a story about a cat"]
     targets = ["this is a story about a cat"]
 
-    expected = ["this is a story about a dog"]
-    actual = perturbations.deletion(
-        inputs=inputs,
-        doc_sep_token=doc_sep_token,
-        targets=targets,
-        perturbed_frac=0.10,
-        strategy="similar",
-    )
-    assert expected == actual
-
     expected = ["this is a story about a cat"]
     actual = perturbations.deletion(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
         targets=targets,
         perturbed_frac=0.10,
-        strategy="dissimilar",
+        strategy="best-case",
+    )
+    assert expected == actual
+
+    expected = ["this is a story about a dog"]
+    actual = perturbations.deletion(
+        inputs=inputs,
+        doc_sep_token=doc_sep_token,
+        targets=targets,
+        perturbed_frac=0.10,
+        strategy="worst-case",
     )
     assert expected == actual
 
@@ -327,7 +321,7 @@ def test_duplication() -> None:
         doc_sep_token=doc_sep_token,
         targets=targets,
         perturbed_frac=0.10,
-        strategy="similar",
+        strategy="best-case",
     )
     assert expected == actual
 
@@ -339,7 +333,7 @@ def test_duplication() -> None:
         doc_sep_token=doc_sep_token,
         targets=targets,
         perturbed_frac=0.10,
-        strategy="dissimilar",
+        strategy="worst-case",
     )
     assert expected == actual
 
@@ -375,30 +369,38 @@ def test_replacement() -> None:
             assert expected_num_perturbed == actual_num_perturbed
 
     # A simple example to see if replacement with a non-random strategy works
-    inputs = ["this is a story about a dog", "this is a story about a cat", "this is a story about something else"]
+    inputs = [
+        f"this is a story about a dog {doc_sep_token} this is a story about a cat",
+        "this is a story about a siamese cat",
+        "this is a story about something else",
+    ]
     targets = ["this is a story about a cat", "this is a story about a dog", "this is a story about a dog"]
 
-    expected = ["this is a story about a cat", "this is a story about a dog", "this is a story about a dog"]
-    actual = perturbations.replacement(
-        inputs=inputs,
-        doc_sep_token=doc_sep_token,
-        targets=targets,
-        perturbed_frac=0.10,
-        strategy="similar",
-    )
-    assert expected == actual
-
     expected = [
-        "this is a story about something else",
-        "this is a story about something else",
-        "this is a story about a cat",
+        f"this is a story about a siamese cat {doc_sep_token} this is a story about a cat",
+        "this is a story about a dog",
+        "this is a story about a dog",
     ]
     actual = perturbations.replacement(
         inputs=inputs,
         doc_sep_token=doc_sep_token,
         targets=targets,
         perturbed_frac=0.10,
-        strategy="dissimilar",
+        strategy="best-case",
+    )
+    assert expected == actual
+
+    expected = [
+        f"this is a story about a dog {doc_sep_token} this is a story about something else",
+        "this is a story about something else",
+        "this is a story about a siamese cat",
+    ]
+    actual = perturbations.replacement(
+        inputs=inputs,
+        doc_sep_token=doc_sep_token,
+        targets=targets,
+        perturbed_frac=0.10,
+        strategy="worst-case",
     )
     assert expected == actual
 
@@ -438,3 +440,6 @@ def test_backtranslation() -> None:
             assert len(input_docs) == len(perturbed_docs)
             # That the expected number of documents were perturbed
             assert expected_num_perturbed == actual_num_perturbed
+
+    # Should really have a test for non-random sampling
+    assert False
