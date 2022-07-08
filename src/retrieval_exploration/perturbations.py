@@ -168,6 +168,86 @@ def _semantically_sample_docs(
     return [input_docs[i] for i in indices]
 
 
+def backtranslation(
+    inputs: List[str],
+    *,
+    doc_sep_token: str,
+    targets: Optional[List[str]] = None,
+    perturbed_frac: Optional[float] = None,
+    strategy: str = "random",
+    seed: Optional[int] = None,
+) -> List[str]:
+    if strategy not in ["random", "best-case", "worst-case"]:
+        raise ValueError(
+            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'best-case', 'worst-case']}")
+        )
+
+    # No-op if perturbed_frac is None or falsey
+    if not perturbed_frac:
+        return inputs
+
+    # Need an iterable, but an empty list as default value is bad practice
+    targets = targets or []
+
+    # Instantiate an instance of `Random` so we can create a generator with its own local seed
+    # See: https://stackoverflow.com/a/37356024/6578628
+    rng = random.Random(seed)
+
+    # Load the sentence embedding model, if needed
+    if strategy != "random":
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
+
+    # Load the back-translation augmenter
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    aug = naw.BackTranslationAug(
+        from_model_name="Helsinki-NLP/opus-mt-en-da",
+        to_model_name="Helsinki-NLP/opus-mt-da-en",
+        device=device,
+        max_length=256,
+    )
+
+    perturbed_inputs = []
+    for example, target in tqdm(
+        zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
+    ):
+
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+        num_docs = util.get_num_docs(example, doc_sep_token=doc_sep_token)
+
+        # The absolute number of documents to perturb
+        k = math.ceil(perturbed_frac * util.get_num_docs(example, doc_sep_token=doc_sep_token))
+
+        # If we are backtranslating all documents, we do not need to sample
+        if k == num_docs:
+            sampled_docs = input_docs
+        elif strategy == "random":
+            sampled_docs = rng.sample(input_docs, k)
+        else:
+            sampled_docs = _semantically_sample_docs(
+                inputs=[example],
+                doc_sep_token=doc_sep_token,
+                target=target,
+                k=k,
+                largest=strategy == "worst-case",
+                embedder=embedder,
+            )
+
+        # Back translate the sampled documents. To take advantage of batching, we will
+        # collect the sentences of all documents, pass them to the model, and then unflatten them.
+        unflattened_sents = [nltk.sent_tokenize(doc) for doc in sampled_docs]
+        back_translated_sents = aug.augment(list(more_itertools.flatten(unflattened_sents)))
+        back_translated_docs = util.unflatten(
+            back_translated_sents, lengths=[len(sents) for sents in unflattened_sents]
+        )
+
+        for sampled, translated in zip(sampled_docs, back_translated_docs):
+            input_docs[input_docs.index(sampled)] = " ".join(sent.strip() for sent in translated)
+
+        perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
+
+    return perturbed_inputs
+
+
 def sorting(
     inputs: List[str],
     *,
@@ -228,6 +308,83 @@ def sorting(
             )
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
+
+    return perturbed_inputs
+
+
+def duplication(
+    inputs: List[str],
+    *,
+    doc_sep_token: str,
+    targets: Optional[List[str]] = None,
+    perturbed_frac: Optional[float] = None,
+    strategy: str = "random",
+    seed: Optional[int] = None,
+) -> List[str]:
+    """Given `inputs`, a list of strings where each string contains the input documents seperated
+    by `doc_sep_token` of one example from the dataset, perturbs the input by replacing `perturbed_frac`
+    percent of documents in each example with a random document sampled from `inputs.`
+
+    # Parameters
+
+    inputs : `List[str]`
+        A list of strings, each string containing the input documents for one example. It is assumed
+        that documents are seperated by `doc_sep_token`.
+    doc_sep_token : `str`
+        The token that separates individual documents in `inputs`.
+    perturbed_frac : `float`, optional (default=None)
+        The percentage of documents in each example that should be randomly replaced with a document
+        sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
+    seed : `int`, optional (default=None)
+        If provided, will locally set the seed of the `random` module with this value.
+    """
+    if strategy not in ["random", "best-case", "worst-case"]:
+        raise ValueError(
+            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'best-case', 'worst-case']}")
+        )
+
+    # No-op if perturbed_frac is None or falsey
+    if not perturbed_frac:
+        return inputs
+
+    # Need an iterable, but an empty list as default value is bad practice
+    targets = targets or []
+
+    # Instantiate an instance of `Random` so we can create a generator with its own local seed
+    # See: https://stackoverflow.com/a/37356024/6578628
+    rng = random.Random(seed)
+
+    # Load the sentence embedding model, if needed
+    if strategy != "random":
+        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
+
+    perturbed_inputs = []
+    for example, target in tqdm(
+        zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
+    ):
+
+        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
+        num_docs = util.get_num_docs(example, doc_sep_token=doc_sep_token)
+
+        # The absolute number of documents to perturb
+        k = math.ceil(perturbed_frac * num_docs)
+
+        # If we are duplicating all documents, we do not need to sample
+        if k == num_docs:
+            repeaters = input_docs
+        elif strategy == "random":
+            repeaters = rng.sample(input_docs, k)
+        else:
+            repeaters = _semantically_sample_docs(
+                inputs=[example],
+                doc_sep_token=doc_sep_token,
+                target=target,
+                k=k,
+                largest=strategy == "best-case",
+                embedder=embedder,
+            )
+
+        perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs + repeaters))
 
     return perturbed_inputs
 
@@ -388,83 +545,6 @@ def deletion(
     return perturbed_inputs
 
 
-def duplication(
-    inputs: List[str],
-    *,
-    doc_sep_token: str,
-    targets: Optional[List[str]] = None,
-    perturbed_frac: Optional[float] = None,
-    strategy: str = "random",
-    seed: Optional[int] = None,
-) -> List[str]:
-    """Given `inputs`, a list of strings where each string contains the input documents seperated
-    by `doc_sep_token` of one example from the dataset, perturbs the input by replacing `perturbed_frac`
-    percent of documents in each example with a random document sampled from `inputs.`
-
-    # Parameters
-
-    inputs : `List[str]`
-        A list of strings, each string containing the input documents for one example. It is assumed
-        that documents are seperated by `doc_sep_token`.
-    doc_sep_token : `str`
-        The token that separates individual documents in `inputs`.
-    perturbed_frac : `float`, optional (default=None)
-        The percentage of documents in each example that should be randomly replaced with a document
-        sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
-    seed : `int`, optional (default=None)
-        If provided, will locally set the seed of the `random` module with this value.
-    """
-    if strategy not in ["random", "best-case", "worst-case"]:
-        raise ValueError(
-            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'best-case', 'worst-case']}")
-        )
-
-    # No-op if perturbed_frac is None or falsey
-    if not perturbed_frac:
-        return inputs
-
-    # Need an iterable, but an empty list as default value is bad practice
-    targets = targets or []
-
-    # Instantiate an instance of `Random` so we can create a generator with its own local seed
-    # See: https://stackoverflow.com/a/37356024/6578628
-    rng = random.Random(seed)
-
-    # Load the sentence embedding model, if needed
-    if strategy != "random":
-        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
-
-    perturbed_inputs = []
-    for example, target in tqdm(
-        zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
-    ):
-
-        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
-        num_docs = util.get_num_docs(example, doc_sep_token=doc_sep_token)
-
-        # The absolute number of documents to perturb
-        k = math.ceil(perturbed_frac * num_docs)
-
-        # If we are duplicating all documents, we do not need to sample
-        if k == num_docs:
-            repeaters = input_docs
-        elif strategy == "random":
-            repeaters = rng.sample(input_docs, k)
-        else:
-            repeaters = _semantically_sample_docs(
-                inputs=[example],
-                doc_sep_token=doc_sep_token,
-                target=target,
-                k=k,
-                largest=strategy == "best-case",
-                embedder=embedder,
-            )
-
-        perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs + repeaters))
-
-    return perturbed_inputs
-
-
 def replacement(
     inputs: List[str],
     *,
@@ -534,86 +614,6 @@ def replacement(
 
         for i, doc in zip(replace_indices, sampled_docs):
             input_docs[i] = doc.strip()
-
-        perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
-
-    return perturbed_inputs
-
-
-def backtranslation(
-    inputs: List[str],
-    *,
-    doc_sep_token: str,
-    targets: Optional[List[str]] = None,
-    perturbed_frac: Optional[float] = None,
-    strategy: str = "random",
-    seed: Optional[int] = None,
-) -> List[str]:
-    if strategy not in ["random", "best-case", "worst-case"]:
-        raise ValueError(
-            (f"Got unknown sampling strategy: {strategy}. Expected one of {['random', 'best-case', 'worst-case']}")
-        )
-
-    # No-op if perturbed_frac is None or falsey
-    if not perturbed_frac:
-        return inputs
-
-    # Need an iterable, but an empty list as default value is bad practice
-    targets = targets or []
-
-    # Instantiate an instance of `Random` so we can create a generator with its own local seed
-    # See: https://stackoverflow.com/a/37356024/6578628
-    rng = random.Random(seed)
-
-    # Load the sentence embedding model, if needed
-    if strategy != "random":
-        embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL)
-
-    # Load the back-translation augmenter
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    aug = naw.BackTranslationAug(
-        from_model_name="Helsinki-NLP/opus-mt-en-da",
-        to_model_name="Helsinki-NLP/opus-mt-da-en",
-        device=device,
-        max_length=256,
-    )
-
-    perturbed_inputs = []
-    for example, target in tqdm(
-        zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
-    ):
-
-        input_docs = util.split_docs(example, doc_sep_token=doc_sep_token)
-        num_docs = util.get_num_docs(example, doc_sep_token=doc_sep_token)
-
-        # The absolute number of documents to perturb
-        k = math.ceil(perturbed_frac * util.get_num_docs(example, doc_sep_token=doc_sep_token))
-
-        # If we are backtranslating all documents, we do not need to sample
-        if k == num_docs:
-            sampled_docs = input_docs
-        elif strategy == "random":
-            sampled_docs = rng.sample(input_docs, k)
-        else:
-            sampled_docs = _semantically_sample_docs(
-                inputs=[example],
-                doc_sep_token=doc_sep_token,
-                target=target,
-                k=k,
-                largest=strategy == "worst-case",
-                embedder=embedder,
-            )
-
-        # Back translate the sampled documents. To take advantage of batching, we will
-        # collect the sentences of all documents, pass them to the model, and then unflatten them.
-        unflattened_sents = [nltk.sent_tokenize(doc) for doc in sampled_docs]
-        back_translated_sents = aug.augment(list(more_itertools.flatten(unflattened_sents)))
-        back_translated_docs = util.unflatten(
-            back_translated_sents, lengths=[len(sents) for sents in unflattened_sents]
-        )
-
-        for sampled, translated in zip(sampled_docs, back_translated_docs):
-            input_docs[input_docs.index(sampled)] = " ".join(sent.strip() for sent in translated)
 
         perturbed_inputs.append(f" {doc_sep_token} ".join(input_docs))
 

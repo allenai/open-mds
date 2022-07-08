@@ -575,6 +575,21 @@ def main():
 
         if data_args.perturbation is None:
             logger.info("No perturbations will be applied.")
+        elif data_args.perturbation == "backtranslation":
+            inputs = perturbations.backtranslation(
+                inputs=inputs,
+                doc_sep_token=doc_sep_token,
+                targets=targets,
+                perturbed_frac=data_args.perturbed_frac,
+                strategy=data_args.sampling_strategy,
+                seed=data_args.perturbed_seed,
+            )
+            logger.info(
+                (
+                    f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
+                    f" back translated with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
+                )
+            )
         elif data_args.perturbation == "sorting":
             inputs = perturbations.sorting(
                 inputs=inputs,
@@ -588,6 +603,21 @@ def main():
                 (
                     f"Input documents in each example will be sorted with sampling strategy"
                     f" '{data_args.sampling_strategy}' before training/evaluation."
+                )
+            )
+        elif data_args.perturbation == "duplication":
+            inputs = perturbations.duplication(
+                inputs=inputs,
+                doc_sep_token=doc_sep_token,
+                targets=targets,
+                perturbed_frac=data_args.perturbed_frac,
+                strategy=data_args.sampling_strategy,
+                seed=data_args.perturbed_seed,
+            )
+            logger.info(
+                (
+                    f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
+                    f" duplicated with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
         elif data_args.perturbation == "addition":
@@ -620,21 +650,6 @@ def main():
                     f" removed with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
-        elif data_args.perturbation == "duplication":
-            inputs = perturbations.duplication(
-                inputs=inputs,
-                doc_sep_token=doc_sep_token,
-                targets=targets,
-                perturbed_frac=data_args.perturbed_frac,
-                strategy=data_args.sampling_strategy,
-                seed=data_args.perturbed_seed,
-            )
-            logger.info(
-                (
-                    f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
-                    f" duplicated with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
-                )
-            )
         elif data_args.perturbation == "replacement":
             inputs = perturbations.replacement(
                 inputs=inputs,
@@ -648,21 +663,6 @@ def main():
                 (
                     f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
                     f" replaced with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
-                )
-            )
-        elif data_args.perturbation == "backtranslation":
-            inputs = perturbations.backtranslation(
-                inputs=inputs,
-                doc_sep_token=doc_sep_token,
-                targets=targets,
-                perturbed_frac=data_args.perturbed_frac,
-                strategy=data_args.sampling_strategy,
-                seed=data_args.perturbed_seed,
-            )
-            logger.info(
-                (
-                    f"{data_args.perturbed_frac:.2%} of input documents in each example will be"
-                    f" back translated with sampling strategy '{data_args.sampling_strategy}' before training/evaluation."
                 )
             )
         else:
