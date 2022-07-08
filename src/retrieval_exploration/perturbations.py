@@ -532,9 +532,6 @@ def replacement(
             )
             replace_indices = [input_docs.index(doc) for doc in to_replace]
 
-        # TODO: Use perturbed_frac to determine the number of documents to replace
-        #       but then compute the fraction of documents actually replaced and call it something else.
-        #       Report the mean of that
         for i, doc in zip(replace_indices, sampled_docs):
             input_docs[i] = doc.strip()
 
