@@ -441,5 +441,35 @@ def test_backtranslation() -> None:
             # That the expected number of documents were perturbed
             assert expected_num_perturbed == actual_num_perturbed
 
-    # Should really have a test for non-random sampling
-    assert False
+    # A simple example to see if backtranslation with a non-random strategy works. Because it is difficult to know
+    # in advance what the backtranslation will look like, we check whether the expected document is different than
+    # the original document. Need to choose complicated sentences to guarantee backtranslation is not perfect.
+    inputs = [
+        (
+            f"this is a much more complicated story about a Bernese Mountain Dog {doc_sep_token}"
+            " this is a much more complicated story about a Siamese cat"
+        )
+    ]
+    targets = ["this is a story about a cat"]
+
+    actual = perturbations.backtranslation(
+        inputs=inputs,
+        doc_sep_token=doc_sep_token,
+        targets=targets,
+        perturbed_frac=0.10,
+        strategy="best-case",
+    )
+    actual_docs = util.split_docs(actual[0], doc_sep_token=doc_sep_token)
+    assert actual_docs[0] != inputs[0]
+    assert actual_docs[1] == inputs[1]
+
+    actual = perturbations.replacement(
+        inputs=inputs,
+        doc_sep_token=doc_sep_token,
+        targets=targets,
+        perturbed_frac=0.10,
+        strategy="worst-case",
+    )
+    actual_docs = util.split_docs(actual[0], doc_sep_token=doc_sep_token)
+    assert actual_docs[0] == inputs[0]
+    assert actual_docs[1] != inputs[1]
