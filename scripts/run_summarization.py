@@ -891,11 +891,14 @@ def main():
             results["labels"] = decoded_labels
             results["preds"] = decoded_preds
 
-        # Add the mean length of reference and generated summaries.
+            input_lens = [np.count_nonzero(example != tokenizer.pad_token_id) for example in inputs]
+            results["input_len"] = input_lens
+
+        # Add length of reference and generated summaries
         label_lens = [np.count_nonzero(label != tokenizer.pad_token_id) for label in labels]
         prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
-        results["label_len"] = np.mean(label_lens)
-        results["gen_len"] = np.mean(prediction_lens)
+        results["label_len"] = label_lens
+        results["gen_len"] = prediction_lens
         return results
 
     # Initialize our Trainer
