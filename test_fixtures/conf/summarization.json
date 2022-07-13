@@ -3,7 +3,7 @@
     "dataset_name": "multi_news",
     "max_source_length": 8,
     "max_target_length": 56,
-    "output_dir": "./output/multinews/primera/baseline",
+    "output_dir": "./summarization_output",
     "overwrite_output_dir": true,
     "do_train": true,
     "do_eval": true,
