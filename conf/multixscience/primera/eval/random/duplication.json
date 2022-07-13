@@ -5,7 +5,7 @@
     "summary_column": "related_work",
     "max_source_length": 4096,
     "max_target_length": 512,
-    "output_dir": "./output/multixscience/primera/perturbations/duplication",
+    "output_dir": "./output/multixscience/primera/perturbations/random/duplication",
     "overwrite_output_dir": true,
     "do_eval": true,
     "per_device_train_batch_size": 1,
@@ -20,5 +20,6 @@
     "perturbation": "duplication",
     "perturbed_frac": 0.1,
     "perturbed_seed": 42,
-    "max_eval_samples": 2533
+    "max_eval_samples": 2533,
+    "overwrite_cache": true
 }
