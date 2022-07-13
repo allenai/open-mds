@@ -309,6 +309,7 @@ summarization_name_mapping = {
     "xglue": ("news_body", "news_title"),
     "xsum": ("document", "summary"),
     "wiki_summary": ("article", "highlights"),
+    "multi_news": ("document", "summary"),
 }
 
 
@@ -931,7 +932,7 @@ def main():
         )
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
-        trainer.log_metrics("train", metrics)
+        # trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
         trainer.save_state()
 
@@ -951,7 +952,7 @@ def main():
         # Record the number of documents (before perturbation) of each example in the validation set
         metrics["num_docs"] = eval_dataset["num_docs"]
 
-        trainer.log_metrics("eval", metrics)
+        # trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 
     if training_args.do_predict:
@@ -966,7 +967,7 @@ def main():
         )
         metrics["predict_samples"] = min(max_predict_samples, len(predict_dataset))
 
-        trainer.log_metrics("predict", metrics)
+        # trainer.log_metrics("predict", metrics)
         trainer.save_metrics("predict", metrics)
 
         if trainer.is_world_process_zero():
