@@ -5,7 +5,7 @@
     "summary_column": "summary",
     "max_source_length": 4096,
     "max_target_length": 768,
-    "output_dir": "./output/multinews/primera/baseline",
+    "output_dir": "./output/multinews/primera/perturbations/best-case/replacement/1.0",
     "overwrite_output_dir": true,
     "do_eval": true,
     "seed": 42,
@@ -18,8 +18,9 @@
     "sortish_sampler": true,
     "predict_with_generate": true,
     "generation_num_beams": 5,
-    "perturbation": null,
-    "perturbed_frac": null,
+    "perturbation": "replacement",
+    "perturbed_frac": 1.0,
+    "sampling_strategy": "best-case",
     "perturbed_seed": 42,
     "max_eval_samples": 3072
 }
