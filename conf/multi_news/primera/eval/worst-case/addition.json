@@ -1,8 +1,6 @@
 {
     "model_name_or_path": "allenai/PRIMERA-multinews",
     "dataset_name": "multi_news",
-    "text_column": "document",
-    "summary_column": "summary",
     "max_source_length": 4096,
     "max_target_length": 768,
     "output_dir": "./output/multinews/primera/perturbations/worst-case/addition/0.1",

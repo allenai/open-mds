@@ -3,10 +3,9 @@
     "dataset_name": "multi_news",
     "max_source_length": 4096,
     "max_target_length": 768,
-    "output_dir": "./output/multinews/primera/perturbations/worst-case/replacement/0.1",
+    "output_dir": "./output/debug",
     "overwrite_output_dir": true,
     "do_eval": true,
-    
     "seed": 42,
     "fp16": true,
     "dataloader_num_workers": 1,
@@ -17,9 +16,8 @@
     "sortish_sampler": true,
     "predict_with_generate": true,
     "generation_num_beams": 5,
-    "perturbation": "replacement",
-    "perturbed_frac": 0.1,
-    "sampling_strategy": "worst-case",
+    "perturbation": null,
+    "perturbed_frac": null,
     "perturbed_seed": 42,
-    "max_eval_samples": 3072
+    "max_eval_samples": 256
 }
