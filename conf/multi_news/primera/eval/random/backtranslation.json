@@ -5,7 +5,7 @@
     "summary_column": "summary",
     "max_source_length": 4096,
     "max_target_length": 768,
-    "output_dir": "./output/multinews/primera/perturbations/random/backtranslation/1.0",
+    "output_dir": "./output/multinews/primera/perturbations/random/backtranslation/0.1",
     "overwrite_output_dir": true,
     "do_eval": true,
     "seed": 42,
@@ -19,7 +19,7 @@
     "predict_with_generate": true,
     "generation_num_beams": 5,
     "perturbation": "backtranslation",
-    "perturbed_frac": 1.0,
+    "perturbed_frac": 0.1,
     "perturbed_seed": 42,
     "max_eval_samples": 3072
 }
