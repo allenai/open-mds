@@ -53,7 +53,7 @@ from transformers.utils import check_min_version, is_offline_mode, send_example_
 from transformers.utils.versions import require_version
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
-check_min_version("4.20.0.dev0")
+check_min_version("4.21.0.dev0")
 
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt")
 
@@ -271,7 +271,10 @@ class DataTrainingArguments:
     )
     sampling_strategy: str = field(
         default="random",
-        metadata={"help": "The sampling strategy to use for the perturbation. Has no effect if perturbation is None."},
+        metadata={
+            "help": "The sampling strategy to use for the perturbation. Must be one of 'random',"
+            " 'best-case', or 'worst-case'. Has no effect if perturbation is None."
+        },
     )
     perturbed_seed: Optional[int] = field(
         default=None,
@@ -445,12 +448,12 @@ def main():
     )
 
     # Use summarization specific params if present in the config
-    task_specific_params = util.get_task_specific_params(model.config, task="summarization")
-    if task_specific_params is not None:
-        logger.info(
-            "Using summarization specific params from model config (note, some of these may be"
-            " overridden by arguments passed to this script)."
-        )
+    # task_specific_params = util.get_task_specific_params(model.config, task="summarization")
+    # if task_specific_params is not None:
+    #     logger.info(
+    #         "Using summarization specific params from model config (note, some of these may be"
+    #         " overridden by arguments passed to this script)."
+    #     )
 
     model.resize_token_embeddings(len(tokenizer))
 
