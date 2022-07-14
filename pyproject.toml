@@ -11,6 +11,7 @@ torch = "^1.11.0"
 transformers = "^4.19.0"
 tokenizers = "^0.12.1"
 datasets = "^2.1.0"
+accelerate = "^0.10.0"
 sentence-transformers = "^2.2.2"
 flatten-dict = "^0.4.2"
 sacremoses = "^0.0.53"
@@ -61,6 +62,13 @@ exclude = '''
     | \bdoc\b
 )
 '''
+
+# Registered pytest markers, see: https://docs.pytest.org/en/stable/how-to/mark.html
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "serial",
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

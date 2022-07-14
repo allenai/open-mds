@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         python-version: [3.8, 3.9]
 
     steps:
@@ -48,7 +48,7 @@ jobs:
           poetry run mypy .
       - name: Test with pytest
         run: |
-          poetry run pytest tests --cov-config=.coveragerc --cov ./src --cov-report=xml
+          poetry run pytest tests -vvv --cov-config=.coveragerc --cov ./src --cov-report=xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2.1.0
         with:
