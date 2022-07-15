@@ -8,6 +8,7 @@
     "output_dir": "./output/multinews/pegasus/perturbations/worst-case/sorting",
     "overwrite_output_dir": true,
     "do_eval": true,
+    "per_device_eval_batch_size": 6,
     "seed": 42,
     "fp16": true,
     "dataloader_num_workers": 1,
