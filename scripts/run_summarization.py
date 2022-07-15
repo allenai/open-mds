@@ -561,9 +561,10 @@ def main():
                     )
                 elif data_args.dataset_config_name == "ms2":
                     text, summary = util.preprocess_ms2(
-                        titles=examples["title"][i],
-                        abstracts=examples[text_column][i],
+                        text=examples[text_column][i],
                         summary=examples[summary_column][i],
+                        titles=examples["title"][i],
+                        abstracts=examples["abstract"][i],
                         doc_sep_token=doc_sep_token,
                     )
                 else:
