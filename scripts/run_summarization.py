@@ -559,6 +559,13 @@ def main():
                         ref_abstract=examples["ref_abstract"][i],
                         doc_sep_token=doc_sep_token,
                     )
+                elif data_args.dataset_config_name == "ms2":
+                    text, summary = util.preprocess_ms2(
+                        titles=examples["title"][i],
+                        abstracts=examples[text_column][i],
+                        summary=examples[summary_column][i],
+                        doc_sep_token=doc_sep_token,
+                    )
                 else:
                     text, summary = examples[text_column][i], examples[summary_column][i]
 
