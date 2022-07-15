@@ -29,7 +29,6 @@ import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
 import transformers
-from bart_score import BARTScorer
 from datasets import load_dataset, load_metric
 from filelock import FileLock
 from retrieval_exploration import perturbations
@@ -794,7 +793,6 @@ def main():
     # Metrics
     rouge = load_metric("rouge")
     bertscore = load_metric("bertscore")
-    bartscore = BARTScorer(device=training_args.device, checkpoint="facebook/bart-large-cnn")
 
     def postprocess_text(preds, labels):
         # Clean text by removing whitespace, newlines and tabs
@@ -859,21 +857,10 @@ def main():
             else:
                 bertscore_results[key] = value * 100
 
-        bartscore_results = bartscore.score(
-            decoded_preds,
-            decoded_labels,
-            # We can generally afford to use a batch size 4X greater than the eval batch size
-            batch_size=training_args.per_device_eval_batch_size * 4,
-        )
-        # Exponentiate to get scores between 0 and 1
-        bartscore_results = np.exp(bartscore_results).tolist()
-        bartscore_results = {
-            "score": [score * 100 for score in bartscore_results],
-            "mean": np.mean(bartscore_results) * 100,
-        }
+
 
         # Collect results in final dict
-        results = {"rouge": rouge_results, "bertscore": bertscore_results, "bartscore": bartscore_results}
+        results = {"rouge": rouge_results, "bertscore": bertscore_results}
 
         if inputs is not None:
             # TODO (John): We'd like to strip all special tokens but in some cases that would
