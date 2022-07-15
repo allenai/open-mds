@@ -5,7 +5,7 @@
     "summary_column": "related_work",
     "max_source_length": 4096,
     "max_target_length": 256,
-    "output_dir": "./output/multixscience/primera/perturbations/random/deletion/0.1",
+    "output_dir": "./output/multixscience/primera/perturbations/random/replacement/0.1",
     "overwrite_output_dir": true,
     "do_eval": true,
     "seed": 42,
@@ -18,7 +18,7 @@
     "sortish_sampler": true,
     "predict_with_generate": true,
     "generation_num_beams": 5,
-    "perturbation": "deletion",
+    "perturbation": "replacement",
     "perturbed_frac": 0.1,
     "perturbed_seed": 42
 }
