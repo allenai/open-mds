@@ -1,5 +1,6 @@
 import json
 import re
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -30,11 +31,13 @@ def unflatten(iterable, lengths):
 
 
 def jaccard_similarity_score(string_1: str, string_2: str) -> float:
-    """Returns the Jaccard similarity score between two strings, using the sets of whitespace tokens."""
+    """Returns the Jaccard similarity score between two strings, using the sets of whitespace tokens. Returns 1.0
+    if both strings are empty."""
     string_1_tokens = set(string_1.strip().split())
     string_2_tokens = set(string_2.strip().split())
     if not string_1_tokens and not string_2_tokens:
-        raise ValueError("Both strings cannot be empty.")
+        warnings.warn("Both string_1 and string_2 are empty. Returning 1.0.")
+        return 1.0
     return len(string_1_tokens & string_2_tokens) / len(string_1_tokens | string_2_tokens)
 
 
