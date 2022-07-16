@@ -26,10 +26,10 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import datasets
+import flatten_dict
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
 import transformers
-from bart_score import BARTScorer
 from datasets import load_dataset, load_metric
 from filelock import FileLock
 from retrieval_exploration import perturbations
@@ -52,8 +52,9 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode, send_example_telemetry
 from transformers.utils.versions import require_version
 
+
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
-check_min_version("4.20.0.dev0")
+check_min_version("4.21.0.dev0")
 
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt")
 
@@ -309,6 +310,7 @@ summarization_name_mapping = {
     "xglue": ("news_body", "news_title"),
     "xsum": ("document", "summary"),
     "wiki_summary": ("article", "highlights"),
+    "multi_news": ("document", "summary"),
 }
 
 
@@ -442,14 +444,6 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-
-    # Use summarization specific params if present in the config
-    task_specific_params = util.get_task_specific_params(model.config, task="summarization")
-    if task_specific_params is not None:
-        logger.info(
-            "Using summarization specific params from model config (note, some of these may be"
-            " overridden by arguments passed to this script)."
-        )
 
     model.resize_token_embeddings(len(tokenizer))
 
@@ -802,7 +796,6 @@ def main():
     # Metrics
     rouge = load_metric("rouge")
     bertscore = load_metric("bertscore")
-    bartscore = BARTScorer(device=training_args.device, checkpoint="facebook/bart-large-cnn")
 
     def postprocess_text(preds, labels):
         # Clean text by removing whitespace, newlines and tabs
@@ -867,21 +860,11 @@ def main():
             else:
                 bertscore_results[key] = value * 100
 
-        bartscore_results = bartscore.score(
-            decoded_preds,
-            decoded_labels,
-            # We can generally afford to use a batch size 4X greater than the eval batch size
-            batch_size=training_args.per_device_eval_batch_size * 4,
-        )
-        # Exponentiate to get scores between 0 and 1
-        bartscore_results = np.exp(bartscore_results).tolist()
-        bartscore_results = {
-            "score": [score * 100 for score in bartscore_results],
-            "mean": np.mean(bartscore_results) * 100,
+        # Collect results in final (flat) dict
+        results = {
+            **flatten_dict.flatten(rouge_results, reducer="underscore"),
+            **flatten_dict.flatten(bertscore_results, reducer="underscore"),
         }
-
-        # Collect results in final dict
-        results = {"rouge": rouge_results, "bertscore": bertscore_results, "bartscore": bartscore_results}
 
         if inputs is not None:
             # TODO (John): We'd like to strip all special tokens but in some cases that would
@@ -956,8 +939,6 @@ def main():
         metrics = trainer.evaluate(max_length=max_length, num_beams=num_beams, metric_key_prefix="eval")
         max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
-        # Record the number of documents (before perturbation) of each example in the validation set
-        metrics["num_docs"] = eval_dataset["num_docs"]
 
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
