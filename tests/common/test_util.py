@@ -9,7 +9,7 @@ from retrieval_exploration.common import util
 def test_jaccard_similarity_score() -> None:
     # Both strings cannot be empty
     with warnings.catch_warnings(record=True) as w:
-        _ = util.jaccard_similarity_score("", "")
+        assert util.jaccard_similarity_score("", "") == 1.0
         assert len(w) == 1
 
     # One string is empty
