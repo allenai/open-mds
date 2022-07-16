@@ -4,16 +4,16 @@
     "text_column": "document",
     "summary_column": "summary",
     "max_source_length": 4096,
-    "max_target_length": 768,
+    "max_target_length": 512,
     "output_dir": "./output/multinews/primera/perturbations/best-case/replacement/0.1",
     "overwrite_output_dir": true,
     "do_eval": true,
+    "per_device_eval_batch_size": 8,
     "seed": 42,
     "fp16": true,
     "dataloader_num_workers": 1,
     "group_by_length": true,
     "include_inputs_for_metrics": true,
-    "auto_find_batch_size": true,
     "torchdynamo": "nvfuser",
     "sortish_sampler": true,
     "predict_with_generate": true,
@@ -21,6 +21,5 @@
     "perturbation": "replacement",
     "perturbed_frac": 0.1,
     "sampling_strategy": "best-case",
-    "perturbed_seed": 42,
-    "max_eval_samples": 3072
+    "perturbed_seed": 42
 }

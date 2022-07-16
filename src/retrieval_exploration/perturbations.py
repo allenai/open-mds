@@ -592,6 +592,8 @@ def replacement(
             replace_indices = rng.sample(range(num_docs), k)
 
         else:
+            # In the best case, replace the least similar documents with the most similar documents and vice versa
+            # in the worst case.
             largest = strategy == "best-case"
             sampled_docs = _semantically_sample_docs(
                 inputs=inputs,
