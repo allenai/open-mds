@@ -1,4 +1,5 @@
 import copy
+import warnings
 from typing import Callable, List
 
 import pytest
@@ -7,8 +8,9 @@ from retrieval_exploration.common import util
 
 def test_jaccard_similarity_score() -> None:
     # Both strings cannot be empty
-    with pytest.raises(ValueError):
-        _ = util.jaccard_similarity_score("", "")
+    with warnings.catch_warnings(record=True) as w:
+        assert util.jaccard_similarity_score("", "") == 1.0
+        assert len(w) == 1
 
     # One string is empty
     assert util.jaccard_similarity_score("", "hello") == 0.0
