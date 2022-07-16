@@ -112,19 +112,21 @@ def test_preprocess_multi_x_science_sum() -> None:
 def test_preprocess_ms2() -> None:
     doc_sep_token = "<doc-sep>"
 
+    background = "This is the background."
     titles = ["This is title 1.", "This is title 2."]
     abstracts = ["This is abstract 1.", "This is abstract 2."]
     summary = "This is the summary."
 
     expected_text, expected_summary = (
-        "This is title 1. This is abstract 1. <doc-sep> This is title 2. This is abstract 2.",
+        "This is the background. <doc-sep> This is title 1. This is abstract 1. <doc-sep> This is title 2. This is abstract 2.",
         "This is the summary.",
     )
 
     actual_text, actual_summary = util.preprocess_ms2(
+        text=background,
+        summary=summary,
         titles=titles,
         abstracts=abstracts,
-        summary=summary,
         doc_sep_token=doc_sep_token,
     )
     assert expected_text == actual_text
