@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import datasets
+import flatten_dict
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
 import transformers
@@ -51,8 +52,9 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode, send_example_telemetry
 from transformers.utils.versions import require_version
 
+
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
-check_min_version("4.20.0.dev0")
+check_min_version("4.21.0.dev0")
 
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt")
 
@@ -308,6 +310,7 @@ summarization_name_mapping = {
     "xglue": ("news_body", "news_title"),
     "xsum": ("document", "summary"),
     "wiki_summary": ("article", "highlights"),
+    "multi_news": ("document", "summary"),
 }
 
 
@@ -442,14 +445,6 @@ def main():
         use_auth_token=True if model_args.use_auth_token else None,
     )
 
-    # Use summarization specific params if present in the config
-    task_specific_params = util.get_task_specific_params(model.config, task="summarization")
-    if task_specific_params is not None:
-        logger.info(
-            "Using summarization specific params from model config (note, some of these may be"
-            " overridden by arguments passed to this script)."
-        )
-
     model.resize_token_embeddings(len(tokenizer))
 
     if model.config.decoder_start_token_id is None and isinstance(tokenizer, (MBartTokenizer, MBartTokenizerFast)):
@@ -556,6 +551,14 @@ def main():
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
                         ref_abstract=examples["ref_abstract"][i],
+                        doc_sep_token=doc_sep_token,
+                    )
+                elif data_args.dataset_config_name == "ms2":
+                    text, summary = util.preprocess_ms2(
+                        text=examples[text_column][i],
+                        summary=examples[summary_column][i],
+                        titles=examples["title"][i],
+                        abstracts=examples["abstract"][i],
                         doc_sep_token=doc_sep_token,
                     )
                 else:
@@ -857,10 +860,11 @@ def main():
             else:
                 bertscore_results[key] = value * 100
 
-
-
-        # Collect results in final dict
-        results = {"rouge": rouge_results, "bertscore": bertscore_results}
+        # Collect results in final (flat) dict
+        results = {
+            **flatten_dict.flatten(rouge_results, reducer="underscore"),
+            **flatten_dict.flatten(bertscore_results, reducer="underscore"),
+        }
 
         if inputs is not None:
             # TODO (John): We'd like to strip all special tokens but in some cases that would
@@ -935,8 +939,6 @@ def main():
         metrics = trainer.evaluate(max_length=max_length, num_beams=num_beams, metric_key_prefix="eval")
         max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
-        # Record the number of documents (before perturbation) of each example in the validation set
-        metrics["num_docs"] = eval_dataset["num_docs"]
 
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)

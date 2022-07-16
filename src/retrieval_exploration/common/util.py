@@ -109,7 +109,6 @@ def truncate_multi_doc(
 
 
 def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
-    """Given an `example` dict, returns a tuple of strings containing the text and summary."""
     text = text.strip(_DOC_SEP_TOKENS["multi_news"]).strip()
     text = text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token)
     summary = summary.strip()
@@ -119,9 +118,20 @@ def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[
 def preprocess_multi_x_science_sum(
     text: str, summary: str, ref_abstract: Dict[str, List[str]], doc_sep_token: str
 ) -> Tuple[str, str]:
-    """Given an `example` dict, returns a tuple of strings containing the text and summary."""
     abstracts = [abstract.strip() for abstract in ref_abstract["abstract"]]
     text = f" {doc_sep_token} ".join([text.strip()] + abstracts)
+    summary = summary.strip()
+    return text, summary
+
+
+def preprocess_ms2(
+    text: str, summary: str, titles: List[str], abstracts: List[str], doc_sep_token: str
+) -> Tuple[str, str]:
+    background = text.strip()
+    articles = [f"{title.strip()} {abstract.strip()}" for title, abstract in zip(titles, abstracts)]
+    # Following https://arxiv.org/abs/2104.06486, take the first 25 articles.
+    articles = articles[:25]
+    text = f" {doc_sep_token} ".join([background] + articles)
     summary = summary.strip()
     return text, summary
 
@@ -236,13 +246,16 @@ def load_results_dicts(
 
                 if metric_columns is not None:
                     for metric in metric_columns:
-                        # Compute the aggregated, relative difference as a percent
-                        perturbation_df[f"{metric}_rel_diff"] = (
-                            (perturbation_df[metric].mean() - baseline_df[metric].mean())
-                            / np.abs(baseline_df[metric].mean())
-                        ) * 100
+                        perturbation_df["jaccard_similarity_scores"] = [
+                            jaccard_similarity_score(pre, post)
+                            for pre, post in zip(perturbation_df.eval_inputs, baseline_df.eval_inputs)
+                        ]
                         # Compute the per-instance absolute differences
                         perturbation_df[f"{metric}_delta"] = perturbation_df[metric] - baseline_df[metric]
+                        # Compute the aggregated, relative difference as a percent
+                        perturbation_df[f"{metric}_rel_diff"] = perturbation_df[f"{metric}_delta"] / np.abs(
+                            baseline_df[metric]
+                        )
             perturbation_dfs.append(perturbation_df)
     baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
     perturbed_df = pd.concat(perturbation_dfs, ignore_index=True)

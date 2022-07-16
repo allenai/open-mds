@@ -109,6 +109,30 @@ def test_preprocess_multi_x_science_sum() -> None:
     assert expected_summary == actual_summary
 
 
+def test_preprocess_ms2() -> None:
+    doc_sep_token = "<doc-sep>"
+
+    background = "This is the background."
+    titles = ["This is title 1.", "This is title 2."]
+    abstracts = ["This is abstract 1.", "This is abstract 2."]
+    summary = "This is the summary."
+
+    expected_text, expected_summary = (
+        "This is the background. <doc-sep> This is title 1. This is abstract 1. <doc-sep> This is title 2. This is abstract 2.",
+        "This is the summary.",
+    )
+
+    actual_text, actual_summary = util.preprocess_ms2(
+        text=background,
+        summary=summary,
+        titles=titles,
+        abstracts=abstracts,
+        doc_sep_token=doc_sep_token,
+    )
+    assert expected_text == actual_text
+    assert expected_summary == actual_summary
+
+
 def test_get_task_specific_params(hf_config: Callable) -> None:
     # Choose a model we know has task-specific parameters
     config = hf_config("allenai/PRIMERA")
