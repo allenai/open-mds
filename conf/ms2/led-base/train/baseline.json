@@ -15,10 +15,10 @@
     "do_train": true,
     "do_eval": true,
     "evaluation_strategy": "epoch",
-    "per_device_train_batch_size": 16,
-    "per_device_eval_batch_size": 32,
-    "gradient_accumulation_steps": 2,
-    "eval_delay": 2,
+    "per_device_train_batch_size": 1,
+    "per_device_eval_batch_size": 2,
+    "gradient_accumulation_steps": 8,
+    "eval_delay": 3,
     "learning_rate": 2e-5,
     "weight_decay": 0.01,
     "num_train_epochs": 5,
@@ -35,7 +35,5 @@
     "include_inputs_for_metrics": true,
     "torchdynamo": "nvfuser",
     "sortish_sampler": true,
-    "predict_with_generate": true,
-    "max_train_samples": 512,
-    "max_eval_samples": 256
+    "predict_with_generate": true
 }
