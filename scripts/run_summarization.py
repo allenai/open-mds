@@ -539,7 +539,7 @@ def main():
 
         inputs, targets = [], []
         for i in range(len(examples[text_column])):
-            if examples[text_column][i] is not None and examples[summary_column][i] is not None:
+            if examples[text_column][i] and examples[summary_column][i]:
                 if data_args.dataset_name == "multi_news":
                     text, summary = util.preprocess_multi_news(
                         text=examples[text_column][i],
