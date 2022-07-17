@@ -863,7 +863,7 @@ def main():
         # Collect results in final (flat) dict
         results = {
             **flatten_dict.flatten(rouge_results, reducer="underscore"),
-            **flatten_dict.flatten(bertscore_results, reducer="underscore"),
+            **flatten_dict.flatten({"bertscore": bertscore_results}, reducer="underscore"),
         }
 
         if inputs is not None:
