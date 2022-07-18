@@ -8,7 +8,7 @@ import flatten_dict
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from transformers import PretrainedConfig, PreTrainedTokenizer
+from transformers import PreTrainedTokenizer
 
 # Local constants
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
@@ -134,15 +134,6 @@ def preprocess_ms2(
     text = f" {doc_sep_token} ".join([background] + articles)
     summary = summary.strip()
     return text, summary
-
-
-def get_task_specific_params(config: PretrainedConfig, task: str) -> Optional[Dict[str, Any]]:
-    task_specific_params = None
-    if config.task_specific_params is not None:
-        task_specific_params = config.task_specific_params.get(task)
-        if task_specific_params:
-            config.update(task_specific_params)
-    return task_specific_params
 
 
 def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) -> List[List[int]]:

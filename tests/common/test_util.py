@@ -1,4 +1,3 @@
-import copy
 import warnings
 from typing import Callable, List
 
@@ -131,23 +130,6 @@ def test_preprocess_ms2() -> None:
     )
     assert expected_text == actual_text
     assert expected_summary == actual_summary
-
-
-def test_get_task_specific_params(hf_config: Callable) -> None:
-    # Choose a model we know has task-specific parameters
-    config = hf_config("allenai/PRIMERA")
-    assert config.early_stopping is False
-
-    # Check that we get the expected params and that the underlying model config was updated
-    summarization_specific_params = util.get_task_specific_params(config, task="summarization")
-    assert summarization_specific_params == config.task_specific_params["summarization"]
-    assert config.early_stopping is True
-
-    # Check that model config is not modified if no task-specific params are found
-    config_copy = copy.deepcopy(config)
-    translation_specific_params = util.get_task_specific_params(config, task="translation")
-    assert translation_specific_params is None
-    assert config_copy == config
 
 
 def test_get_doc_sep_token(hf_tokenizer: Callable) -> None:
