@@ -26,7 +26,7 @@ bert-score = {version = "^0.3.11", optional = true}
 [tool.poetry.extras]
 # Extra dependencies required for summarization tasks.
 # Taken from: https://github.com/huggingface/transformers/blob/main/examples/pytorch/summarization/requirements.txt
-summarization = ["py7zr", "protobuf", "rouge-score", "bert-score", "bart-score"]
+summarization = ["py7zr", "protobuf", "rouge-score", "bert-score"]
 
 [tool.poetry.dev-dependencies]
 black = {version = "^22.3.0", extras = ["jupyter"]}
