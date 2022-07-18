@@ -14,7 +14,6 @@
     "dataloader_num_workers": 1,
     "group_by_length": true,
     "include_inputs_for_metrics": true,
-    "torchdynamo": "nvfuser",
     "sortish_sampler": true,
     "predict_with_generate": true,
     "perturbation": "addition",
