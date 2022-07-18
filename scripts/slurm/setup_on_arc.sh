@@ -6,8 +6,11 @@
 ####################################################################################################
 
 # Load the required modules
-# Note: rust is only needed for compiling the tokenizers library
-module load StdEnv/2020 gcc/9.3.0 python/3.8 cuda/11.4 rust/1.59.0 arrow/7.0.0
+# Notes: 
+# - arrow needed for HF Datasets both during installation and use
+# - rust is needed for HF Tokenizers library (and possibly other libraries) only during installation
+# - java needed for Terrier (via PyTerrier) both during installation and use
+module load StdEnv/2020 gcc/9.3.0 python/3.8 cuda/11.4 arrow/7.0.0 rust/1.59.0 java/11.0.2
 
 # Setup the project and scratch directories
 PROJECT_NAME="retrieval-exploration"
@@ -24,9 +27,11 @@ source $(poetry env info --path)/bin/activate
 
 # Install the package
 pip install --no-index --upgrade pip
-poetry install
-
-# Install any task specific dependencies, e.g.
-poetry install -E "summarization"
+# This will be faster in most cases
+# See: https://github.com/python-poetry/poetry/issues/2094#issuecomment-605725577
+# poetry export -f requirements.txt --dev --extras "summarization" --without-hashes > requirements.txt
+# python -m pip install -r requirements.txt
+# poetry install
+poetry install --all-extras
 
 cd "$PROJECT/$USER/retrieval-exploration"
