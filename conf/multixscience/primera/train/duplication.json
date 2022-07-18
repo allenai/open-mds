@@ -21,7 +21,6 @@
     "include_inputs_for_metrics": true,
     "sortish_sampler": true,
     "predict_with_generate": true,
-    "generation_num_beams": 5,
     "perturbation": "duplication",
     "perturbed_frac": 0.1,
     "perturbed_seed": 42,
