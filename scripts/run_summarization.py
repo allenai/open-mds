@@ -564,6 +564,9 @@ def main():
                 else:
                     text, summary = examples[text_column][i], examples[summary_column][i]
 
+                # Do some basic cleanup on the source text
+                text = util.sanitize_text(text)
+
                 inputs.append(text)
                 targets.append(summary)
 
