@@ -21,6 +21,13 @@ _TRAINER_STATE_FILENAME = "trainer_state.json"
 _LOG_HISTORY_KEY = "log_history"
 
 
+def sanitize_text(text: str, lowercase: bool = False) -> str:
+    """Cleans text by removing whitespace, newlines and tabs and (optionally) lowercasing."""
+    sanitized_text = " ".join(text.strip().split())
+    sanitized_text = sanitized_text.lower() if lowercase else sanitized_text
+    return sanitized_text
+
+
 def unflatten(iterable, lengths):
     unflattened = []
     for i in range(len(lengths)):
