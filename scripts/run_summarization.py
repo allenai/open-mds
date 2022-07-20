@@ -32,6 +32,7 @@ import numpy as np
 import transformers
 from datasets import load_dataset, load_metric
 from filelock import FileLock
+from omegaconf import OmegaConf
 from retrieval_exploration import perturbations
 from retrieval_exploration.common import util
 from transformers import (
@@ -51,7 +52,6 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode, send_example_telemetry
 from transformers.utils.versions import require_version
-
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
@@ -324,6 +324,16 @@ def main():
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+    # Our unique parsing strategy exists here
+    elif sys.argv[1].endswith(".yml"):
+        root_conf = OmegaConf(os.path.abspath(sys.argv[1]))
+        cli_conf = OmegaConf.from_cli()
+        perturbed_conf = {}
+        if len(sys.argv) > 2 and sys.argv[2].endswith(".yml"):
+            perturbed_conf = OmegaConf(os.path.abspath(sys.argv[2]))
+        conf = OmegaConf.merge(root_conf, perturbed_conf, cli_conf)
+        conf = OmegaConf.to_object(conf)
+        model_args, data_args, training_args = parser.parse_dict(conf)
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
