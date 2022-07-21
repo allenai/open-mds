@@ -159,3 +159,5 @@ slurm-*.out
 output/
 # a location to stick temporary stuff to avoid git tracking it
 tmp/
+# Weights & Biases offline output directory
+wandb/
