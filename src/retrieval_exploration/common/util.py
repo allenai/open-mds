@@ -140,6 +140,7 @@ def batch_decode_multi_doc(sequences, tokenizer: PreTrainedTokenizer, doc_sep_to
     skip_special_tokens = kwargs.pop("skip_special_tokens", None)
     if skip_special_tokens:
         warnings.warn("`skip_special_tokens=True` was provided to batch_decode_multi_doc but will be ignored.")
+
     decoded_sequences = tokenizer.batch_decode(sequences, skip_special_tokens=False, **kwargs)
     pattern = rf"{tokenizer.pad_token}"
     if tokenizer.bos_token is not None and tokenizer.bos_token != doc_sep_token:
