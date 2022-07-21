@@ -4,7 +4,7 @@
     "text_column": "abstract",
     "summary_column": "related_work",
     "max_source_length": 4096,
-    "max_target_length": 384,
+    "max_target_length": 512,
     "output_dir": "./output/multixscience/primera/perturbations/worst-case/duplication/0.1",
     "overwrite_output_dir": true,
     "do_eval": true,
