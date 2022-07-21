@@ -133,8 +133,14 @@ def truncate_multi_doc(
     return f" {doc_sep_token} ".join(truncated_docs)
 
 
-def batch_decode_multi_doc(sequences, tokenizer: PreTrainedTokenizer, doc_sep_token: str):
-    decoded_sequences = tokenizer.batch_decode(sequences, skip_special_tokens=False)
+def batch_decode_multi_doc(sequences, tokenizer: PreTrainedTokenizer, doc_sep_token: str, **kwargs):
+    """Performs a similar function to HuggingFace Tokenizers batch_decode without removing the `doc_sep_token`."""
+
+    # skip_special_tokens must be false, so if use provided it as true via kwargs, warn them.
+    skip_special_tokens = kwargs.pop("skip_special_tokens", None)
+    if skip_special_tokens:
+        warnings.warn("`skip_special_tokens=True` was provided to batch_decode_multi_doc but will be ignored.")
+    decoded_sequences = tokenizer.batch_decode(sequences, skip_special_tokens=False, **kwargs)
     pattern = rf"{tokenizer.pad_token}"
     if tokenizer.bos_token is not None and tokenizer.bos_token != doc_sep_token:
         pattern += rf"|{tokenizer.bos_token}"

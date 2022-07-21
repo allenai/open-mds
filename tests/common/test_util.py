@@ -188,6 +188,14 @@ def test_batch_decode_multi_doc() -> None:
     inputs = [f"This is a test {doc_sep_token} with a doc-sep token {tokenizer.pad_token}"]
     input_ids = tokenizer(inputs).input_ids
 
+    # Function should complain if skip_special_tokens is True
+    with warnings.catch_warnings(record=True) as w:
+        _ = util.batch_decode_multi_doc(input_ids, tokenizer, doc_sep_token=doc_sep_token, skip_special_tokens=True)
+        assert (
+            str(w[0].message)
+            == "`skip_special_tokens=True` was provided to batch_decode_multi_doc but will be ignored."
+        )
+
     # When doc_sep_token != bos_token or eos_token
     expected = [f"This is a test {doc_sep_token} with a doc-sep token"]
     actual = util.batch_decode_multi_doc(input_ids, tokenizer, doc_sep_token=doc_sep_token)
