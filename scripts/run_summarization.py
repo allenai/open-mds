@@ -870,10 +870,7 @@ def main():
         }
 
         if inputs is not None:
-            # TODO (John): We'd like to strip all special tokens but in some cases that would
-            # remove the doc sep token, so at the very least strip the pad token.
-            decoded_inputs = tokenizer.batch_decode(inputs, skip_special_tokens=False)
-            decoded_inputs = [inputs.strip(tokenizer.pad_token) for inputs in decoded_inputs]
+            decoded_inputs = util.batch_decode_multi_doc(inputs, tokenizer, doc_sep_token=doc_sep_token)
 
             # TODO (John): A lot of these should be logged OUTSIDE this function.
             results["example_idx"] = list(range(len(decoded_inputs)))
