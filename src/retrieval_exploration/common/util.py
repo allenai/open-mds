@@ -87,6 +87,24 @@ def get_doc_sep_token(tokenizer: PreTrainedTokenizer) -> str:
         raise ValueError(f"Could not determine a suitable document sperator token '{tokenizer.name_or_path}'")
 
 
+def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) -> List[List[int]]:
+    """Returns a corresponding global attention mask for `input_ids`, which is 1 for any tokens in
+    `token_ids` (indicating the model should attend to those tokens) and 0 elsewhere (indicating the
+    model should not attend to those tokens).
+
+    # Parameters
+
+    input_ids : `List[List[str]]`
+        The input ids that will be provided to a model during the forward pass.
+    token_ids : `List[List[str]]`
+        The token ids that should be globally attended to.
+    """
+
+    # TODO (John): Ideally this would be vectorized
+    global_attention_mask = [[1 if token_id in token_ids else 0 for token_id in batch] for batch in input_ids]
+    return global_attention_mask
+
+
 def truncate_multi_doc(
     text: str,
     doc_sep_token: str,
@@ -115,6 +133,17 @@ def truncate_multi_doc(
     return f" {doc_sep_token} ".join(truncated_docs)
 
 
+def batch_decode_multi_doc(sequences, tokenizer: PreTrainedTokenizer, doc_sep_token: str):
+    decoded_sequences = tokenizer.batch_decode(sequences, skip_special_tokens=False)
+    pattern = rf"{tokenizer.pad_token}"
+    if tokenizer.bos_token is not None and tokenizer.bos_token != doc_sep_token:
+        pattern += rf"|{tokenizer.bos_token}"
+    if tokenizer.eos_token is not None and tokenizer.eos_token != doc_sep_token:
+        pattern += rf"|{tokenizer.eos_token}"
+    decoded_sequences = [re.sub(pattern, "", inputs).strip() for inputs in decoded_sequences]
+    return decoded_sequences
+
+
 def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
     text = text.strip(_DOC_SEP_TOKENS["multi_news"]).strip()
     text = text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token)
@@ -141,24 +170,6 @@ def preprocess_ms2(
     text = f" {doc_sep_token} ".join([background] + articles)
     summary = summary.strip()
     return text, summary
-
-
-def get_global_attention_mask(input_ids: List[List[int]], token_ids: List[int]) -> List[List[int]]:
-    """Returns a corresponding global attention mask for `input_ids`, which is 1 for any tokens in
-    `token_ids` (indicating the model should attend to those tokens) and 0 elsewhere (indicating the
-    model should not attend to those tokens).
-
-    # Parameters
-
-    input_ids : `List[List[str]]`
-        The input ids that will be provided to a model during the forward pass.
-    token_ids : `List[List[str]]`
-        The token ids that should be globally attended to.
-    """
-
-    # TODO (John): Ideally this would be vectorized
-    global_attention_mask = [[1 if token_id in token_ids else 0 for token_id in batch] for batch in input_ids]
-    return global_attention_mask
 
 
 def _read_result_dict(results_dict: Union[Dict[str, Any], List[Dict[str, Any]]], **kwargs) -> pd.DataFrame:

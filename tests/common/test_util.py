@@ -6,6 +6,7 @@ import pytest
 from hypothesis import given
 from hypothesis.strategies import booleans, text
 from retrieval_exploration.common import util
+from transformers import AutoTokenizer
 
 
 @given(text=text(), lowercase=booleans())
@@ -83,6 +84,121 @@ def test_get_num_docs() -> None:
     assert expected == actual
 
 
+def test_get_doc_sep_token(hf_tokenizer: Callable) -> None:
+    # A model from the PRIMERA family
+    tokenizer = hf_tokenizer("allenai/PRIMERA")
+    assert util.get_doc_sep_token(tokenizer) == util._DOC_SEP_TOKENS["primera"]
+
+    # A model which defines a sep_token
+    tokenizer = hf_tokenizer("bert-base-cased")
+    assert util.get_doc_sep_token(tokenizer) == tokenizer.sep_token
+
+    # A model which only defines an eos_token
+    tokenizer = hf_tokenizer("t5-small")
+    assert util.get_doc_sep_token(tokenizer) == tokenizer.eos_token
+
+    # Check that a ValueError is raised if no suitable token is found
+    tokenizer = hf_tokenizer("t5-small")
+    tokenizer.eos_token = None
+    with pytest.raises(ValueError):
+        _ = util.get_doc_sep_token(tokenizer)
+
+
+def test_get_global_attention_mask() -> None:
+    # Test a simple case with two tokens to be globally attended to
+    input_ids = [[117, 0, 6, 42], [0, 2, 117, 24]]
+    token_ids = [117, 42]
+    expected_global_attention_mask = [[1, 0, 0, 1], [0, 0, 1, 0]]
+    actual_global_attention_mask = util.get_global_attention_mask(input_ids=input_ids, token_ids=token_ids)
+    assert expected_global_attention_mask == actual_global_attention_mask
+
+    # Test the case when input_ids is empty
+    actual_global_attention_mask = util.get_global_attention_mask(input_ids=[], token_ids=token_ids)
+    expected_global_attention_mask = []
+    assert expected_global_attention_mask == actual_global_attention_mask
+
+    # Test the case when token_ids is empty
+    actual_global_attention_mask = util.get_global_attention_mask(input_ids=input_ids, token_ids=[])
+    expected_global_attention_mask = [[0, 0, 0, 0], [0, 0, 0, 0]]
+    assert expected_global_attention_mask == actual_global_attention_mask
+
+
+def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
+    max_length = 24
+    doc_sep_token = "<doc-sep>"
+    tokenizer = hf_tokenizer("allenai/PRIMERA")
+
+    # Test a simple case with two documents, where one is longer than the other
+    docs = [
+        "I am document one.",
+        # Including a document separator token at the end. Some examples in multi-news do this,
+        # so we should make sure it doesn't trip up logic.
+        f"I am document two. I am a little longer than document one. {doc_sep_token}",
+    ]
+    text = f" {doc_sep_token} ".join(docs)
+
+    expected = "I am document one. <doc-sep> I am document two. I am a little longer"
+    actual = util.truncate_multi_doc(text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer)
+    assert expected == actual
+    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
+
+    # Test a simple case with two documents, where both are the same length
+    docs = [
+        "I am document one. I am the same length as document two",
+        "I am document two. I am the same length as document one.",
+    ]
+    text = f" {doc_sep_token} ".join(docs)
+
+    expected = "I am document one. I am the same length <doc-sep> I am document two. I am the same length"
+    actual = util.truncate_multi_doc(text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer)
+    assert expected == actual
+    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
+
+    # Test that the argument num_docs is respected
+    docs = [
+        "I am document one. I am the same length as document two",
+        "I am document two. I am the same length as document one.",
+        "I am document three. I am the same length as both document one and two.",
+    ]
+    text = f" {doc_sep_token} ".join(docs)
+
+    expected = (
+        "I am document one. I am the same length <doc-sep>"
+        " I am document two. I am the same length <doc-sep>"
+        " I am document three. I am the same length"
+    )
+    actual = util.truncate_multi_doc(
+        text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer, num_docs=2
+    )
+    assert expected == actual
+    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
+
+    expected = "I am document one. I <doc-sep> I am document two. I <doc-sep> I am document three. I"
+    actual = util.truncate_multi_doc(
+        text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer, num_docs=3
+    )
+    assert expected == actual
+    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
+
+
+def test_batch_decode_multi_doc() -> None:
+    # A tokenizer with both bos and eos tokens
+    tokenizer = AutoTokenizer.from_pretrained("allenai/PRIMERA")
+    doc_sep_token = tokenizer.additional_special_tokens[0]
+    inputs = [f"This is a test {doc_sep_token} with a doc-sep token {tokenizer.pad_token}"]
+    input_ids = tokenizer(inputs).input_ids
+
+    # When doc_sep_token != bos_token or eos_token
+    expected = [f"This is a test {doc_sep_token} with a doc-sep token"]
+    actual = util.batch_decode_multi_doc(input_ids, tokenizer, doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+    # When doc_sep_token == bos_token or eos_token
+    expected = [f"{tokenizer.bos_token}This is a test {doc_sep_token} with a doc-sep token"]
+    actual = util.batch_decode_multi_doc(input_ids, tokenizer, doc_sep_token=tokenizer.bos_token)
+    assert expected == actual
+
+
 def test_preprocess_multi_news() -> None:
     doc_sep_token = "<doc-sep>"
 
@@ -150,100 +266,3 @@ def test_preprocess_ms2() -> None:
     )
     assert expected_text == actual_text
     assert expected_summary == actual_summary
-
-
-def test_get_doc_sep_token(hf_tokenizer: Callable) -> None:
-    # A model from the PRIMERA family
-    tokenizer = hf_tokenizer("allenai/PRIMERA")
-    assert util.get_doc_sep_token(tokenizer) == util._DOC_SEP_TOKENS["primera"]
-
-    # A model which defines a sep_token
-    tokenizer = hf_tokenizer("bert-base-cased")
-    assert util.get_doc_sep_token(tokenizer) == tokenizer.sep_token
-
-    # A model which only defines an eos_token
-    tokenizer = hf_tokenizer("t5-small")
-    assert util.get_doc_sep_token(tokenizer) == tokenizer.eos_token
-
-    # Check that a ValueError is raised if no suitable token is found
-    tokenizer = hf_tokenizer("t5-small")
-    tokenizer.eos_token = None
-    with pytest.raises(ValueError):
-        _ = util.get_doc_sep_token(tokenizer)
-
-
-def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
-    max_length = 24
-    doc_sep_token = "<doc-sep>"
-    tokenizer = hf_tokenizer("allenai/PRIMERA")
-
-    # Test a simple case with two documents, where one is longer than the other
-    docs = [
-        "I am document one.",
-        # Including a document separator token at the end. Some examples in multi-news do this,
-        # so we should make sure it doesn't trip up logic.
-        f"I am document two. I am a little longer than document one. {doc_sep_token}",
-    ]
-    text = f" {doc_sep_token} ".join(docs)
-
-    expected = "I am document one. <doc-sep> I am document two. I am a little longer"
-    actual = util.truncate_multi_doc(text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer)
-    assert expected == actual
-    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
-
-    # Test a simple case with two documents, where both are the same length
-    docs = [
-        "I am document one. I am the same length as document two",
-        "I am document two. I am the same length as document one.",
-    ]
-    text = f" {doc_sep_token} ".join(docs)
-
-    expected = "I am document one. I am the same length <doc-sep> I am document two. I am the same length"
-    actual = util.truncate_multi_doc(text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer)
-    assert expected == actual
-    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
-
-    # Test that the argument num_docs is respected
-    docs = [
-        "I am document one. I am the same length as document two",
-        "I am document two. I am the same length as document one.",
-        "I am document three. I am the same length as both document one and two.",
-    ]
-    text = f" {doc_sep_token} ".join(docs)
-
-    expected = (
-        "I am document one. I am the same length <doc-sep>"
-        " I am document two. I am the same length <doc-sep>"
-        " I am document three. I am the same length"
-    )
-    actual = util.truncate_multi_doc(
-        text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer, num_docs=2
-    )
-    assert expected == actual
-    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
-
-    expected = "I am document one. I <doc-sep> I am document two. I <doc-sep> I am document three. I"
-    actual = util.truncate_multi_doc(
-        text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer, num_docs=3
-    )
-    assert expected == actual
-    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
-
-
-def test_get_global_attention_mask() -> None:
-    # Test a simple case with two tokens to be globally attended to
-    input_ids = [[117, 0, 6, 42], [0, 2, 117, 24]]
-    token_ids = [117, 42]
-    expected_global_attention_mask = [[1, 0, 0, 1], [0, 0, 1, 0]]
-    actual_global_attention_mask = util.get_global_attention_mask(input_ids=input_ids, token_ids=token_ids)
-    assert expected_global_attention_mask == actual_global_attention_mask
-
-    # Test the case when input_ids is empty
-    actual_global_attention_mask = util.get_global_attention_mask(input_ids=[], token_ids=token_ids)
-    expected_global_attention_mask = []
-    assert expected_global_attention_mask == actual_global_attention_mask
-
-    # Test the case when token_ids is empty
-    actual_global_attention_mask = util.get_global_attention_mask(input_ids=input_ids, token_ids=[])
-    expected_global_attention_mask = [[0, 0, 0, 0], [0, 0, 0, 0]]
-    assert expected_global_attention_mask == actual_global_attention_mask
