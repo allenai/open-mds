@@ -1,4 +1,5 @@
 import re
+import sys
 import warnings
 from typing import Callable, List
 
@@ -24,6 +25,24 @@ def test_sanitize_text(text: str, lowercase: bool) -> None:
     # Only run if the generated text can be lowercased.
     if lowercase and text.lower().islower():
         assert all(not char.isupper() for char in sanitized)
+
+
+def test_parse_omega_conf() -> None:
+    # Simulate command line arguments
+    sys.argv = [
+        "this should be ignored",
+        "test_fixtures/conf/base.yml",
+        "test_fixtures/conf/extension.yml",
+        "argument_4=changed by cli!",
+    ]
+    expected = {
+        "argument_1": "argument 1",
+        "argument_2": "changed by extension.yml!",
+        "argument_3": "argument 3",
+        "argument_4": "changed by cli!",
+    }
+    actual = util.parse_omega_conf()
+    assert expected == actual
 
 
 def test_jaccard_similarity_score() -> None:

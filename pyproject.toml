@@ -7,10 +7,12 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.8"
+omegaconf = "^2.2.2"
 torch = "^1.10.0"
 transformers = "^4.19.0"
 tokenizers = "^0.12.1"
-datasets = "^2.1.0"
+# Can be removed after next release
+datasets = {git = "https://github.com/huggingface/datasets.git", rev = "main"}
 sentence-transformers = "^2.1.0"
 flatten-dict = "^0.4.2"
 sacremoses = "^0.0.53"

@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -7,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import flatten_dict
 import numpy as np
 import pandas as pd
+from omegaconf import OmegaConf
 from tqdm import tqdm
 from transformers import PreTrainedTokenizer
 
@@ -35,6 +37,17 @@ def unflatten(iterable, lengths):
         end = start + lengths[i]
         unflattened.append(iterable[start:end])
     return unflattened
+
+
+def parse_omega_conf() -> Dict[str, Any]:
+    # Assume anything that ends in ".yml" is a YAML file to be parsed, and everything else is cli args
+    cli_args = [arg for arg in sys.argv[1:][:] if not arg.endswith(".yml")]
+    yml_confs = [OmegaConf.load(arg) for arg in sys.argv[1:][:] if arg.endswith(".yml")]
+    cli_conf = OmegaConf.from_dotlist(cli_args)
+    # Merge the YAML configs in the order they were given, with the cli args taking precedence
+    conf = OmegaConf.merge(*yml_confs, cli_conf)
+    # HuggingFace expects a vanilla python dict, so perform the conversion here
+    return OmegaConf.to_object(conf)
 
 
 def jaccard_similarity_score(string_1: str, string_2: str) -> float:
