@@ -1,0 +1,11 @@
+# ModelArguments
+model_name_or_path: "allenai/PRIMERA-multinews"
+
+# DataTrainingArguments
+dataset_name: "multi_news"
+max_source_length: 4096
+max_target_length: 1024
+
+# Seq2SeqTrainingArguments
+do_eval: true
+per_device_eval_batch_size: 12
