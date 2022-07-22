@@ -7,5 +7,5 @@ max_source_length: 4096
 max_target_length: 1024
 
 # Seq2SeqTrainingArguments
-do_eval: true
+do_predict: true
 per_device_eval_batch_size: 12
