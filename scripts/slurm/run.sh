@@ -21,6 +21,9 @@
 #   "0.1"
  
 ### Environment ###
+# Add your W&B key here to enable W&B reporting
+# export WANDB_API_KEY=""
+
 module purge  # suggested in alliancecan docs: https://docs.alliancecan.ca/wiki/Running_jobs
 module load StdEnv/2020 gcc/9.3.0 python/3.8 arrow/7.0.0
 PROJECT_NAME="retrieval-exploration"
@@ -44,7 +47,7 @@ PERTURBED_SEED=42
 ### Job ###
 # This calls a modified version of the example summarization script from HF (with Trainer). For details,
 # see: https://github.com/huggingface/transformers/tree/main/examples/pytorch/summarization#with-trainer
-WANDB_API_KEY="b442afb40eb06cc42c9fc68618cc015acc7b5b31" \
+
 WANDB_MODE=offline \
 TRANSFORMERS_OFFLINE=1 \
 HF_DATASETS_OFFLINE=1 \
