@@ -591,6 +591,10 @@ def main():
         num_docs = [util.get_num_docs(text, doc_sep_token=doc_sep_token) for text in inputs]
         # make a copy of each input, so we can determine how much it was changed by perturbation
         pre_perturbed_inputs = copy.deepcopy(inputs)
+        # for some datasets, like MS^2, some items in the input are "special" and should not be perturbed
+        unperturbed = []
+        if data_args.config_name == "ms2":
+            unperturbed, inputs = [inputs[0]], inputs[1:]
 
         if perturbation_args.perturbation is None:
             logger.info("No perturbations will be applied.")
@@ -686,6 +690,8 @@ def main():
             )
         else:
             raise ValueError(f"Got an unexpected value for --perturbation: {perturbation_args.perturbation}")
+
+        inputs = unperturbed + inputs
 
         # To get a sense for the degree to which each perturbation changes the input, compute the token set ratio
         jaccard_similarity_scores = [
