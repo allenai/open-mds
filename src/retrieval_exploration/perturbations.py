@@ -54,10 +54,13 @@ class Perturber:
         self._perturbation = perturbation
 
         # TODO: Some sort of registry would be better
-        self._perturbation_func = getattr(self, self._perturbation, None)
-        if self._perturbation_func is None:
+        perturbation_func = getattr(self, self._perturbation, None)
+        if perturbation_func is None:
             raise ValueError(f"Got an unexpected value for perturbation: {perturbation}")
+        if strategy not in ["random", "best-case", "worst-case"]:
+            raise ValueError(f"Got an unexpected value for strategy: {strategy}")
 
+        self._perturbation_func = perturbation_func
         self._doc_sep_token = doc_sep_token
         self._strategy = strategy
         self._rng = random.Random(seed)
