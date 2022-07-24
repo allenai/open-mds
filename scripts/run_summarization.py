@@ -32,7 +32,7 @@ import numpy as np
 import transformers
 from datasets import load_dataset, load_metric
 from filelock import FileLock
-from retrieval_exploration import perturbations
+from retrieval_exploration.perturbations import Perturber
 from retrieval_exploration.common import util
 from transformers import (
     AutoConfig,
@@ -287,13 +287,15 @@ class PerturbationArguments:
         default=None,
         metadata={"help": "The pertubation to apply."},
     )
+    selection_strategy: str = field(
+        default="random",
+        metadata={
+            "help": "The selection strategy to use for the perturbation. Has no effect if perturbation is None."
+        },
+    )
     perturbed_frac: Optional[float] = field(
         default=None,
         metadata={"help": "Percent of input documents to perturb. Has no effect if perturbation is None."},
-    )
-    sampling_strategy: str = field(
-        default="random",
-        metadata={"help": "The sampling strategy to use for the perturbation. Has no effect if perturbation is None."},
     )
     perturbed_seed: Optional[int] = field(
         default=None,
@@ -594,98 +596,19 @@ def main():
 
         if perturbation_args.perturbation is None:
             logger.info("No perturbations will be applied.")
-        elif perturbation_args.perturbation == "backtranslation":
-            inputs = perturbations.backtranslation(
-                inputs=inputs,
-                doc_sep_token=doc_sep_token,
-                targets=targets,
-                perturbed_frac=perturbation_args.perturbed_frac,
-                strategy=perturbation_args.sampling_strategy,
-                seed=perturbation_args.perturbed_seed,
-            )
-            logger.info(
-                (
-                    f"{perturbation_args.perturbed_frac:.2%} of input documents in each example will be"
-                    f" back translated with sampling strategy '{perturbation_args.sampling_strategy}' before training/evaluation."
-                )
-            )
-        elif perturbation_args.perturbation == "sorting":
-            inputs = perturbations.sorting(
-                inputs=inputs,
-                doc_sep_token=doc_sep_token,
-                targets=targets,
-                perturbed_frac=perturbation_args.perturbed_frac,
-                strategy=perturbation_args.sampling_strategy,
-                seed=perturbation_args.perturbed_seed,
-            )
-            logger.info(
-                (
-                    f"Input documents in each example will be sorted with sampling strategy"
-                    f" '{perturbation_args.sampling_strategy}' before training/evaluation."
-                )
-            )
-        elif perturbation_args.perturbation == "duplication":
-            inputs = perturbations.duplication(
-                inputs=inputs,
-                doc_sep_token=doc_sep_token,
-                targets=targets,
-                perturbed_frac=perturbation_args.perturbed_frac,
-                strategy=perturbation_args.sampling_strategy,
-                seed=perturbation_args.perturbed_seed,
-            )
-            logger.info(
-                (
-                    f"{perturbation_args.perturbed_frac:.2%} of input documents in each example will be"
-                    f" duplicated with sampling strategy '{perturbation_args.sampling_strategy}' before training/evaluation."
-                )
-            )
-        elif perturbation_args.perturbation == "addition":
-            inputs = perturbations.addition(
-                inputs=inputs,
-                doc_sep_token=doc_sep_token,
-                targets=targets,
-                perturbed_frac=perturbation_args.perturbed_frac,
-                strategy=perturbation_args.sampling_strategy,
-                seed=perturbation_args.perturbed_seed,
-            )
-            logger.info(
-                (
-                    f"{perturbation_args.perturbed_frac:.2%} of input documents in each example will be"
-                    f" added with sampling strategy '{perturbation_args.sampling_strategy}' before training/evaluation."
-                )
-            )
-        elif perturbation_args.perturbation == "deletion":
-            inputs = perturbations.deletion(
-                inputs=inputs,
-                doc_sep_token=doc_sep_token,
-                targets=targets,
-                perturbed_frac=perturbation_args.perturbed_frac,
-                strategy=perturbation_args.sampling_strategy,
-                seed=perturbation_args.perturbed_seed,
-            )
-            logger.info(
-                (
-                    f"{perturbation_args.perturbed_frac:.2%} of input documents in each example will be"
-                    f" removed with sampling strategy '{perturbation_args.sampling_strategy}' before training/evaluation."
-                )
-            )
-        elif perturbation_args.perturbation == "replacement":
-            inputs = perturbations.replacement(
-                inputs=inputs,
-                doc_sep_token=doc_sep_token,
-                targets=targets,
-                perturbed_frac=perturbation_args.perturbed_frac,
-                strategy=perturbation_args.sampling_strategy,
-                seed=perturbation_args.perturbed_seed,
-            )
-            logger.info(
-                (
-                    f"{perturbation_args.perturbed_frac:.2%} of input documents in each example will be"
-                    f" replaced with sampling strategy '{perturbation_args.sampling_strategy}' before training/evaluation."
-                )
-            )
         else:
-            raise ValueError(f"Got an unexpected value for --perturbation: {perturbation_args.perturbation}")
+            perturber = Perturber(
+                perturbation_args.perturbation,
+                doc_sep_token=doc_sep_token,
+                strategy=perturbation_args.selection_strategy,
+                seed=perturbation_args.perturbed_seed,
+            )
+            inputs = perturber(inputs, perturbed_frac=perturbation_args.perturbed_frac, targets=targets)
+            logger.info(
+                f"Applying perturbation '{perturbation_args.perturbation}' with selection strategy"
+                f" '{perturbation_args.selection_strategy}' on {perturbation_args.perturbed_frac:.2%} of input"
+                " documents."
+            )
 
         # To get a sense for the degree to which each perturbation changes the input, compute the token set ratio
         jaccard_similarity_scores = [
@@ -889,8 +812,8 @@ def main():
             # TODO (John): A lot of these should be logged OUTSIDE this function.
             results["example_idx"] = list(range(len(decoded_inputs)))
             results["perturbation"] = perturbation_args.perturbation
+            results["selection_strategy"] = perturbation_args.selection_strategy
             results["perturbed_frac"] = perturbation_args.perturbed_frac
-            results["sampling_strategy"] = perturbation_args.sampling_strategy
             results["perturbed_seed"] = perturbation_args.perturbed_seed
             results["seed"] = training_args.seed
             results["model_name_or_path"] = model_args.model_name_or_path
