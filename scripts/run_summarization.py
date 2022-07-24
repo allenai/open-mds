@@ -287,15 +287,15 @@ class PerturbationArguments:
         default=None,
         metadata={"help": "The pertubation to apply."},
     )
-    perturbed_frac: Optional[float] = field(
-        default=None,
-        metadata={"help": "Percent of input documents to perturb. Has no effect if perturbation is None."},
-    )
     selection_strategy: str = field(
         default="random",
         metadata={
             "help": "The selection strategy to use for the perturbation. Has no effect if perturbation is None."
         },
+    )
+    perturbed_frac: Optional[float] = field(
+        default=None,
+        metadata={"help": "Percent of input documents to perturb. Has no effect if perturbation is None."},
     )
     perturbed_seed: Optional[int] = field(
         default=None,
@@ -812,8 +812,8 @@ def main():
             # TODO (John): A lot of these should be logged OUTSIDE this function.
             results["example_idx"] = list(range(len(decoded_inputs)))
             results["perturbation"] = perturbation_args.perturbation
-            results["perturbed_frac"] = perturbation_args.perturbed_frac
             results["selection_strategy"] = perturbation_args.selection_strategy
+            results["perturbed_frac"] = perturbation_args.perturbed_frac
             results["perturbed_seed"] = perturbation_args.perturbed_seed
             results["seed"] = training_args.seed
             results["model_name_or_path"] = model_args.model_name_or_path
