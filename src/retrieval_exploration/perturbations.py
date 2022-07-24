@@ -22,7 +22,7 @@ _BT_TO_MODEL_NAME = "Helsinki-NLP/opus-mt-da-en"
 @lru_cache(maxsize=None)
 def _get_doc_embeddings(input_docs: List[str], embedder: st.SentenceTransformer) -> torch.Tensor:
     """Return a `torch.Tensor` containing the embeddings of `input_docs` obtained using the SentenceTransformer
-    model `embedder`. The embeddings are cached, so that subsequent calls to this function with the same arguments
+    model `embedder`. The embeddings are cached so that subsequent calls to this function with the same arguments
     will not re-compute them.
     """
     return embedder.encode(input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True)
@@ -94,19 +94,18 @@ class Perturber:
 
         inputs : `List[str]`
             A list of strings, each string containing the input documents for one example. It is assumed
-            that documents are seperated by `doc_sep_token`. The returned list will be of the same length as
-            `inputs` and contain the perturbed documents.
+            that documents are separated by `doc_sep_token`.
         perturbed_frac : `float`, optional (default=None)
-            The percentage of documents in each example that should be perturbed. If not provided and selected
-            perturbation is not `"sorting"`, returns `inputs` unchanged.
+            The percentage of documents in each example that should be perturbed. The absolute number of perturbed
+            documents will be the ceiling of this value times the original number of documents. Has no effect if
+            selected `perturbation` is `"sorting"`. If falsey, returns `inputs` unchanged.
         targets : `List[str]`, optional (default=None)
             If provided, and `strategy` is not `"random"`, the input documents to perturb will be selected based on
             similarity or dissimilarity to these target documents, according to `strategy`. Must be the same
             length as `inputs`.
         documents : `List[str]`, optional (default=None)
-            If provided, and `strategy` is not `"random"`, these documents will be considered (along with the
-            document in `inputs`) for selection during perturbation. Has no effect if selected perturbation is not
-            `"addition"` or `"replacement"`.
+            If provided, these documents will be considered (along with the documents in `inputs`) for selection
+            during perturbation. Has no effect if selected `perturbation` is not `"addition"` or `"replacement"`.
         """
 
         if targets is not None and len(inputs) != len(targets):
@@ -153,6 +152,7 @@ class Perturber:
         target: Optional[str] = None,
         documents: Optional[List[str]] = None,
     ) -> str:
+        """ """
 
         input_docs = util.split_docs(example, doc_sep_token=self._doc_sep_token)
         num_docs = util.get_num_docs(example, doc_sep_token=self._doc_sep_token)
@@ -196,21 +196,20 @@ class Perturber:
         target: Optional[str] = None,
         documents: Optional[List[str]] = None,
     ) -> str:
-        """Given `inputs`, a list of strings where each string contains the input documents seperated
-        by `doc_sep_token` of one example from the dataset, perturbs the input by randomly shuffling the
-        order of documents in each example.
+        """Perturbs the documents in `example` by sorting them according to the selected `strategy`.
 
         # Parameters
 
-        inputs : `List[str]`
-            A list of strings, each string containing the input documents for one example. It is assumed
-            that documents are seperated by `doc_sep_token`.
+        example : `str`
+            A string containing the input documents for one example. It is assumed that documents are separated by
+            `doc_sep_token`.
         perturbed_frac : `float`, optional (default=None)
             Has no effect. Exists for consistency with other perturbation functions.
-        seed : `int`, optional (default=None)
-            If provided, will locally set the seed of the `random` module with this value.
+        target : `str`, optional (default=None)
+            If provided, documents will be perturbed based on comparison to this text.
+        documents : `List[str]`, optional (default=None)
+            Has no effect. Exists for consistency with other perturbation functions.
         """
-
         input_docs = util.split_docs(example, doc_sep_token=self._doc_sep_token)
 
         if self._strategy == "random":
@@ -234,24 +233,21 @@ class Perturber:
         target: Optional[str] = None,
         documents: Optional[List[str]] = None,
     ) -> str:
-        """Given `inputs`, a list of strings where each string contains the input documents seperated
-        by `doc_sep_token` of one example from the dataset, perturbs the input by replacing `perturbed_frac`
-        percent of documents in each example with a random document sampled from `inputs.`
+        """Perturbs the documents in `example` by duplicating them according to the selected `strategy`.
 
         # Parameters
 
-        inputs : `List[str]`
-            A list of strings, each string containing the input documents for one example. It is assumed
-            that documents are seperated by `doc_sep_token`.
-        doc_sep_token : `str`
-            The token that separates individual documents in `inputs`.
+        example : `str`
+            A string containing the input documents for one example. It is assumed that documents are separated by
+            `doc_sep_token`.
         perturbed_frac : `float`, optional (default=None)
-            The percentage of documents in each example that should be randomly replaced with a document
-            sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
-        seed : `int`, optional (default=None)
-            If provided, will locally set the seed of the `random` module with this value.
+            The percentage of documents in each example that should be perturbed. The absolute number of perturbed
+            documents will be the ceiling of this value times the original number of documents.
+        target : `str`, optional (default=None)
+            If provided, documents will be perturbed based on comparison to this text.
+        documents : `List[str]`, optional (default=None)
+            Has no effect. Exists for consistency with other perturbation functions.
         """
-
         input_docs = util.split_docs(example, doc_sep_token=self._doc_sep_token)
         num_docs = util.get_num_docs(example, doc_sep_token=self._doc_sep_token)
 
@@ -282,24 +278,22 @@ class Perturber:
         documents: List[str],
         target: Optional[str] = None,
     ) -> str:
-        """Given `inputs`, a list of strings where each string contains the input documents seperated
-        by `doc_sep_token` of one example from the dataset, perturbs the input by adding `perturbed_frac`
-        percent of documents in each example with a random document sampled from `inputs.`
+        """Perturbs the documents in `example` by adding additional documents according to the selected `strategy`.
 
         # Parameters
 
-        inputs : `List[str]`
-            A list of strings, each string containing the input documents for one example. It is assumed
-            that documents are seperated by `doc_sep_token`.
-        doc_sep_token : `str`
-            The token that separates individual documents in `inputs`.
+        example : `str`
+            A string containing the input documents for one example. It is assumed that documents are separated by
+            `doc_sep_token`.
         perturbed_frac : `float`, optional (default=None)
-            The percentage of documents in each example that should be randomly replaced with a document
-            sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
-        seed : `int`, optional (default=None)
-            If provided, will locally set the seed of the `random` module with this value.
+            The percentage of documents in each example that should be perturbed. The absolute number of perturbed
+            documents will be the ceiling of this value times the original number of documents.
+        target : `str`, optional (default=None)
+            If provided, documents will be perturbed based on comparison to this text.
+        documents : `List[str]`, optional (default=None)
+            If provided, these documents will be considered (along with the documents in `example`) for selection
+            during perturbation.
         """
-
         input_docs = util.split_docs(example, doc_sep_token=self._doc_sep_token)
         num_docs = util.get_num_docs(example, doc_sep_token=self._doc_sep_token)
 
@@ -328,24 +322,21 @@ class Perturber:
         target: Optional[str] = None,
         documents: Optional[List[str]] = None,
     ) -> str:
-        """Given `inputs`, a list of strings where each string contains the input documents seperated
-        by `doc_sep_token` of one example from the dataset, perturbs the input by removing `perturbed_frac`
-        percent of documents in each example at random.
+        """Perturbs the documents in `example` by deleting documents according to the selected `strategy`.
 
         # Parameters
 
-        inputs : `List[str]`
-            A list of strings, each string containing the input documents for one example. It is assumed
-            that documents are seperated by `doc_sep_token`.
-        doc_sep_token : `str`
-            The token that separates individual documents in `inputs`.
+        example : `str`
+            A string containing the input documents for one example. It is assumed that documents are separated by
+            `doc_sep_token`.
         perturbed_frac : `float`, optional (default=None)
-            The percentage of documents in each example that should be randomly replaced with a document
-            sampled from `inputs`. If None (or falsey), no documents will be perturbed as this is a no-op.
-        seed : `int`, optional (default=None)
-            If provided, will locally set the seed of the `random` module with this value.
+            The percentage of documents in each example that should be perturbed. The absolute number of perturbed
+            documents will be the ceiling of this value times the original number of documents.
+        target : `str`, optional (default=None)
+            If provided, documents will be perturbed based on comparison to this text.
+        documents : `List[str]`, optional (default=None)
+            Has no effect. Exists for consistency with other perturbation functions.
         """
-
         input_docs = util.split_docs(example, doc_sep_token=self._doc_sep_token)
         num_docs = util.get_num_docs(example, doc_sep_token=self._doc_sep_token)
 
@@ -382,7 +373,22 @@ class Perturber:
         documents: List[str],
         target: Optional[str] = None,
     ) -> str:
+        """Perturbs the documents in `example` by replacing them according to the selected `strategy`.
 
+        # Parameters
+
+        example : `str`
+            A string containing the input documents for one example. It is assumed that documents are separated by
+            `doc_sep_token`.
+        perturbed_frac : `float`, optional (default=None)
+            The percentage of documents in each example that should be perturbed. The absolute number of perturbed
+            documents will be the ceiling of this value times the original number of documents.
+        target : `str`, optional (default=None)
+            If provided, documents will be perturbed based on comparison to this text.
+        documents : `List[str]`, optional (default=None)
+            If provided, these documents will be considered (along with the documents in `example`) for selection
+            during perturbation.
+        """
         input_docs = util.split_docs(example, doc_sep_token=self._doc_sep_token)
         num_docs = util.get_num_docs(example, doc_sep_token=self._doc_sep_token)
 
@@ -428,14 +434,14 @@ class Perturber:
         largest: bool = True,
     ) -> List[str]:
         """Randomly samples `k` documents without replacement from `documents` according to `strategy`. Assumes
-        that each string in `documents` contains one or more document separated by `doc_sep_token`. Any documents
+        that each string in `documents` contains one or more documents separated by `doc_sep_token`. Any documents
         in `query`, which should be formatted similar to documents, will be excluded from selection.
 
         # Parameters
 
         documents : `List[str]`
-            A list of strings to sample documents from. It is assumed that each string contains the input documents
-            for one example, and that that items in this list are seperated by `doc_sep_token`.
+            A list of strings to select documents from. It is assumed that each string contains the input documents
+            for one example and that items in this list are separated by `doc_sep_token`.
         k : `int`
             The number of documents to sample (without replacement) from `documents`.
         query : `str`, optional (default=None)
@@ -445,7 +451,7 @@ class Perturber:
         target : `str`, optional (default=None)
             If provided, documents will be selected based on comparison to `target` instead of `query`.
         largest : `bool`
-            If `True`, the top-k documents are returned, otherwise the bottom-k documents are returned.
+            If `True`, the top-k documents are returned. Otherwise the bottom-k documents are returned.
         """
         if self._strategy != "random" and not query and not target:
             raise ValueError(
@@ -491,6 +497,6 @@ class Perturber:
             scores = st.util.dot_score(query_embedding, doc_embeddings)
             scores = torch.mean(scores, axis=0)
 
-        # Return the the top k most similar (or dissimilar) documents
+        # Return the top k most similar (or dissimilar) documents
         indices = torch.topk(scores, k=k, largest=largest, sorted=True).indices
         return [documents[i] for i in indices]
