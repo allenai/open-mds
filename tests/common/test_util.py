@@ -280,7 +280,10 @@ def test_preprocess_ms2() -> None:
     summary = "This is the summary."
 
     expected_text, expected_summary = (
-        "This is the background. <doc-sep> This is title 1. This is abstract 1. <doc-sep> This is title 2. This is abstract 2.",
+        (
+            "This is the background. <doc-sep> This is title 1. This is abstract 1. <doc-sep> This is title 2."
+            " This is abstract 2."
+        ),
         "This is the summary.",
     )
 
