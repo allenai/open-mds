@@ -35,11 +35,11 @@ cd "$HOME/projects/def-gbader/$USER/$PROJECT_NAME" || exit
 CONFIG_FILEPATH="$1"    # The path on disk to the yml config file
 OUTPUT_DIR="$2"         # The path on disk to save the output to
 PERTURBATION="$3"       # The perturbation to run
-SAMPLING_STRATEGY="$4"  # The selection strategy to use for perturbed documents
+SELECTION_STRATEGY="$4"  # The selection strategy to use for perturbed documents
 PERTURBED_FRAC="$5"     # The fraction of input documents to perturb
 # Allow these to be optional
 PERTURBATION=${PERTURBATION:=null}
-SAMPLING_STRATEGY=${SAMPLING_STRATEGY:=null}
+SELECTION_STRATEGY=${SELECTION_STRATEGY:=null}
 PERTURBED_FRAC=${PERTURBED_FRAC:=null}
 # Constants
 PERTURBED_SEED=42
@@ -54,6 +54,6 @@ HF_DATASETS_OFFLINE=1 \
 python "./scripts/run_summarization.py" "./conf/base.yml" "$CONFIG_FILEPATH" \
     output_dir="$OUTPUT_DIR" \
     perturbation="$PERTURBATION" \
-    sampling_strategy="$SAMPLING_STRATEGY" \
+    sampling_strategy="$SELECTION_STRATEGY" \
     perturbed_frac="$PERTURBED_FRAC" \
     perturbed_seed="$PERTURBED_SEED"

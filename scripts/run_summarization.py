@@ -291,9 +291,11 @@ class PerturbationArguments:
         default=None,
         metadata={"help": "Percent of input documents to perturb. Has no effect if perturbation is None."},
     )
-    sampling_strategy: str = field(
+    selection_strategy: str = field(
         default="random",
-        metadata={"help": "The sampling strategy to use for the perturbation. Has no effect if perturbation is None."},
+        metadata={
+            "help": "The selection strategy to use for the perturbation. Has no effect if perturbation is None."
+        },
     )
     perturbed_seed: Optional[int] = field(
         default=None,
@@ -598,7 +600,7 @@ def main():
             perturber = Perturber(
                 perturbation_args.perturbation,
                 doc_sep_token=doc_sep_token,
-                strategy=perturbation_args.sampling_strategy,
+                strategy=perturbation_args.selection_strategy,
                 seed=perturbation_args.perturbed_seed,
             )
             inputs = perturber(inputs, perturbed_frac=perturbation_args.perturbed_frac, targets=targets)
@@ -811,7 +813,7 @@ def main():
             results["example_idx"] = list(range(len(decoded_inputs)))
             results["perturbation"] = perturbation_args.perturbation
             results["perturbed_frac"] = perturbation_args.perturbed_frac
-            results["sampling_strategy"] = perturbation_args.sampling_strategy
+            results["selection_strategy"] = perturbation_args.selection_strategy
             results["perturbed_seed"] = perturbation_args.perturbed_seed
             results["seed"] = training_args.seed
             results["model_name_or_path"] = model_args.model_name_or_path
