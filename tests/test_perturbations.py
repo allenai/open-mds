@@ -10,44 +10,65 @@ from retrieval_exploration.common import util
 
 
 class TestPerturber:
-    def test_invalid_perturbation(self) -> None:
+    @pytest.mark.parametrize("strategy", ["random", "best-case", "worst-case"])
+    def test_invalid_perturbation(self, strategy: str) -> None:
         with pytest.raises(ValueError):
-            _ = perturbations.Perturber("this-is-invalid", doc_sep_token="<doc-sep>")
+            _ = perturbations.Perturber("this-is-invalid", doc_sep_token="<doc-sep>", strategy=strategy)
 
-    def test_mismatch_input_and_target_len(self) -> None:
+    @pytest.mark.parametrize(
+        "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
+    )
+    def test_invalid_strategy(self, perturbation: str) -> None:
         with pytest.raises(ValueError):
-            perturber = perturbations.Perturber("addition", doc_sep_token="<doc-sep>")
-            _ = perturber(["document 1 <doc-sep> document 2"], targets=["document 3"], perturbed_frac=0.1)
+            perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>", strategy="this-is-invalid")
 
-    def test_falsey_perturbed_frac(self) -> None:
+    @pytest.mark.parametrize(
+        "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
+    )
+    def test_mismatch_input_and_target_len(self, perturbation: str) -> None:
+        with pytest.raises(ValueError):
+            perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>")
+            _ = perturber(
+                ["document 1 <doc-sep> document 2"], targets=["document 3", "document 4"], perturbed_frac=0.1
+            )
+
+    @pytest.mark.parametrize("perturbation", ["backtranslation", "duplication", "addition", "deletion", "replacement"])
+    def test_falsey_perturbed_frac(self, perturbation: str) -> None:
         inputs = ["document 1 <doc-sep> document 2"]
-        perturber = perturbations.Perturber("addition", doc_sep_token="<doc-sep>")
+        perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>")
 
         with warnings.catch_warnings(record=True) as w:
             perturbed_inputs = perturber(inputs, perturbed_frac=None)
             assert inputs == perturbed_inputs
             assert str(w[0].message).endswith("Inputs will be returned unchanged.")
 
-    def test_unused_documents(self) -> None:
+    @pytest.mark.parametrize("perturbation", ["backtranslation", "duplication", "deletion"])
+    def test_unused_documents(self, perturbation: str) -> None:
         inputs = ["document 1 <doc-sep> document 2"]
         documents = ["document 3 <doc-sep> document 4"]
-        perturber = perturbations.Perturber("sorting", doc_sep_token="<doc-sep>")
+        perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>")
 
         with warnings.catch_warnings(record=True) as w:
             _ = perturber(inputs, perturbed_frac=0.1, documents=documents)
             assert str(w[0].message).endswith("They will be ignored.")
 
-    def test_falsey_query_and_target(self) -> None:
+    @pytest.mark.parametrize(
+        "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
+    )
+    @pytest.mark.parametrize("strategy", ["best-case", "worst-case"])
+    def test_falsey_query_and_target(self, perturbation: str, strategy: str) -> None:
         documents = ["document 1 <doc-sep> document 2", "document 3 <doc-sep> document 4"]
 
         # Fail to provide query and/or target when strategy is not "random"
-        perturber = perturbations.Perturber("addition", doc_sep_token="<doc-sep>", strategy="similar")
+        perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>", strategy=strategy)
         with pytest.raises(ValueError):
             _ = perturber._select_docs(documents, query=None, target=None, k=2)
 
-    def test_invalid_k(self) -> None:
+    @pytest.mark.parametrize("strategy", ["best-case", "worst-case"])
+    @pytest.mark.parametrize("perturbation", ["backtranslation", "duplication", "addition", "deletion", "replacement"])
+    def test_invalid_k(self, strategy: str, perturbation: str) -> None:
         documents = ["document 1 <doc-sep> document 2", "document 3 <doc-sep> document 4"]
-        perturber = perturbations.Perturber("addition", doc_sep_token="<doc-sep>", strategy="similar")
+        perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>", strategy=strategy)
 
         # Choose a k greater than the total number of documents WITH a query
         with pytest.raises(ValueError):
@@ -57,16 +78,19 @@ class TestPerturber:
         with pytest.raises(ValueError):
             _ = perturber._select_docs(documents, query=None, target=documents[0], k=5)
 
-    def test_unused_target(self) -> None:
+    @pytest.mark.parametrize(
+        "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
+    )
+    def test_unused_target(self, perturbation: str) -> None:
         documents = ["document 1 <doc-sep> document 2"]
         target = "Target text"
-        perturber = perturbations.Perturber("addition", doc_sep_token="<doc-sep>", strategy="random")
+        perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>", strategy="random")
 
         with warnings.catch_warnings(record=True) as w:
             _ = perturber._select_docs(documents, target=target, k=2)
             assert str(w[0].message).endswith("target will be ignored.")
 
-    def test_select_docs(self) -> None:
+    def test_select_docs_random(self) -> None:
         num_docs_per_example = 8
         doc_sep_token = "<doc-sep>"
         documents = [
@@ -76,44 +100,136 @@ class TestPerturber:
         target = "Target text"
         num_docs = [util.get_num_docs(example, doc_sep_token) for example in documents]
 
-        for strategy in ["random", "best-case", "worst-case"]:
+        # select_docs function is independent of perturbation type, so we can use any valid perturbation here
+        perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy="random")
 
-            perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy=strategy)
+        # Select documents given no query and no target
+        sampled_docs = perturber._select_docs(documents, query=None, target=None, k=2)
+        assert len(sampled_docs) == 2
+        assert all(doc.strip() in " ".join(documents) for doc in sampled_docs)
 
-            if strategy == "random":
-                sampled_docs = perturber._select_docs(documents, query=None, target=None, k=sum(num_docs) - 1)
-                assert len(sampled_docs) == sum(num_docs) - 1
-                assert all(doc.strip() in " ".join(documents) for doc in sampled_docs)
+        # Select documents given a query
+        sampled_docs = perturber._select_docs(
+            documents,
+            k=num_docs[1] - 1,
+            query=documents[0],
+        )
+        assert len(sampled_docs) == num_docs[1] - 1
+        assert all(example.strip() not in sampled_docs for example in documents[0].split(doc_sep_token))
+        assert all(doc in " ".join(documents) for doc in sampled_docs)
 
-            # Sample documents with a query
-            sampled_docs = perturber._select_docs(
-                documents,
-                k=num_docs[1] - 1,
-                query=documents[0],
+        # Sample documents with a target
+        sampled_docs = perturber._select_docs(
+            documents,
+            k=2,
+            target=target,
+        )
+        assert len(sampled_docs) == 2
+        assert all(doc.strip() in " ".join(documents) for doc in sampled_docs)
+
+        # Sample documents with a both a query and a target
+        sampled_docs = perturber._select_docs(
+            documents,
+            k=num_docs[1] - 1,
+            query=documents[0],
+            target=target,
+        )
+        assert len(sampled_docs) == num_docs[1] - 1
+        assert all(example.strip() not in sampled_docs for example in documents[0].split(doc_sep_token))
+        assert all(doc in " ".join(documents) for doc in sampled_docs)
+
+    @pytest.mark.parametrize("strategy", ["best-case", "worst-case"])
+    def test_select_docs(self, strategy: str) -> None:
+        doc_sep_token = "<doc-sep>"
+        documents = [
+            (
+                f"A mitochondrion is a double-membrane-bound organelle found in most eukaryotic organisms {doc_sep_token}"
+                f" Mitochondria use aerobic respiration to generate most of the cell's supply of adenosine triphosphate (ATP) {doc_sep_token}"
+                f" Mitochondria are commonly between 0.75 and 3 μm2 in area, but vary considerably in size and structure. {doc_sep_token}"
+                f" Stefani Joanne Angelina Germanotta, known professionally as Lady Gaga, is an American singer, songwriter, and actress. {doc_sep_token}"
+                f" Gaga's five succeeding studio albums all debuted atop the US Billboard 200. {doc_sep_token}"
             )
-            assert len(sampled_docs) == num_docs[1] - 1
-            assert all(example.strip() not in sampled_docs for example in documents[0].split(doc_sep_token))
-            assert all(doc in " ".join(documents) for doc in sampled_docs)
+        ]
 
-            # Sample documents with a target
-            sampled_docs = perturber._select_docs(
-                documents,
-                k=sum(num_docs) - 1,
-                target=target,
-            )
-            assert len(sampled_docs) == sum(num_docs) - 1
-            assert all(doc.strip() in " ".join(documents) for doc in sampled_docs)
+        # select_docs function is independent of perturbation type, or strategy
+        perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy=strategy)
 
-            # Sample documents with a both a query and a target
-            sampled_docs = perturber._select_docs(
-                documents,
-                k=num_docs[1] - 1,
-                query=documents[0],
-                target=target,
-            )
-            assert len(sampled_docs) == num_docs[1] - 1
-            assert all(example.strip() not in sampled_docs for example in documents[0].split(doc_sep_token))
-            assert all(doc in " ".join(documents) for doc in sampled_docs)
+        # Select documents given a query (largest == True)
+        query, *remaining = util.split_docs(documents[0], doc_sep_token)
+        expected = remaining[:2]
+        sampled_docs = perturber._select_docs(
+            documents,
+            k=2,
+            query=query,
+            largest=True,
+        )
+        assert len(sampled_docs) == 2
+        # Check that the query was excluded
+        assert query.strip() not in [doc.strip() for doc in sampled_docs]
+        # Check that the sampled documents are the most similar remaining documents
+        assert all(doc.strip() in expected for doc in sampled_docs)
+
+        # Select documents given a query (largest == False)
+        query, *remaining = util.split_docs(documents[0], doc_sep_token)
+        expected = remaining[-2:]
+        sampled_docs = perturber._select_docs(documents, k=2, query=query, largest=False)
+        assert len(sampled_docs) == 2
+        # Check that the query was excluded
+        assert query.strip() not in [doc.strip() for doc in sampled_docs]
+        # Check that the sampled documents are the most similar remaining documents
+        assert all(doc.strip() in expected for doc in sampled_docs)
+
+        # Sample documents with a target (largest == True)
+        target = "The number of mitochondria in a cell can vary widely by organism, tissue, and cell type."
+        expected = util.split_docs(documents[0], doc_sep_token)[:3]
+        sampled_docs = perturber._select_docs(
+            documents,
+            k=3,
+            target=target,
+            largest=True,
+        )
+        assert len(sampled_docs) == 3
+        assert all(doc.strip() in expected for doc in sampled_docs)
+
+        # Sample documents with a target (largest == False)
+        target = "The number of mitochondria in a cell can vary widely by organism, tissue, and cell type."
+        expected = util.split_docs(documents[0], doc_sep_token)[-2:]
+        sampled_docs = perturber._select_docs(
+            documents,
+            k=2,
+            target=target,
+            largest=False,
+        )
+        assert len(sampled_docs) == 2
+        assert all(doc.strip() in expected for doc in sampled_docs)
+
+        # Sample documents with a both a query and a target (largest == True)
+        target = "Gaga began performing as a teenager, singing at open mic nights and acting in school plays."
+        query, *remaining = util.split_docs(documents[0], doc_sep_token)
+        expected = remaining[-2:]
+        sampled_docs = perturber._select_docs(
+            documents,
+            k=2,
+            query=query,
+            target=target,
+            largest=True,
+        )
+        assert len(sampled_docs) == 2
+        assert all(doc.strip() in expected for doc in sampled_docs)
+
+        # Sample documents with a both a query and a target (largest == False)
+        target = "Gaga began performing as a teenager, singing at open mic nights and acting in school plays."
+        query, *remaining = util.split_docs(documents[0], doc_sep_token)
+        expected = remaining[:2]
+        sampled_docs = perturber._select_docs(
+            documents,
+            k=2,
+            query=query,
+            target=target,
+            largest=False,
+        )
+        assert len(sampled_docs) == 2
+        assert all(doc.strip() in expected for doc in sampled_docs)
 
     def test_backtranslation(self) -> None:
         # Use a lesser number of documents because the translation is slow
