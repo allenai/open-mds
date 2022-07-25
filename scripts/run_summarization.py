@@ -610,8 +610,14 @@ def main():
                 strategy=perturbation_args.selection_strategy,
                 seed=perturbation_args.perturbed_seed,
             )
+            # MS^2 examples begin with a background section, which should be excluded from perturbation
+            unperturbed_indices = [0] if data_args.dataset_config_name == "ms2" else None
             inputs = perturber(
-                inputs, perturbed_frac=perturbation_args.perturbed_frac, targets=targets, documents=documents
+                inputs,
+                perturbed_frac=perturbation_args.perturbed_frac,
+                targets=targets,
+                documents=documents,
+                unperturbed_indices=unperturbed_indices,
             )
             logger.info(
                 f"Applying perturbation '{perturbation_args.perturbation}' with selection strategy"
