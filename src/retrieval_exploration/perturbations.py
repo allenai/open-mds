@@ -3,7 +3,7 @@ import random
 import warnings
 from functools import lru_cache
 from itertools import zip_longest
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import more_itertools
 import nlpaug.augmenter.word as naw
@@ -90,6 +90,7 @@ class Perturber:
         perturbed_frac: float = None,
         targets: Optional[List[str]] = None,
         documents: Optional[List[str]] = None,
+        unperturbed_indices: Optional[List[int]] = None,
     ) -> List[str]:
         """
 
@@ -136,6 +137,12 @@ class Perturber:
         documents = inputs + documents if documents is not None else inputs
         documents = list(dict.fromkeys(documents))
 
+        # If unperturbed_indices provided, temporarily remove these documents before perturbation...
+        if unperturbed_indices is not None:
+            inputs, unperturbed_docs, documents = self._remove_unperturbed(
+                inputs=inputs, unperturbed_indices=unperturbed_indices, documents=documents
+            )
+
         perturbed_inputs = []
         for example, target in tqdm(
             zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
@@ -144,6 +151,14 @@ class Perturber:
                 example=example, target=target, perturbed_frac=perturbed_frac, documents=documents
             )
             perturbed_inputs.append(perturbed_example)
+
+        # ... then, insert them back in their original positions after perturbation
+        if unperturbed_indices is not None:
+            perturbed_inputs = self._replace_unperturbed(
+                perturbed_inputs=perturbed_inputs,
+                unperturbed_docs=unperturbed_docs,
+                unperturbed_indices=unperturbed_indices,
+            )
 
         return perturbed_inputs
 
@@ -188,7 +203,6 @@ class Perturber:
             input_docs[input_docs.index(sampled)] = " ".join(sent.strip() for sent in translated)
 
         perturbed_example = f" {self._doc_sep_token} ".join(input_docs)
-
         return perturbed_example
 
     def sorting(
@@ -365,7 +379,6 @@ class Perturber:
         pertured_example = f" {self._doc_sep_token} ".join(
             doc for j, doc in enumerate(input_docs) if j not in to_delete
         )
-
         return pertured_example
 
     def replacement(
@@ -504,3 +517,38 @@ class Perturber:
         # Return the top k most similar (or dissimilar) documents
         indices = torch.topk(scores, k=k, largest=largest, sorted=True).indices
         return [documents[i] for i in indices]
+
+    def _remove_unperturbed(
+        self, inputs: List[str], unperturbed_indices: List[int], documents: Optional[List[str]] = None
+    ) -> Tuple[List[str], List[List[str]], Optional[List[str]]]:
+        """Given a list of `unperturbed_indices`, remove the corresponding documents from `inputs` and `documents` and
+        returns a tuple of the resulting `inputs`, `unperturbed_indices` and `documents`.
+        """
+        example_docs = [util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in inputs]
+        unperturbed_docs = [[docs[i] for i in unperturbed_indices] for docs in example_docs]
+        example_docs = [
+            [doc for doc in example if doc not in more_itertools.flatten(unperturbed_docs)] for example in example_docs
+        ]
+        inputs = [f" {self._doc_sep_token} ".join(docs) for docs in example_docs]
+        # Horribly complicated way to remove all the unperturbed_docs from documents
+        if documents is not None:
+            documents = list(
+                set(
+                    more_itertools.flatten(
+                        util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in documents
+                    )
+                )
+                - set(more_itertools.flatten(unperturbed_docs))
+            )
+        return inputs, unperturbed_docs, documents
+
+    def _replace_unperturbed(
+        self, perturbed_inputs: List[str], unperturbed_docs: List[List[str]], unperturbed_indices: List[int]
+    ) -> List[str]:
+        """Inserts `unperturbed_docs` into `perturbed_inputs` at `unperturbed_indices`"""
+        perturbed_docs = [util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in perturbed_inputs]
+        for i, (unperturbed_example, perturbed_example) in enumerate(zip(unperturbed_docs, perturbed_docs)):
+            for unperturbed_doc, unperturbed_idx in zip(unperturbed_example, unperturbed_indices):
+                perturbed_example.insert(unperturbed_idx, unperturbed_doc)
+            perturbed_inputs[i] = f" {self._doc_sep_token} ".join(perturbed_example)
+        return perturbed_inputs
