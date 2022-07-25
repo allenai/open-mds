@@ -132,10 +132,6 @@ class Perturber:
         # Need an iterable, but an empty list as default value is bad practice
         targets = targets or []
 
-        # All examples that can be considered for selection (ignoring duplicates)
-        documents = inputs + documents if documents is not None else inputs
-        documents = list(dict.fromkeys(documents))
-
         perturbed_inputs = []
         for example, target in tqdm(
             zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
@@ -463,12 +459,11 @@ class Perturber:
         if self._strategy == "random" and target is not None:
             warnings.warn("strategy is random, but target is not None. target will be ignored.")
 
-        # Extract all individual documents
-        documents = list(
-            more_itertools.flatten(
-                util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in documents
-            )
+        # Extract all unique, individual documents
+        documents = more_itertools.flatten(
+            util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in documents
         )
+        documents = list(set(documents))
 
         # If query is provided, remove it from the possible inputs
         if query is not None:
