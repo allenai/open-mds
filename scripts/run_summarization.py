@@ -23,7 +23,7 @@ import logging
 import os
 import sys
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Dict, List, Optional
 
 import datasets
 import flatten_dict
@@ -32,8 +32,8 @@ import numpy as np
 import transformers
 from datasets import load_dataset, load_metric
 from filelock import FileLock
-from retrieval_exploration.perturbations import Perturber
 from retrieval_exploration.common import util
+from retrieval_exploration.perturbations import Perturber
 from transformers import (
     AutoConfig,
     AutoModelForSeq2SeqLM,
@@ -550,11 +550,12 @@ def main():
             f"`{model.__class__.__name__}`. This will lead to loss being calculated twice and will take up more memory"
         )
 
-    def preprocess_function(examples):
-        # remove pairs where at least one record is None
+    def _preprocess_batch(examples) -> Dict[str, List[str]]:
+        """Handles the logic for preprocessing a batch of examples."""
 
         inputs, targets = [], []
         for i in range(len(examples[text_column])):
+            # remove pairs where at least one record is None
             if examples[text_column][i] and examples[summary_column][i]:
                 if data_args.dataset_name == "multi_news":
                     text, summary = util.preprocess_multi_news(
@@ -588,6 +589,12 @@ def main():
 
         inputs = [prefix + inp for inp in inputs]
 
+        return {"inputs": inputs, "targets": targets}
+
+    def preprocess_function(examples):
+        preprocessed_batch = _preprocess_batch(examples)
+        inputs, targets = preprocessed_batch["inputs"], preprocessed_batch["targets"]
+
         # Before we perturb...
         # record the number of documents in each instance
         num_docs = [util.get_num_docs(text, doc_sep_token=doc_sep_token) for text in inputs]
@@ -603,7 +610,9 @@ def main():
                 strategy=perturbation_args.selection_strategy,
                 seed=perturbation_args.perturbed_seed,
             )
-            inputs = perturber(inputs, perturbed_frac=perturbation_args.perturbed_frac, targets=targets)
+            inputs = perturber(
+                inputs, perturbed_frac=perturbation_args.perturbed_frac, targets=targets, documents=documents
+            )
             logger.info(
                 f"Applying perturbation '{perturbation_args.perturbation}' with selection strategy"
                 f" '{perturbation_args.selection_strategy}' on {perturbation_args.perturbed_frac:.2%} of input"
@@ -668,6 +677,22 @@ def main():
     doc_sep_token = util.get_doc_sep_token(tokenizer)
     logger.info(f"Using {doc_sep_token} as the document seperator token.")
 
+    # Certain perturbations require us to provide all examples in the dataset, collect those here
+    documents = None
+    if perturbation_args.perturbation in ["addition", "replacement"] and perturbation_args.perturbed_frac:
+        documents = []
+        for split in raw_datasets:
+            preprocessed_dataset = raw_datasets[split].map(
+                _preprocess_batch,
+                batched=True,
+                num_proc=data_args.preprocessing_num_workers,
+                remove_columns=column_names,
+                load_from_cache_file=not data_args.overwrite_cache,
+                desc=f"Collecting documents from {split} set",
+            )
+            documents.extend(preprocessed_dataset["inputs"])
+        logger.info(f"Loaded {len(documents)} documents. These will be included for selection during perturbation.")
+
     if training_args.do_train:
         if "train" not in raw_datasets:
             raise ValueError("--do_train requires a train dataset")
@@ -683,7 +708,6 @@ def main():
                 remove_columns=column_names,
                 load_from_cache_file=not data_args.overwrite_cache,
                 desc="Running tokenizer on train dataset",
-                batch_size=None,
             )
 
     if training_args.do_eval:
@@ -702,7 +726,6 @@ def main():
                 remove_columns=column_names,
                 load_from_cache_file=not data_args.overwrite_cache,
                 desc="Running tokenizer on validation dataset",
-                batch_size=None,
             )
 
     if training_args.do_predict:
@@ -721,7 +744,6 @@ def main():
                 remove_columns=column_names,
                 load_from_cache_file=not data_args.overwrite_cache,
                 desc="Running tokenizer on prediction dataset",
-                batch_size=None,
             )
 
     # Data collator
