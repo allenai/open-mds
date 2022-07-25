@@ -132,6 +132,10 @@ class Perturber:
         # Need an iterable, but an empty list as default value is bad practice
         targets = targets or []
 
+        # All examples that can be considered for selection (ignoring duplicates)
+        documents = inputs + documents if documents is not None else inputs
+        documents = list(dict.fromkeys(documents))
+
         perturbed_inputs = []
         for example, target in tqdm(
             zip_longest(inputs, targets), desc="Perturbing inputs", total=max(len(inputs), len(targets))
@@ -472,7 +476,9 @@ class Perturber:
 
         # Check that we have enough documents to sample from
         if len(documents) < k:
-            raise ValueError(f"Not enough documents to sample {k} without replacement. Only have {len(documents)}.")
+            raise ValueError(
+                f"Not enough unique documents to sample {k} without replacement. Only have {len(documents)}."
+            )
 
         if self._strategy == "random":
             return self._rng.sample(documents, k)
