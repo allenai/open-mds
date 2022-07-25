@@ -139,7 +139,7 @@ class TestPerturber:
         assert all(doc in " ".join(documents) for doc in sampled_docs)
 
     @pytest.mark.parametrize("strategy", ["best-case", "worst-case"])
-    def test_select_docs(self, strategy: str) -> None:
+    def test_select_docs_non_random(self, strategy: str) -> None:
         doc_sep_token = "<doc-sep>"
         documents = [
             (
@@ -676,3 +676,94 @@ class TestPerturber:
             documents=documents,
         )
         assert expected == actual
+
+    @pytest.mark.parametrize("strategy", ["random", "best-case", "worst-case"])
+    @pytest.mark.parametrize(
+        "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
+    )
+    def test_unperturbed_indices(self, perturbation: str, strategy: str) -> None:
+        num_docs = 32
+        doc_sep_token = "<doc-sep>"
+        inputs = [
+            f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
+            f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs, num_docs * 2)),
+        ]
+        targets = [f"Target {i}" for i in range(len(inputs))] if strategy != "random" else None
+        unperturbed_indices = [0, 3]
+
+        perturber = perturbations.Perturber(perturbation, doc_sep_token=doc_sep_token, strategy=strategy)
+        perturbed_inputs = perturber(
+            inputs, targets=targets, perturbed_frac=0.25, unperturbed_indices=unperturbed_indices
+        )
+
+        # Check that...
+        input_docs = [util.split_docs(example, doc_sep_token=doc_sep_token) for example in inputs]
+        perturbed_docs = [util.split_docs(example, doc_sep_token=doc_sep_token) for example in perturbed_inputs]
+        # ...the unperturbed documents are not perturbed and appear at the expected indices
+        for idx in unperturbed_indices:
+            assert input_docs[0][idx] == perturbed_docs[0][idx]
+            assert input_docs[1][idx] == perturbed_docs[1][idx]
+            # ...the unperturbed documents from one example don't appear in the perturbed documents of another examples
+            assert input_docs[0][idx] not in perturbed_docs[1]
+            assert input_docs[1][idx] not in perturbed_docs[0]
+
+    @pytest.mark.parametrize("strategy", ["random", "best-case", "worst-case"])
+    @pytest.mark.parametrize(
+        "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
+    )
+    def test_remove_unperturbed(self, perturbation: str, strategy: str) -> None:
+        num_docs = 16
+        doc_sep_token = "<doc-sep>"
+        inputs = [
+            f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
+            f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs, num_docs * 2)),
+        ]
+        unperturbed_indices = [0, 3]
+        # Include one document not in unperturbed_indices
+        documents = [f"Document 0 {doc_sep_token} Document 19 {doc_sep_token} Document 2"]
+
+        perturber = perturbations.Perturber(perturbation, doc_sep_token=doc_sep_token, strategy=strategy)
+
+        # Build up the expected outputs
+        expected_inputs = [
+            f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs) if i not in unperturbed_indices),
+            f" {doc_sep_token} ".join(
+                f"Document {i}" for i in range(num_docs, num_docs * 2) if (i - num_docs) not in unperturbed_indices
+            ),
+        ]
+        expected_unperturbed_docs = [
+            [util.split_docs(input_, doc_sep_token=doc_sep_token)[idx] for idx in unperturbed_indices]
+            for input_ in inputs
+        ]
+        expected_documents = ["Document 2"]
+
+        # Check that the expected documents are unperturbed
+        actual_inputs, actual_unperturbed_docs, actual_documents = perturber._remove_unperturbed(
+            inputs, unperturbed_indices=unperturbed_indices, documents=documents
+        )
+        assert expected_inputs == actual_inputs
+        assert expected_unperturbed_docs == actual_unperturbed_docs
+        assert expected_documents == actual_documents
+
+    @pytest.mark.parametrize("strategy", ["random", "best-case", "worst-case"])
+    @pytest.mark.parametrize(
+        "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
+    )
+    def test_replace_unperturbed(self, perturbation: str, strategy: str) -> None:
+        doc_sep_token = "<doc-sep>"
+        perturbed_inputs = [f"Document 0 {doc_sep_token} Document 1", f"Document 2 {doc_sep_token} Document 3"]
+        unperturbed_docs = [
+            ["Unperturbed 0", "Unperturbed 1"],
+            ["Unperturbed 2", "Unperturbed 3"],
+        ]
+        unperturbed_indices = [0, 2]
+
+        perturber = perturbations.Perturber(perturbation, doc_sep_token=doc_sep_token, strategy=strategy)
+
+        actual_perturbed_inputs = perturber._replace_unperturbed(
+            perturbed_inputs, unperturbed_docs=unperturbed_docs, unperturbed_indices=unperturbed_indices
+        )
+        for expected_docs, actual in zip(unperturbed_docs, actual_perturbed_inputs):
+            actual_docs = util.split_docs(actual, doc_sep_token=doc_sep_token)
+            for i, idx in enumerate(unperturbed_indices):
+                assert actual_docs[idx] == expected_docs[i]
