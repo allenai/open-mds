@@ -463,12 +463,11 @@ class Perturber:
         if self._strategy == "random" and target is not None:
             warnings.warn("strategy is random, but target is not None. target will be ignored.")
 
-        # Extract all individual documents
-        documents = list(
-            more_itertools.flatten(
-                util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in documents
-            )
+        # Extract all unique, individual documents
+        documents = more_itertools.flatten(
+            util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in documents
         )
+        documents = list(set(documents))
 
         # If query is provided, remove it from the possible inputs
         if query is not None:
@@ -477,7 +476,9 @@ class Perturber:
 
         # Check that we have enough documents to sample from
         if len(documents) < k:
-            raise ValueError(f"Not enough documents to sample {k} without replacement. Only have {len(documents)}.")
+            raise ValueError(
+                f"Not enough unique documents to sample {k} without replacement. Only have {len(documents)}."
+            )
 
         if self._strategy == "random":
             return self._rng.sample(documents, k)

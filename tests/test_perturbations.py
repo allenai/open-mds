@@ -441,9 +441,11 @@ class TestPerturber:
             f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar",
         ]
         targets = ["this is a story about a cat", "this is a story about a cat"]
+        documents = [f"this is yet another story about a cat {doc_sep_token} this is yet another story about a dog"]
 
-        # best-case
         perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy="best-case")
+
+        # best-case, no documents
         expected = [
             (
                 f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
@@ -456,13 +458,33 @@ class TestPerturber:
         ]
         actual = perturber(
             inputs=inputs,
-            perturbed_frac=0.10,
+            perturbed_frac=0.1,
             targets=targets,
         )
         assert expected == actual
 
-        # worst-case
+        # best-case, with documents
+        expected = [
+            (
+                f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
+                f" this is another story about a cat {doc_sep_token} this is yet another story about a cat"
+            ),
+            (
+                f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar {doc_sep_token}"
+                f" this is a story about a cat {doc_sep_token} this is yet another story about a cat"
+            ),
+        ]
+        actual = perturber(
+            inputs=inputs,
+            perturbed_frac=1.0,
+            targets=targets,
+            documents=documents,
+        )
+        assert expected == actual
+
         perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy="worst-case")
+
+        # worst-case, no documents
         expected = [
             (
                 f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
@@ -475,8 +497,27 @@ class TestPerturber:
         ]
         actual = perturber(
             inputs=inputs,
-            perturbed_frac=0.10,
+            perturbed_frac=0.1,
             targets=targets,
+        )
+        assert expected == actual
+
+        # worst-case, with documents
+        expected = [
+            (
+                f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
+                f" this looks purposfully dissimilar {doc_sep_token} this is yet another story about a dog"
+            ),
+            (
+                f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar {doc_sep_token}"
+                f" this is yet another story about a dog {doc_sep_token} this is a story about a dog"
+            ),
+        ]
+        actual = perturber(
+            inputs=inputs,
+            perturbed_frac=1.0,
+            targets=targets,
+            documents=documents,
         )
         assert expected == actual
 
@@ -576,9 +617,11 @@ class TestPerturber:
             "this is a story about something else",
         ]
         targets = ["this is a story about a cat", "this is a story about a dog", "this is a story about a dog"]
+        documents = [f"this is yet another story about a cat {doc_sep_token} this is yet another story about a dog"]
 
-        # best-case
         perturber = perturbations.Perturber("replacement", doc_sep_token=doc_sep_token, strategy="best-case")
+
+        # best-case, no documents
         expected = [
             f"this is a story about a siamese cat {doc_sep_token} this is a story about a cat",
             "this is a story about a dog",
@@ -591,8 +634,23 @@ class TestPerturber:
         )
         assert expected == actual
 
-        # worst-case
+        # best-case, with documents
+        expected = [
+            f"this is yet another story about a cat {doc_sep_token} this is a story about a siamese cat",
+            "this is a story about a dog",
+            "this is a story about a dog",
+        ]
+        actual = perturber(
+            inputs=inputs,
+            perturbed_frac=1.0,
+            targets=targets,
+            documents=documents,
+        )
+        assert expected == actual
+
         perturber = perturbations.Perturber("replacement", doc_sep_token=doc_sep_token, strategy="worst-case")
+
+        # worst-case, no documents
         expected = [
             f"this is a story about a dog {doc_sep_token} this is a story about something else",
             "this is a story about something else",
@@ -602,5 +660,19 @@ class TestPerturber:
             inputs=inputs,
             perturbed_frac=0.10,
             targets=targets,
+        )
+        assert expected == actual
+
+        # worst-case, with documents
+        expected = [
+            f"this is yet another story about a dog {doc_sep_token} this is a story about something else",
+            "this is a story about something else",
+            "this is a story about a siamese cat",
+        ]
+        actual = perturber(
+            inputs=inputs,
+            perturbed_frac=1.0,
+            targets=targets,
+            documents=documents,
         )
         assert expected == actual
