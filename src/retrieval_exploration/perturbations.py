@@ -202,7 +202,7 @@ class Perturber:
                 else:
                     # We backtranslate individual sentences, which improves backtranslation quality.
                     # This is likely because it more closely matches the MT models training data.
-                    back_translated_sents = self._aug.augment(nltk.sent_tokenize(doc))
+                    back_translated_sents = self._aug.augment(nltk.sent_tokenize(doc))  # type: ignore
                     back_translated_doc = util.sanitize_text(" ".join(sent for sent in back_translated_sents))
                     reference[key] = back_translated_doc
                     back_translated_docs.append(back_translated_doc)
