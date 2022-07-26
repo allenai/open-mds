@@ -618,6 +618,7 @@ def main():
             # as they are not something we would retrieve.
             if data_args.dataset_name == "multi_x_science_sum" or data_args.dataset_config_name == "ms2":
                 unperturbed_indices = [0]
+                logger.info(f"Documents at indices '{unperturbed_indices}' will not be perturbed.")
 
             inputs = perturber(
                 inputs,
