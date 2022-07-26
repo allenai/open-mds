@@ -10,6 +10,7 @@ import nlpaug.augmenter.word as naw
 import nltk
 import sentence_transformers as st
 import torch
+from diskcache import Cache
 from tqdm import tqdm
 
 from retrieval_exploration.common import util
@@ -191,13 +192,20 @@ class Perturber:
                 largest=self._strategy == "worst-case",
             )
 
-        # Back translate the sampled documents. To take advantage of batching, we will
-        # collect the sentences of all documents, pass them to the model, and then unflatten them.
-        unflattened_sents = [nltk.sent_tokenize(doc) for doc in sampled_docs]
-        back_translated_sents = self._aug.augment(list(more_itertools.flatten(unflattened_sents)))  # type: ignore
-        back_translated_docs = util.unflatten(
-            back_translated_sents, lengths=[len(sents) for sents in unflattened_sents]
-        )
+        # Back translate the sampled documents. To save computation, cache the backtranslation results to disk
+        back_translated_docs = []
+        with Cache(util.CACHE_DIR) as reference:
+            for doc in sampled_docs:
+                key = f"{_BT_FROM_MODEL_NAME}_{_BT_TO_MODEL_NAME}_{util.sanitize_text(doc, lowercase=True)}"
+                if key in reference:
+                    back_translated_docs.append(reference[key])
+                else:
+                    # We backtranslate individual sentences, which improves backtranslation quality.
+                    # This is likely because it more closely matches the MT models training data.
+                    back_translated_sents = self._aug.augment(nltk.sent_tokenize(doc))
+                    back_translated_doc = " ".join(sent.strip() for sent in back_translated_sents)
+                    reference[key] = back_translated_doc
+                    back_translated_docs.append(back_translated_doc)
 
         for sampled, translated in zip(sampled_docs, back_translated_docs):
             input_docs[input_docs.index(sampled)] = " ".join(sent.strip() for sent in translated)
