@@ -610,12 +610,12 @@ def main():
                 strategy=perturbation_args.selection_strategy,
                 seed=perturbation_args.perturbed_seed,
             )
-            
+
             unperturbed_indices = None
             # Both Multi-XScience  and MS^2 examples begin with a "special" document, the abstract of the paper
             # whos related works section we are trying to generate, and the background section of the literature
-            # review we are trying to generate. Both of these should be excluded from perturbation, as they are
-            # not something we would retrieve.
+            # review we are trying to generate, respectively. Both of these should be excluded from perturbation,
+            # as they are not something we would retrieve.
             if data_args.dataset_name == "multi_x_science_sum" or data_args.dataset_config_name == "ms2":
                 unperturbed_indices = [0]
 
