@@ -11,6 +11,7 @@ import pandas as pd
 from omegaconf import OmegaConf
 from tqdm import tqdm
 from transformers import PreTrainedTokenizer
+from platformdirs import user_cache_dir
 
 # Local constants
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
@@ -21,6 +22,8 @@ _PERTURBATIONS_DIR = "perturbations"
 _RESULTS_FILENAME = "all_results.json"
 _TRAINER_STATE_FILENAME = "trainer_state.json"
 _LOG_HISTORY_KEY = "log_history"
+
+CACHE_DIR = user_cache_dir("retrieval-exploration", "ai2")
 
 
 def sanitize_text(text: str, lowercase: bool = False) -> str:

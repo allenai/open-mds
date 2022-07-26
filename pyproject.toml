@@ -8,6 +8,8 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.8"
 omegaconf = "^2.2.2"
+diskcache = "^5.4.0"
+platformdirs = "^2.5.2"
 torch = "^1.10.0"
 transformers = "^4.19.0"
 tokenizers = "^0.12.1"

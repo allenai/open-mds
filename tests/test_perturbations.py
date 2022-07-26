@@ -665,7 +665,7 @@ class TestPerturber:
 
         # worst-case, with documents
         expected = [
-            f"this is yet another story about a dog {doc_sep_token} this is a story about something else",
+            f"this is a story about something else {doc_sep_token} this is yet another story about a dog",
             "this is a story about something else",
             "this is a story about a siamese cat",
         ]

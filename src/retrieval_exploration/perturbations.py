@@ -10,6 +10,7 @@ import nlpaug.augmenter.word as naw
 import nltk
 import sentence_transformers as st
 import torch
+from diskcache import Cache
 from tqdm import tqdm
 
 from retrieval_exploration.common import util
@@ -191,13 +192,20 @@ class Perturber:
                 largest=self._strategy == "worst-case",
             )
 
-        # Back translate the sampled documents. To take advantage of batching, we will
-        # collect the sentences of all documents, pass them to the model, and then unflatten them.
-        unflattened_sents = [nltk.sent_tokenize(doc) for doc in sampled_docs]
-        back_translated_sents = self._aug.augment(list(more_itertools.flatten(unflattened_sents)))  # type: ignore
-        back_translated_docs = util.unflatten(
-            back_translated_sents, lengths=[len(sents) for sents in unflattened_sents]
-        )
+        # Back translate the sampled documents. To save computation, cache the backtranslation results to disk
+        back_translated_docs = []
+        with Cache(util.CACHE_DIR) as reference:
+            for doc in sampled_docs:
+                key = f"{_BT_FROM_MODEL_NAME}_{_BT_TO_MODEL_NAME}_{util.sanitize_text(doc, lowercase=True)}"
+                if key in reference:
+                    back_translated_docs.append(reference[key])
+                else:
+                    # We backtranslate individual sentences, which improves backtranslation quality.
+                    # This is likely because it more closely matches the MT models training data.
+                    back_translated_sents = self._aug.augment(nltk.sent_tokenize(doc))  # type: ignore
+                    back_translated_doc = util.sanitize_text(" ".join(sent for sent in back_translated_sents))
+                    reference[key] = back_translated_doc
+                    back_translated_docs.append(back_translated_doc)
 
         for sampled, translated in zip(sampled_docs, back_translated_docs):
             input_docs[input_docs.index(sampled)] = " ".join(sent.strip() for sent in translated)
@@ -411,9 +419,11 @@ class Perturber:
         # The absolute number of documents to perturb
         k = math.ceil(perturbed_frac * num_docs)
 
+        to_replace = input_docs if k == num_docs else None
+
         if self._strategy == "random":
             sampled_docs = self._select_docs(documents, k=k, query=example)
-            replace_indices = self._rng.sample(range(num_docs), k)
+            to_replace = to_replace or self._select_docs([example], k=k)
 
         else:
             # In the best case, replace the least similar documents with the most similar documents and vice versa
@@ -426,13 +436,13 @@ class Perturber:
                 target=target,
                 largest=largest,
             )
-            to_replace = self._select_docs(
+            to_replace = to_replace or self._select_docs(
                 documents=[example],
                 k=k,
                 target=target,
                 largest=not largest,
             )
-            replace_indices = [input_docs.index(doc) for doc in to_replace]
+        replace_indices = [input_docs.index(doc) for doc in to_replace]
 
         for i, doc in zip(replace_indices, sampled_docs):
             input_docs[i] = doc.strip()
