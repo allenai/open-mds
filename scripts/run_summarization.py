@@ -610,8 +610,15 @@ def main():
                 strategy=perturbation_args.selection_strategy,
                 seed=perturbation_args.perturbed_seed,
             )
-            # MS^2 examples begin with a background section, which should be excluded from perturbation
-            unperturbed_indices = [0] if data_args.dataset_config_name == "ms2" else None
+            
+            unperturbed_indices = None
+            # Both Multi-XScience  and MS^2 examples begin with a "special" document, the abstract of the paper
+            # whos related works section we are trying to generate, and the background section of the literature
+            # review we are trying to generate. Both of these should be excluded from perturbation, as they are
+            # not something we would retrieve.
+            if data_args.dataset_name == "multi_x_science_sum" or data_args.dataset_config_name == "ms2":
+                unperturbed_indices = [0]
+
             inputs = perturber(
                 inputs,
                 perturbed_frac=perturbation_args.perturbed_frac,
@@ -621,8 +628,7 @@ def main():
             )
             logger.info(
                 f"Applying perturbation '{perturbation_args.perturbation}' with selection strategy"
-                f" '{perturbation_args.selection_strategy}' on {perturbation_args.perturbed_frac:.2%} of input"
-                " documents."
+                f" '{perturbation_args.selection_strategy}' documents."
             )
 
         # To get a sense for the degree to which each perturbation changes the input, compute the token set ratio
