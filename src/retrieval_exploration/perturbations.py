@@ -419,9 +419,11 @@ class Perturber:
         # The absolute number of documents to perturb
         k = math.ceil(perturbed_frac * num_docs)
 
+        to_replace = input_docs if k == num_docs else None
+
         if self._strategy == "random":
             sampled_docs = self._select_docs(documents, k=k, query=example)
-            replace_indices = self._rng.sample(range(num_docs), k)
+            to_replace = to_replace or self._select_docs([example], k=k)
 
         else:
             # In the best case, replace the least similar documents with the most similar documents and vice versa
@@ -434,13 +436,13 @@ class Perturber:
                 target=target,
                 largest=largest,
             )
-            to_replace = self._select_docs(
+            to_replace = to_replace or self._select_docs(
                 documents=[example],
                 k=k,
                 target=target,
                 largest=not largest,
             )
-            replace_indices = [input_docs.index(doc) for doc in to_replace]
+        replace_indices = [input_docs.index(doc) for doc in to_replace]
 
         for i, doc in zip(replace_indices, sampled_docs):
             input_docs[i] = doc.strip()
