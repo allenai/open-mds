@@ -476,11 +476,12 @@ class Perturber:
         if self._strategy == "random" and target is not None:
             warnings.warn("strategy is random, but target is not None. target will be ignored.")
 
-        # Extract all unique, individual documents
-        documents = more_itertools.flatten(
-            util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in documents
+        # Extract all individual documents
+        documents = list(
+            more_itertools.flatten(
+                util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in documents
+            )
         )
-        documents = list(set(documents))
 
         # If query is provided, remove it from the possible inputs
         if query is not None:
@@ -503,15 +504,15 @@ class Perturber:
 
         # If target is provided, look for docs most similar to it. Otherwise look for docs most similar to the query.
         if target:
-            query_embedding = self._embedder.encode(  # type: ignore
+            target_embedding = self._embedder.encode(  # type: ignore
                 target, convert_to_tensor=True, normalize_embeddings=True
             )
-            scores = st.util.dot_score(query_embedding, doc_embeddings)[0]
+            scores = st.util.dot_score(target_embedding, doc_embeddings)[0]
         else:
-            query_embedding = self._embedder.encode(  # type: ignore
+            query_embeddings = self._embedder.encode(  # type: ignore
                 query_docs, convert_to_tensor=True, normalize_embeddings=True
             )
-            scores = st.util.dot_score(query_embedding, doc_embeddings)
+            scores = st.util.dot_score(query_embeddings, doc_embeddings)
             scores = torch.mean(scores, axis=0)
 
         # Return the top k most similar (or dissimilar) documents
