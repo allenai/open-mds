@@ -90,3 +90,11 @@ python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multixscience/pr
 ```
 
 Other experiments can be crafted by modifying the perturbation arguments accordingly.
+
+### Notes
+
+In order to avoid duplicated computation, some perturbations will cache their results. You can get this path by calling
+
+```bash
+python -c "from retrieval_exploration.common import util ; print(util.CACHE_DIR)"
+```
