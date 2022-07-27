@@ -1,13 +1,13 @@
 import math
 import random
 import warnings
-from functools import lru_cache
 from itertools import zip_longest
 from typing import List, Optional, Tuple
 
 import more_itertools
 import nlpaug.augmenter.word as naw
 import nltk
+import numpy as np
 import sentence_transformers as st
 import torch
 from diskcache import Cache
@@ -18,15 +18,6 @@ from retrieval_exploration.common import util
 _SEMANTIC_SIMILARITY_MODEL = "all-MiniLM-L6-v2"
 _BT_FROM_MODEL_NAME = "Helsinki-NLP/opus-mt-en-da"
 _BT_TO_MODEL_NAME = "Helsinki-NLP/opus-mt-da-en"
-
-
-@lru_cache(maxsize=None)
-def _get_doc_embeddings(input_docs: List[str], embedder: st.SentenceTransformer) -> torch.Tensor:
-    """Return a `torch.Tensor` containing the embeddings of `input_docs` obtained using the SentenceTransformer
-    model `embedder`. The embeddings are cached so that subsequent calls to this function with the same arguments
-    will not re-compute them.
-    """
-    return embedder.encode(input_docs, batch_size=512, convert_to_tensor=True, normalize_embeddings=True)
 
 
 class Perturber:
@@ -66,7 +57,12 @@ class Perturber:
         self._strategy = strategy
         self._rng = random.Random(seed)
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # Non-random strategies need an embedder for document selection
+        self._embedder = None
+        if self._strategy != "random":
+            self._embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL, device=self.device)
 
         # Some perturbations require special components, like a backtranslation model
         self._aug = None
@@ -74,15 +70,10 @@ class Perturber:
             self._aug = naw.BackTranslationAug(
                 from_model_name=_BT_FROM_MODEL_NAME,
                 to_model_name=_BT_TO_MODEL_NAME,
-                device=device,
+                device=self.device,
                 # We backtranslate on individual sentences, so this max_length should be plenty.
                 max_length=256,
             )
-
-        # Non-random strategies need an embedder for document selection
-        self._embedder = None
-        if self._strategy != "random":
-            self._embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL, device=device)
 
     def __call__(
         self,
@@ -193,19 +184,7 @@ class Perturber:
             )
 
         # Back translate the sampled documents. To save computation, cache the backtranslation results to disk
-        back_translated_docs = []
-        with Cache(util.CACHE_DIR) as reference:
-            for doc in sampled_docs:
-                key = f"{_BT_FROM_MODEL_NAME}_{_BT_TO_MODEL_NAME}_{util.sanitize_text(doc, lowercase=True)}"
-                if key in reference:
-                    back_translated_docs.append(reference[key])
-                else:
-                    # We backtranslate individual sentences, which improves backtranslation quality.
-                    # This is likely because it more closely matches the MT models training data.
-                    back_translated_sents = self._aug.augment(nltk.sent_tokenize(doc))  # type: ignore
-                    back_translated_doc = util.sanitize_text(" ".join(sent for sent in back_translated_sents))
-                    reference[key] = back_translated_doc
-                    back_translated_docs.append(back_translated_doc)
+        back_translated_docs = self._get_backtranslated_docs(sampled_docs)
 
         for sampled, translated in zip(sampled_docs, back_translated_docs):
             input_docs[input_docs.index(sampled)] = " ".join(sent.strip() for sent in translated)
@@ -508,19 +487,17 @@ class Perturber:
             return self._rng.sample(documents, k)
 
         # Cache all inputs document embeddings to make this as fast as possible.
-        doc_embeddings = _get_doc_embeddings(tuple(documents), embedder=self._embedder).to(
-            self._embedder.device  # type: ignore
-        )
+        doc_embeddings = self._get_doc_embeddings(documents)
 
         # If target is provided, look for docs most similar to it. Otherwise look for docs most similar to the query.
         if target:
             target_embedding = self._embedder.encode(  # type: ignore
-                target, convert_to_tensor=True, normalize_embeddings=True
+                target, convert_to_tensor=True, device=self.device, normalize_embeddings=True
             )
             scores = st.util.dot_score(target_embedding, doc_embeddings)[0]
         else:
             query_embeddings = self._embedder.encode(  # type: ignore
-                query_docs, convert_to_tensor=True, normalize_embeddings=True
+                query_docs, convert_to_tensor=True, device=self.device, normalize_embeddings=True
             )
             scores = st.util.dot_score(query_embeddings, doc_embeddings)
             scores = torch.mean(scores, axis=0)
@@ -563,3 +540,41 @@ class Perturber:
                 perturbed_example.insert(unperturbed_idx, unperturbed_doc)
             perturbed_inputs[i] = f" {self._doc_sep_token} ".join(perturbed_example)
         return perturbed_inputs
+
+    def _get_doc_embeddings(self, documents: List[str]) -> torch.Tensor:
+        doc_embeddings = []
+
+        with Cache(util.CACHE_DIR) as reference:
+            for doc in documents:
+                key = f"{_SEMANTIC_SIMILARITY_MODEL}_{util.sanitize_text(doc, lowercase=True)}"
+                if key in reference:
+                    doc_embeddings.append(reference[key])
+                else:
+                    embedding = self._embedder.encode(  # type: ignore
+                        doc, convert_to_numpy=True, device=self.device, normalize_embeddings=True
+                    )
+                    doc_embeddings.append(embedding)
+                    reference[key] = embedding
+
+        # Converting a list of numpy arrays to a numpy array before the call to as_tensor is significantly faster.
+        doc_embeddings = torch.as_tensor(np.array(doc_embeddings), device=self.device)  # type: ignore
+
+        return doc_embeddings
+
+    def _get_backtranslated_docs(self, documents: List[str]) -> List[str]:
+        back_translated_docs = []
+
+        with Cache(util.CACHE_DIR) as reference:
+            for doc in documents:
+                key = f"{_BT_FROM_MODEL_NAME}_{_BT_TO_MODEL_NAME}_{util.sanitize_text(doc, lowercase=True)}"
+                if key in reference:
+                    back_translated_docs.append(reference[key])
+                else:
+                    # We backtranslate individual sentences, which improves backtranslation quality.
+                    # This is likely because it more closely matches the MT models training data.
+                    back_translated_sents = self._aug.augment(nltk.sent_tokenize(doc))  # type: ignore
+                    back_translated_doc = util.sanitize_text(" ".join(sent for sent in back_translated_sents))
+                    reference[key] = back_translated_doc
+                    back_translated_docs.append(back_translated_doc)
+
+        return back_translated_docs
