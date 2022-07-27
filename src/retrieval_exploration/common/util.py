@@ -279,7 +279,7 @@ def load_results_dicts(
 
                 if metric_columns is not None:
                     for metric in metric_columns:
-                        # TODO: This can be removed when all experiments have been run with the new jaccard_similarity_score
+                        # TODO: Can be removed when all experiments have been run with the new jaccard_similarity_score
                         perturbation_df["jaccard_similarity_scores"] = [
                             jaccard_similarity_score(pre, post)
                             for pre, post in zip(perturbation_df.eval_inputs, baseline_df.eval_inputs)
