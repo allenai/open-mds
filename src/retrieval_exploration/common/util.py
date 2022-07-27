@@ -8,10 +8,11 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import flatten_dict
 import numpy as np
 import pandas as pd
+from nltk.tokenize import word_tokenize
 from omegaconf import OmegaConf
+from platformdirs import user_cache_dir
 from tqdm import tqdm
 from transformers import PreTrainedTokenizer
-from platformdirs import user_cache_dir
 
 # Local constants
 _DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
@@ -56,8 +57,8 @@ def parse_omega_conf() -> Dict[str, Any]:
 def jaccard_similarity_score(string_1: str, string_2: str) -> float:
     """Returns the Jaccard similarity score between two strings, using the sets of whitespace tokens. Returns 1.0
     if both strings are empty."""
-    string_1_tokens = set(string_1.strip().split())
-    string_2_tokens = set(string_2.strip().split())
+    string_1_tokens = set(word_tokenize(string_1.strip()))
+    string_2_tokens = set(word_tokenize(string_2.strip()))
     if not string_1_tokens and not string_2_tokens:
         warnings.warn("Both string_1 and string_2 are empty. Returning 1.0.")
         return 1.0
@@ -274,10 +275,11 @@ def load_results_dicts(
             if baseline_df is not None:
                 # The perturbation and baseline data should pertain to the same examples.
                 if not np.array_equal(baseline_df.eval_example_idx, perturbation_df.eval_example_idx):
-                    raise ValueError("The perturbation and baseline data do not correspond to same examples!")
+                    raise ValueError("The perturbation and baseline data do not correspond to the same examples!")
 
                 if metric_columns is not None:
                     for metric in metric_columns:
+                        # TODO: Can be removed when all experiments have been run with the new jaccard_similarity_score
                         perturbation_df["jaccard_similarity_scores"] = [
                             jaccard_similarity_score(pre, post)
                             for pre, post in zip(perturbation_df.eval_inputs, baseline_df.eval_inputs)

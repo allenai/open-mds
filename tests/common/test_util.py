@@ -60,6 +60,9 @@ def test_jaccard_similarity_score() -> None:
     # String are non-identical
     assert util.jaccard_similarity_score("hello world", "hello you") == 1 / 3
 
+    # Check that punctation is treated as its own token
+    assert util.jaccard_similarity_score("hello world", "hello world!") == 2 / 3
+
 
 def test_split_docs() -> None:
     doc_sep_token = "<doc-sep>"
