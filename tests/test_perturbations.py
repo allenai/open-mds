@@ -22,16 +22,6 @@ class TestPerturber:
         with pytest.raises(ValueError):
             perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>", strategy="this-is-invalid")
 
-    @pytest.mark.parametrize(
-        "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
-    )
-    def test_mismatch_input_and_target_len(self, perturbation: str) -> None:
-        with pytest.raises(ValueError):
-            perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>")
-            _ = perturber(
-                ["document 1 <doc-sep> document 2"], targets=["document 3", "document 4"], perturbed_frac=0.1
-            )
-
     @pytest.mark.parametrize("perturbation", ["backtranslation", "duplication", "addition", "deletion", "replacement"])
     def test_falsey_perturbed_frac(self, perturbation: str) -> None:
         inputs = ["document 1 <doc-sep> document 2"]
@@ -41,6 +31,16 @@ class TestPerturber:
             perturbed_inputs = perturber(inputs, perturbed_frac=None)
             assert inputs == perturbed_inputs
             assert str(w[0].message).endswith("Inputs will be returned unchanged.")
+
+    @pytest.mark.parametrize(
+        "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
+    )
+    def test_mismatch_input_and_target_len(self, perturbation: str) -> None:
+        perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>")
+        with pytest.raises(ValueError):
+            _ = perturber(
+                ["document 1 <doc-sep> document 2"], perturbed_frac=0.1, targets=["document 3", "document 4"]
+            )
 
     @pytest.mark.parametrize("perturbation", ["backtranslation", "duplication", "deletion"])
     def test_unused_documents(self, perturbation: str) -> None:
@@ -445,24 +445,6 @@ class TestPerturber:
 
         perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy="best-case")
 
-        # best-case, no documents
-        expected = [
-            (
-                f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
-                " this is another story about a cat"
-            ),
-            (
-                f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar {doc_sep_token}"
-                " this is a story about a cat"
-            ),
-        ]
-        actual = perturber(
-            inputs=inputs,
-            perturbed_frac=0.1,
-            targets=targets,
-        )
-        assert expected == actual
-
         # best-case, with documents
         expected = [
             (
@@ -483,24 +465,6 @@ class TestPerturber:
         assert expected == actual
 
         perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy="worst-case")
-
-        # worst-case, no documents
-        expected = [
-            (
-                f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
-                " this looks purposfully dissimilar"
-            ),
-            (
-                f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar {doc_sep_token}"
-                " this is a story about a dog"
-            ),
-        ]
-        actual = perturber(
-            inputs=inputs,
-            perturbed_frac=0.1,
-            targets=targets,
-        )
-        assert expected == actual
 
         # worst-case, with documents
         expected = [
