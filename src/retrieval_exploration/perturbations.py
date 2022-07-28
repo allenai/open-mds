@@ -2,12 +2,11 @@ import math
 import random
 import warnings
 from itertools import zip_longest
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import more_itertools
 import nlpaug.augmenter.word as naw
 import nltk
-import numpy as np
 import sentence_transformers as st
 import torch
 from diskcache import Cache
@@ -63,6 +62,8 @@ class Perturber:
         self._embedder = None
         if self._strategy != "random":
             self._embedder = st.SentenceTransformer(_SEMANTIC_SIMILARITY_MODEL, device=self.device)
+        # We also maintain an "index" of document embeddings to reduce duplicate computation
+        self._index: Dict[int, torch.Tensor] = {}
 
         # Some perturbations require special components, like a backtranslation model
         self._aug = None
@@ -103,19 +104,18 @@ class Perturber:
             If provided, these documents will be considered (along with the documents in `inputs`) for selection
             during perturbation. Has no effect if selected `perturbation` is not `"addition"` or `"replacement"`.
         """
-
-        if targets is not None and len(inputs) != len(targets):
-            raise ValueError(
-                "If targets provided, then len(targets) must equal len(inputs)."
-                f" Got len(targets)=={len(targets)} and len(inputs)={len(inputs)}."
-            )
-
         if self._perturbation != "sorting" and not perturbed_frac:
             warnings.warn(
                 f"perturbed_frac is falsey ({perturbed_frac}) and selected perturbation is not 'sorting'."
                 " Inputs will be returned unchanged."
             )
             return inputs
+
+        if targets is not None and len(inputs) != len(targets):
+            raise ValueError(
+                "If targets provided, then len(targets) must equal len(inputs)."
+                f" Got len(targets)=={len(targets)} and len(inputs)={len(inputs)}."
+            )
 
         if documents is not None and self._perturbation not in ["addition", "replacement"]:
             warnings.warn(
@@ -292,11 +292,10 @@ class Perturber:
         perturbed_frac : `float`, optional (default=None)
             The percentage of documents in each example that should be perturbed. The absolute number of perturbed
             documents will be the ceiling of this value times the original number of documents.
+        documents : `List[str]`
+            Will be considered (along with the documents in `example`) for selection during perturbation.
         target : `str`, optional (default=None)
             If provided, documents will be perturbed based on comparison to this text.
-        documents : `List[str]`, optional (default=None)
-            If provided, these documents will be considered (along with the documents in `example`) for selection
-            during perturbation.
         """
         input_docs = util.split_docs(example, doc_sep_token=self._doc_sep_token)
         num_docs = util.get_num_docs(example, doc_sep_token=self._doc_sep_token)
@@ -386,11 +385,10 @@ class Perturber:
         perturbed_frac : `float`, optional (default=None)
             The percentage of documents in each example that should be perturbed. The absolute number of perturbed
             documents will be the ceiling of this value times the original number of documents.
+        documents : `List[str]`
+            Will be considered (along with the documents in `example`) for selection during perturbation.
         target : `str`, optional (default=None)
             If provided, documents will be perturbed based on comparison to this text.
-        documents : `List[str]`, optional (default=None)
-            If provided, these documents will be considered (along with the documents in `example`) for selection
-            during perturbation.
         """
         input_docs = util.split_docs(example, doc_sep_token=self._doc_sep_token)
         num_docs = util.get_num_docs(example, doc_sep_token=self._doc_sep_token)
@@ -472,10 +470,20 @@ class Perturber:
             )
         )
 
+        # Get the document embeddings, which are needed for non-random strategies
+        doc_embeddings = None
+        if self._strategy != "random":
+            doc_embeddings = self._get_doc_embeddings(documents)
+
         # If query is provided, remove it from the possible inputs
         if query is not None:
             query_docs = util.split_docs(query, doc_sep_token=self._doc_sep_token)
-            documents = [doc for doc in documents if doc not in query_docs]
+            indices = [i for i in range(len(documents)) if documents[i] not in query_docs]
+            documents = [documents[i] for i in indices]
+            if doc_embeddings is not None:
+                doc_embeddings = torch.index_select(
+                    doc_embeddings, 0, torch.tensor(indices, device=doc_embeddings.device)
+                )
 
         # Check that we have enough documents to sample from
         if len(documents) < k:
@@ -483,11 +491,9 @@ class Perturber:
                 f"Not enough unique documents to sample {k} without replacement. Only have {len(documents)}."
             )
 
+        # If strategy is random, we can early-exit here
         if self._strategy == "random":
             return self._rng.sample(documents, k)
-
-        # Cache all inputs document embeddings to make this as fast as possible.
-        doc_embeddings = self._get_doc_embeddings(documents)
 
         # If target is provided, look for docs most similar to it. Otherwise look for docs most similar to the query.
         if target:
@@ -542,26 +548,30 @@ class Perturber:
         return perturbed_inputs
 
     def _get_doc_embeddings(self, documents: List[str]) -> torch.Tensor:
-        doc_embeddings = []
+        """Returns the embeddings for the given `documents`. For certain perturbations, these embeddings will be
+        cached for future use at `self._index`.
+        """
 
-        with Cache(util.CACHE_DIR) as reference:
-            for doc in documents:
-                key = f"{_SEMANTIC_SIMILARITY_MODEL}_{util.sanitize_text(doc, lowercase=True)}"
-                if key in reference:
-                    doc_embeddings.append(reference[key])
-                else:
-                    embedding = self._embedder.encode(  # type: ignore
-                        doc, convert_to_numpy=True, device=self.device, normalize_embeddings=True
-                    )
-                    doc_embeddings.append(embedding)
-                    reference[key] = embedding
-
-        # Converting a list of numpy arrays to a numpy array before the call to as_tensor is significantly faster.
-        doc_embeddings = torch.as_tensor(np.array(doc_embeddings), device=self.device)  # type: ignore
+        if self._perturbation in ["addition", "replacement"]:
+            doc_hash = hash(tuple(documents))
+            if doc_hash in self._index:
+                doc_embeddings = self._index.get(doc_hash)
+            else:
+                doc_embeddings = self._embedder.encode(  # type: ignore
+                    documents, convert_to_tensor=True, device=self.device, normalize_embeddings=True
+                )
+                self._index[doc_hash] = doc_embeddings
+        else:
+            doc_embeddings = self._embedder.encode(  # type: ignore
+                documents, convert_to_tensor=True, device=self.device, normalize_embeddings=True
+            )
 
         return doc_embeddings
 
     def _get_backtranslated_docs(self, documents: List[str]) -> List[str]:
+        """Returns back-translated copies of the given `documents`. These are expensive to compute, so we cache
+        them on disk for future use at `util.CACHE_DIR`.
+        """
         back_translated_docs = []
 
         with Cache(util.CACHE_DIR) as reference:
