@@ -102,7 +102,9 @@ class Perturber:
             length as `inputs`.
         documents : `List[str]`, optional (default=None)
             If provided, these documents will be considered (along with the documents in `inputs`) for selection
-            during perturbation. Has no effect if selected `perturbation` is not `"addition"` or `"replacement"`.
+            during perturbation. May be given as a list of individual documents, or as a list of strings
+            containing multiple documents separated by `doc_sep_token`, similar to `inputs. Has no effect if
+            selected `perturbation` is not `"addition"` or `"replacement"`.
         """
         if self._perturbation != "sorting" and not perturbed_frac:
             warnings.warn(
@@ -127,7 +129,13 @@ class Perturber:
 
         # All examples that can be considered for selection (ignoring duplicates)
         documents = inputs + documents if documents is not None else inputs
-        documents = list(dict.fromkeys(documents))
+        documents = list(
+            set(
+                more_itertools.flatten(
+                    util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in documents
+                )
+            )
+        )
 
         # If unperturbed_indices provided, temporarily remove these documents before perturbation...
         if unperturbed_indices is not None:
@@ -174,10 +182,10 @@ class Perturber:
         if k == num_docs:
             sampled_docs = input_docs
         elif self._strategy == "random":
-            sampled_docs = self._select_docs([example], k=k)
+            sampled_docs = self._select_docs(input_docs, k=k)
         else:
             sampled_docs = self._select_docs(
-                documents=[example],
+                documents=input_docs,
                 k=k,
                 target=target,
                 largest=self._strategy == "worst-case",
@@ -220,7 +228,7 @@ class Perturber:
             self._rng.shuffle(input_docs)
         else:
             input_docs = self._select_docs(
-                documents=[example],
+                documents=input_docs,
                 k=len(input_docs),
                 target=target,
                 largest=self._strategy == "best-case",
@@ -265,7 +273,7 @@ class Perturber:
             repeaters = self._rng.sample(input_docs, k)
         else:
             repeaters = self._select_docs(
-                documents=[example],
+                documents=input_docs,
                 k=k,
                 target=target,
                 largest=self._strategy == "best-case",
@@ -293,7 +301,8 @@ class Perturber:
             The percentage of documents in each example that should be perturbed. The absolute number of perturbed
             documents will be the ceiling of this value times the original number of documents.
         documents : `List[str]`
-            Will be considered (along with the documents in `example`) for selection during perturbation.
+            Will be considered (along with the documents in `example`) for selection during perturbation. Must be
+            provided as a list of strings, each containing a individual document.
         target : `str`, optional (default=None)
             If provided, documents will be perturbed based on comparison to this text.
         """
@@ -354,7 +363,7 @@ class Perturber:
             to_delete = self._rng.sample(range(num_docs), k)
         else:
             sampled_docs = self._select_docs(
-                documents=[example],
+                documents=input_docs,
                 k=k,
                 target=target,
                 largest=self._strategy == "worst-case",
@@ -386,7 +395,8 @@ class Perturber:
             The percentage of documents in each example that should be perturbed. The absolute number of perturbed
             documents will be the ceiling of this value times the original number of documents.
         documents : `List[str]`
-            Will be considered (along with the documents in `example`) for selection during perturbation.
+            Will be considered (along with the documents in `example`) for selection during perturbation. Must be
+            provided as a list of strings, each containing a individual document.
         target : `str`, optional (default=None)
             If provided, documents will be perturbed based on comparison to this text.
         """
@@ -400,7 +410,7 @@ class Perturber:
 
         if self._strategy == "random":
             sampled_docs = self._select_docs(documents, k=k, query=example)
-            to_replace = to_replace or self._select_docs([example], k=k)
+            to_replace = to_replace or self._select_docs(input_docs, k=k)
 
         else:
             # In the best case, replace the least similar documents with the most similar documents and vice versa
@@ -414,7 +424,7 @@ class Perturber:
                 largest=largest,
             )
             to_replace = to_replace or self._select_docs(
-                documents=[example],
+                documents=input_docs,
                 k=k,
                 target=target,
                 largest=not largest,
@@ -443,8 +453,7 @@ class Perturber:
         # Parameters
 
         documents : `List[str]`
-            A list of strings to select documents from. It is assumed that each string contains the input documents
-            for one example and that items in this list are separated by `doc_sep_token`.
+            A list of documents to select from. It is assumed that each string contains a single document.
         k : `int`
             The number of documents to sample (without replacement) from `documents`.
         query : `str`, optional (default=None)
@@ -463,13 +472,6 @@ class Perturber:
         if self._strategy == "random" and target is not None:
             warnings.warn("strategy is random, but target is not None. target will be ignored.")
 
-        # Extract all individual documents
-        documents = list(
-            more_itertools.flatten(
-                util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in documents
-            )
-        )
-
         # Get the document embeddings, which are needed for non-random strategies
         doc_embeddings = None
         if self._strategy != "random":
@@ -478,8 +480,9 @@ class Perturber:
         # If query is provided, remove it from the possible inputs
         if query is not None:
             query_docs = util.split_docs(query, doc_sep_token=self._doc_sep_token)
-            indices = [i for i in range(len(documents)) if documents[i] not in query_docs]
-            documents = [documents[i] for i in indices]
+            indices, documents = zip(  # type: ignore
+                *[(i, doc) for i, doc in enumerate(documents) if doc not in set(query_docs)]
+            )
             if doc_embeddings is not None:
                 doc_embeddings = torch.index_select(
                     doc_embeddings, 0, torch.tensor(indices, device=doc_embeddings.device)
@@ -524,16 +527,9 @@ class Perturber:
             [doc for doc in example if doc not in more_itertools.flatten(unperturbed_docs)] for example in example_docs
         ]
         inputs = [f" {self._doc_sep_token} ".join(docs) for docs in example_docs]
-        # Horribly complicated way to remove all the unperturbed_docs from documents
+        # Remove all the unperturbed_docs from documents
         if documents is not None:
-            documents = list(
-                set(
-                    more_itertools.flatten(
-                        util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in documents
-                    )
-                )
-                - set(more_itertools.flatten(unperturbed_docs))
-            )
+            documents = list(set(documents) - set(more_itertools.flatten(unperturbed_docs)))
         return inputs, unperturbed_docs, documents
 
     def _replace_unperturbed(
