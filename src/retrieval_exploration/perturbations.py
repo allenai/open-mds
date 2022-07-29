@@ -195,7 +195,7 @@ class Perturber:
         back_translated_docs = self._get_backtranslated_docs(sampled_docs)
 
         for sampled, translated in zip(sampled_docs, back_translated_docs):
-            input_docs[input_docs.index(sampled)] = " ".join(sent.strip() for sent in translated)
+            input_docs[input_docs.index(sampled)] = translated
 
         perturbed_example = f" {self._doc_sep_token} ".join(input_docs)
         return perturbed_example
