@@ -143,6 +143,8 @@ class TestPerturber:
             "Mitochondria are commonly between 0.75 and 3 μm2 in area, but vary considerably in size and structure.",
             "Stefani Joanne Angelina Germanotta, known professionally as Lady Gaga, is an American singer, songwriter, and actress.",
             "Gaga's five succeeding studio albums all debuted atop the US Billboard 200.",
+            # We duplicate this to see if its successfully ignored
+            "Gaga's five succeeding studio albums all debuted atop the US Billboard 200.",
         ]
 
         # select_docs function is independent of perturbation type, or strategy
@@ -165,7 +167,7 @@ class TestPerturber:
         assert all(doc.strip() in expected for doc in sampled_docs)
 
         # Select documents given a query (largest == False)
-        expected = remaining[-2:]
+        expected = remaining[-3:-1]
         sampled_docs = perturber._select_docs(documents, k=2, query=query, largest=False)
         assert len(sampled_docs) == 2
         # Check that the query was excluded
@@ -187,7 +189,7 @@ class TestPerturber:
 
         # Sample documents with a target (largest == False)
         target = "The number of mitochondria in a cell can vary widely by organism, tissue, and cell type."
-        expected = documents[-2:]
+        expected = documents[-3:-1]
         sampled_docs = perturber._select_docs(
             documents,
             k=2,
@@ -199,7 +201,7 @@ class TestPerturber:
 
         # Sample documents with a both a query and a target (largest == True)
         target = "Gaga began performing as a teenager, singing at open mic nights and acting in school plays."
-        expected = remaining[-2:]
+        expected = remaining[-3:-1]
         sampled_docs = perturber._select_docs(
             documents,
             k=2,
