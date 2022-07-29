@@ -82,7 +82,7 @@ class TestPerturber:
         "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
     )
     def test_unused_target(self, perturbation: str) -> None:
-        documents = ["document 1 <doc-sep> document 2"]
+        documents = ["document 1", "document 2"]
         target = "Target text"
         perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>", strategy="random")
 
@@ -91,14 +91,10 @@ class TestPerturber:
             assert str(w[0].message).endswith("target will be ignored.")
 
     def test_select_docs_random(self) -> None:
-        num_docs_per_example = 8
+        num_docs = 16
         doc_sep_token = "<doc-sep>"
-        documents = [
-            f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs_per_example)),
-            f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs_per_example, num_docs_per_example * 2)),
-        ]
+        documents = [f"Document {i}" for i in range(num_docs)]
         target = "Target text"
-        num_docs = [util.get_num_docs(example, doc_sep_token) for example in documents]
 
         # select_docs function is independent of perturbation type, so we can use any valid perturbation here
         perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy="random")
@@ -106,17 +102,17 @@ class TestPerturber:
         # Select documents given no query and no target
         sampled_docs = perturber._select_docs(documents, query=None, target=None, k=2)
         assert len(sampled_docs) == 2
-        assert all(doc.strip() in " ".join(documents) for doc in sampled_docs)
+        assert all(doc.strip() in documents for doc in sampled_docs)
 
         # Select documents given a query
         sampled_docs = perturber._select_docs(
             documents,
-            k=num_docs[1] - 1,
+            k=num_docs - 1,
             query=documents[0],
         )
-        assert len(sampled_docs) == num_docs[1] - 1
-        assert all(example.strip() not in sampled_docs for example in documents[0].split(doc_sep_token))
-        assert all(doc in " ".join(documents) for doc in sampled_docs)
+        assert len(sampled_docs) == num_docs - 1
+        assert documents[0] not in sampled_docs
+        assert all(doc in documents for doc in sampled_docs)
 
         # Sample documents with a target
         sampled_docs = perturber._select_docs(
@@ -125,37 +121,38 @@ class TestPerturber:
             target=target,
         )
         assert len(sampled_docs) == 2
-        assert all(doc.strip() in " ".join(documents) for doc in sampled_docs)
+        assert all(doc in documents for doc in sampled_docs)
 
         # Sample documents with a both a query and a target
         sampled_docs = perturber._select_docs(
             documents,
-            k=num_docs[1] - 1,
+            k=num_docs - 1,
             query=documents[0],
             target=target,
         )
-        assert len(sampled_docs) == num_docs[1] - 1
-        assert all(example.strip() not in sampled_docs for example in documents[0].split(doc_sep_token))
-        assert all(doc in " ".join(documents) for doc in sampled_docs)
+        assert len(sampled_docs) == num_docs - 1
+        assert documents[0] not in sampled_docs
+        assert all(doc in documents for doc in sampled_docs)
 
     @pytest.mark.parametrize("strategy", ["best-case", "worst-case"])
     def test_select_docs_non_random(self, strategy: str) -> None:
         doc_sep_token = "<doc-sep>"
         documents = [
-            (
-                f"A mitochondrion is a double-membrane-bound organelle found in most eukaryotic organisms {doc_sep_token}"
-                f" Mitochondria use aerobic respiration to generate most of the cell's supply of adenosine triphosphate (ATP) {doc_sep_token}"
-                f" Mitochondria are commonly between 0.75 and 3 μm2 in area, but vary considerably in size and structure. {doc_sep_token}"
-                f" Stefani Joanne Angelina Germanotta, known professionally as Lady Gaga, is an American singer, songwriter, and actress. {doc_sep_token}"
-                f" Gaga's five succeeding studio albums all debuted atop the US Billboard 200. {doc_sep_token}"
-            )
+            "A mitochondrion is a double-membrane-bound organelle found in most eukaryotic organisms",
+            "Mitochondria use aerobic respiration to generate most of the cell's supply of adenosine triphosphate (ATP)",
+            "Mitochondria are commonly between 0.75 and 3 μm2 in area, but vary considerably in size and structure.",
+            "Stefani Joanne Angelina Germanotta, known professionally as Lady Gaga, is an American singer, songwriter, and actress.",
+            "Gaga's five succeeding studio albums all debuted atop the US Billboard 200.",
+            # We duplicate this to see if its successfully ignored
+            "Gaga's five succeeding studio albums all debuted atop the US Billboard 200.",
         ]
 
         # select_docs function is independent of perturbation type, or strategy
         perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy=strategy)
 
+        query, remaining = documents[0], documents[1:]
+
         # Select documents given a query (largest == True)
-        query, *remaining = util.split_docs(documents[0], doc_sep_token)
         expected = remaining[:2]
         sampled_docs = perturber._select_docs(
             documents,
@@ -170,8 +167,7 @@ class TestPerturber:
         assert all(doc.strip() in expected for doc in sampled_docs)
 
         # Select documents given a query (largest == False)
-        query, *remaining = util.split_docs(documents[0], doc_sep_token)
-        expected = remaining[-2:]
+        expected = remaining[-3:-1]
         sampled_docs = perturber._select_docs(documents, k=2, query=query, largest=False)
         assert len(sampled_docs) == 2
         # Check that the query was excluded
@@ -181,7 +177,7 @@ class TestPerturber:
 
         # Sample documents with a target (largest == True)
         target = "The number of mitochondria in a cell can vary widely by organism, tissue, and cell type."
-        expected = util.split_docs(documents[0], doc_sep_token)[:3]
+        expected = documents[:3]
         sampled_docs = perturber._select_docs(
             documents,
             k=3,
@@ -193,7 +189,7 @@ class TestPerturber:
 
         # Sample documents with a target (largest == False)
         target = "The number of mitochondria in a cell can vary widely by organism, tissue, and cell type."
-        expected = util.split_docs(documents[0], doc_sep_token)[-2:]
+        expected = documents[-3:-1]
         sampled_docs = perturber._select_docs(
             documents,
             k=2,
@@ -205,8 +201,7 @@ class TestPerturber:
 
         # Sample documents with a both a query and a target (largest == True)
         target = "Gaga began performing as a teenager, singing at open mic nights and acting in school plays."
-        query, *remaining = util.split_docs(documents[0], doc_sep_token)
-        expected = remaining[-2:]
+        expected = remaining[-3:-1]
         sampled_docs = perturber._select_docs(
             documents,
             k=2,
@@ -219,7 +214,6 @@ class TestPerturber:
 
         # Sample documents with a both a query and a target (largest == False)
         target = "Gaga began performing as a teenager, singing at open mic nights and acting in school plays."
-        query, *remaining = util.split_docs(documents[0], doc_sep_token)
         expected = remaining[:2]
         sampled_docs = perturber._select_docs(
             documents,
@@ -720,7 +714,7 @@ class TestPerturber:
         ]
         unperturbed_indices = [0, 3]
         # Include one document not in unperturbed_indices
-        documents = [f"Document 0 {doc_sep_token} Document 19 {doc_sep_token} Document 2"]
+        documents = ["Document 0", "Document 19", "Document 2"]
 
         perturber = perturbations.Perturber(perturbation, doc_sep_token=doc_sep_token, strategy=strategy)
 
