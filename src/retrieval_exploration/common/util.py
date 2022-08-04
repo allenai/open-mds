@@ -72,7 +72,7 @@ def split_docs(text: str, doc_sep_token: str) -> List[str]:
     """
     # It's possible to have a doc_sep_token at the very end of the string. Strip it here
     # so that we get the correct number of documents when we split on doc_sep_token.
-    text = re.sub(rf"{doc_sep_token}$", "", text.strip())
+    text = re.sub(rf"({doc_sep_token}\s?)+$", "", text.strip())
     return [doc.strip() for doc in text.split(doc_sep_token)]
 
 
