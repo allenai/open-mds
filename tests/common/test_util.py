@@ -84,6 +84,14 @@ def test_split_docs() -> None:
     actual = util.split_docs("This is ends with characters from doc_sep_token sep", doc_sep_token=doc_sep_token)
     assert expected == actual
 
+    expected = ["This is ends with the doc-sep token"]
+    actual = util.split_docs("This is ends with the doc-sep token <doc-sep>", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
+    expected = ["This is ends with more than one doc-sep tokens"]
+    actual = util.split_docs("This is ends with more than one doc-sep tokens <doc-sep> <doc-sep>", doc_sep_token=doc_sep_token)
+    assert expected == actual
+
 
 def test_get_num_docs() -> None:
     doc_sep_token = "<doc-sep>"
