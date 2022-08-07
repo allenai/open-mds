@@ -18,7 +18,6 @@ Fine-tuning the library models for sequence to sequence.
 """
 # You can also adapt this script on your own sequence to sequence task. Pointers for this are left as comments.
 
-import copy
 import logging
 import os
 import sys
@@ -30,8 +29,8 @@ import flatten_dict
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
 import transformers
-from datasets import load_dataset, load_metric
 from filelock import FileLock
+from datasets import load_dataset, load_metric
 from retrieval_exploration.common import util
 from retrieval_exploration.perturbations import Perturber
 from transformers import (
@@ -51,7 +50,6 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode, send_example_telemetry
 from transformers.utils.versions import require_version
-
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
@@ -105,7 +103,7 @@ class ModelArguments:
         default=False,
         metadata={
             "help": (
-                "Will use the token generated when running `transformers-cli login` (necessary to use this script "
+                "Will use the token generated when running `huggingface-cli login` (necessary to use this script "
                 "with private models)."
             )
         },
@@ -598,8 +596,6 @@ def main():
         # Before we perturb...
         # record the number of documents in each instance
         num_docs = [util.get_num_docs(text, doc_sep_token=doc_sep_token) for text in inputs]
-        # make a copy of each input, so we can determine how much it was changed by perturbation
-        pre_perturbed_inputs = copy.deepcopy(inputs)
 
         if perturbation_args.perturbation is None:
             logger.info("No perturbations will be applied.")
@@ -628,14 +624,8 @@ def main():
                 unperturbed_indices=unperturbed_indices,
             )
             logger.info(
-                f"Applying perturbation '{perturbation_args.perturbation}' with selection strategy"
-                f" '{perturbation_args.selection_strategy}' documents."
+                f"Applying perturbation '{perturbation_args.perturbation}' with selection strategy '{perturbation_args.selection_strategy}'."
             )
-
-        # To get a sense for the degree to which each perturbation changes the input, compute the token set ratio
-        jaccard_similarity_scores = [
-            util.jaccard_similarity_score(pre, post) for pre, post in zip(pre_perturbed_inputs, inputs)
-        ]
 
         # Rather than naively truncating the concatenated documents, we follow
         # https://aclanthology.org/2021.naacl-main.380/ and https://arxiv.org/abs/2110.08499
@@ -656,9 +646,8 @@ def main():
 
         model_inputs = tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
 
-        # Setup the tokenizer for targets
-        with tokenizer.as_target_tokenizer():
-            labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
+        # Tokenize targets with the `text_target` keyword argument
+        labels = tokenizer(text_target=targets, max_length=max_target_length, padding=padding, truncation=True)
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
@@ -668,10 +657,6 @@ def main():
             ]
 
         model_inputs["labels"] = labels["input_ids"]
-
-        # Retain any meta data about the input text here
-        model_inputs["num_docs"] = num_docs
-        model_inputs["jaccard_similarity_scores"] = jaccard_similarity_scores
 
         # Add a global attention mask to models inputs. We don't bother checking if the model will
         # actually use it, as it will be ignored if not. For summarization, we place global attention
@@ -721,6 +706,7 @@ def main():
                 remove_columns=column_names,
                 load_from_cache_file=not data_args.overwrite_cache,
                 desc="Running tokenizer on train dataset",
+                batch_size=4096,
             )
 
     if training_args.do_eval:
@@ -739,6 +725,7 @@ def main():
                 remove_columns=column_names,
                 load_from_cache_file=not data_args.overwrite_cache,
                 desc="Running tokenizer on validation dataset",
+                batch_size=None,
             )
 
     if training_args.do_predict:
@@ -757,6 +744,7 @@ def main():
                 remove_columns=column_names,
                 load_from_cache_file=not data_args.overwrite_cache,
                 desc="Running tokenizer on prediction dataset",
+                batch_size=None,
             )
 
     # Data collator
