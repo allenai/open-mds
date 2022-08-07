@@ -11,7 +11,7 @@
 #SBATCH --mail-user=johnmgiorgi@gmail.com
 #SBATCH --mail-type=FAIL
 # Use this command to run the same job interactively
-# salloc --mem=12G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=rrg-wanglab
+# salloc --mem=16G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=rrg-wanglab
 # salloc --mem=16G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=def-gbader
 
 ### Example usage ###
@@ -54,6 +54,6 @@ HF_DATASETS_OFFLINE=1 \
 python "./scripts/run_summarization.py" "./conf/base.yml" "$CONFIG_FILEPATH" \
     output_dir="$OUTPUT_DIR" \
     perturbation="$PERTURBATION" \
-    sampling_strategy="$SELECTION_STRATEGY" \
+    selection_strategy="$SELECTION_STRATEGY" \
     perturbed_frac="$PERTURBED_FRAC" \
     perturbed_seed="$PERTURBED_SEED"
