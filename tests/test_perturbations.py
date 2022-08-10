@@ -745,19 +745,25 @@ class TestPerturber:
     )
     def test_replace_unperturbed(self, perturbation: str, strategy: str) -> None:
         doc_sep_token = "<doc-sep>"
-        perturbed_inputs = [f"Document 0 {doc_sep_token} Document 1", f"Document 2 {doc_sep_token} Document 3"]
+        perturbed_inputs = [
+            f"Document 0 {doc_sep_token} Document 1 {doc_sep_token} Document 3",
+            f"Document 3 {doc_sep_token} Document 4 {doc_sep_token} Document 5",
+        ]
         unperturbed_docs = [
             ["Unperturbed 0", "Unperturbed 1"],
             ["Unperturbed 2", "Unperturbed 3"],
         ]
-        unperturbed_indices = [0, 2]
+
+        # Purposefully provide these in non-ascending order, to ensure that the method can handle it
+        unperturbed_indices = [2, 0]
 
         perturber = perturbations.Perturber(perturbation, doc_sep_token=doc_sep_token, strategy=strategy)
 
-        actual_perturbed_inputs = perturber._replace_unperturbed(
+        expected = [
+            f"Unperturbed 0 {doc_sep_token} Document 0 {doc_sep_token} Unperturbed 1 {doc_sep_token} Document 1 {doc_sep_token} Document 3",
+            f"Unperturbed 2 {doc_sep_token} Document 3 {doc_sep_token} Unperturbed 3 {doc_sep_token} Document 4 {doc_sep_token} Document 5",
+        ]
+        actual = perturber._replace_unperturbed(
             perturbed_inputs, unperturbed_docs=unperturbed_docs, unperturbed_indices=unperturbed_indices
         )
-        for expected_docs, actual in zip(unperturbed_docs, actual_perturbed_inputs):
-            actual_docs = util.split_docs(actual, doc_sep_token=doc_sep_token)
-            for i, idx in enumerate(unperturbed_indices):
-                assert actual_docs[idx] == expected_docs[i]
+        assert expected == actual
