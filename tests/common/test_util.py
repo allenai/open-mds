@@ -73,23 +73,27 @@ def test_split_docs() -> None:
     assert expected == actual
 
     expected = ["Document 1", "Document 2"]
-    actual = util.split_docs(f"Document 1 {doc_sep_token} Document 2", doc_sep_token=doc_sep_token)
+    # Include whitespace to ensure that is handled correctly
+    actual = util.split_docs(f"  Document 1 {doc_sep_token} Document 2  ", doc_sep_token=doc_sep_token)
     assert expected == actual
 
     expected = ["This does not contain doc_sep_token"]
-    actual = util.split_docs("This does not contain doc_sep_token", doc_sep_token=doc_sep_token)
+    actual = util.split_docs("  This does not contain doc_sep_token  ", doc_sep_token=doc_sep_token)
     assert expected == actual
 
     expected = ["This is ends with characters from doc_sep_token sep"]
-    actual = util.split_docs("This is ends with characters from doc_sep_token sep", doc_sep_token=doc_sep_token)
+    actual = util.split_docs("  This is ends with characters from doc_sep_token sep", doc_sep_token=doc_sep_token)
     assert expected == actual
 
     expected = ["This is ends with the doc-sep token"]
-    actual = util.split_docs("This is ends with the doc-sep token <doc-sep>", doc_sep_token=doc_sep_token)
+    actual = util.split_docs("  This is ends with the doc-sep token <doc-sep>  ", doc_sep_token=doc_sep_token)
     assert expected == actual
 
-    expected = ["This is ends with more than one doc-sep tokens"]
-    actual = util.split_docs("This is ends with more than one doc-sep tokens <doc-sep> <doc-sep>", doc_sep_token=doc_sep_token)
+    expected = ["Document 1", "This is ends with multiple doc-sep tokens"]
+    actual = util.split_docs(
+        "  Document 1 <doc-sep> This is ends with multiple doc-sep tokens <doc-sep>  <doc-sep>",
+        doc_sep_token=doc_sep_token,
+    )
     assert expected == actual
 
 
