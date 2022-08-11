@@ -54,7 +54,8 @@ class Perturber:
         self._perturbation_func = perturbation_func
         self._doc_sep_token = doc_sep_token
         self._strategy = strategy
-        self._rng = random.Random(seed)
+        self._seed = seed
+        self._rng = random.Random(self._seed)
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -75,6 +76,12 @@ class Perturber:
                 # We backtranslate on individual sentences, so this max_length should be plenty.
                 max_length=256,
             )
+
+    def __repr__(self) -> str:
+        return (
+            f"Perturber initialized with perturbation: '{self._perturbation}', strategy: '{self._strategy}',"
+            f" document seperator token: '{self._doc_sep_token}' and seed: {self._seed}"
+        )
 
     def __call__(
         self,
@@ -536,6 +543,10 @@ class Perturber:
         self, perturbed_inputs: List[str], unperturbed_docs: List[List[str]], unperturbed_indices: List[int]
     ) -> List[str]:
         """Inserts `unperturbed_docs` into `perturbed_inputs` at `unperturbed_indices`"""
+
+        # These need to be sorted for the insertion order to be correct
+        unperturbed_indices = sorted(unperturbed_indices)
+
         perturbed_docs = [util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in perturbed_inputs]
         for i, (unperturbed_example, perturbed_example) in enumerate(zip(unperturbed_docs, perturbed_docs)):
             for unperturbed_doc, unperturbed_idx in zip(unperturbed_example, unperturbed_indices):

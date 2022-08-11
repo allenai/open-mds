@@ -595,7 +595,7 @@ def main():
 
         # Before we perturb...
         # record the number of documents in each instance
-        num_docs = [util.get_num_docs(text, doc_sep_token=doc_sep_token) for text in inputs]
+        orig_num_docs = [util.get_num_docs(text, doc_sep_token=doc_sep_token) for text in inputs]
 
         if perturbation_args.perturbation is None:
             logger.info("No perturbations will be applied.")
@@ -641,13 +641,14 @@ def main():
                 tokenizer=tokenizer,
                 num_docs=num_docs,
             )
-            for text, num_docs in zip(inputs, num_docs)
+            for text, num_docs in zip(inputs, orig_num_docs)
         ]
 
         model_inputs = tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
 
-        # Tokenize targets with the `text_target` keyword argument
-        labels = tokenizer(text_target=targets, max_length=max_target_length, padding=padding, truncation=True)
+        # Setup the tokenizer for targets
+        with tokenizer.as_target_tokenizer():
+            labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
