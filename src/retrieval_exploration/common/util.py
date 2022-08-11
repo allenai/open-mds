@@ -67,13 +67,15 @@ def jaccard_similarity_score(string_1: str, string_2: str) -> float:
 
 def split_docs(text: str, doc_sep_token: str) -> List[str]:
     """Given `text`, a string which contains the input documents seperated by `doc_sep_token`,
-    returns a list of each individual documents. Ignores any documents that are empty.
-    order of documents in each example.
+    returns a list of each individual documents.
     """
-    # It's possible to have a doc_sep_token at the very end of the string. Strip it here
-    # so that we get the correct number of documents when we split on doc_sep_token.
-    text = re.sub(rf"({doc_sep_token}\s?)+$", "", text.strip())
-    return [doc.strip() for doc in text.split(doc_sep_token)]
+    # It's possible to have one or more doc_sep_token at the very end of the string.
+    # Strip them here so that we get the correct number of documents when we split on doc_sep_token.
+    text = text.rstrip().removesuffix(doc_sep_token).rstrip()
+    while text.endswith(doc_sep_token):
+        text = text.removesuffix(doc_sep_token).rstrip()
+    docs = [doc.strip() for doc in text.split(doc_sep_token)]
+    return docs
 
 
 def get_num_docs(text: str, doc_sep_token: str) -> int:
@@ -178,7 +180,8 @@ def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[
 def preprocess_multi_x_science_sum(
     text: str, summary: str, ref_abstract: Dict[str, List[str]], doc_sep_token: str
 ) -> Tuple[str, str]:
-    abstracts = [abstract.strip() for abstract in ref_abstract["abstract"]]
+    # Multi-XScience has empty abstracts. Drop them to avoid problems downstream.
+    abstracts = [abstract.strip() for abstract in ref_abstract["abstract"] if abstract.strip()]
     text = f" {doc_sep_token} ".join([text.strip()] + abstracts)
     summary = summary.strip()
     return text, summary
