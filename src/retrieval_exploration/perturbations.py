@@ -531,7 +531,7 @@ class Perturber:
         example_docs = [util.split_docs(example, doc_sep_token=self._doc_sep_token) for example in inputs]
         unperturbed_docs = [[docs[i] for i in unperturbed_indices] for docs in example_docs]
         example_docs = [
-            [doc for doc in example if doc not in more_itertools.flatten(unperturbed_docs)] for example in example_docs
+            [doc for i, doc in enumerate(example) if i not in unperturbed_indices] for example in example_docs
         ]
         inputs = [f" {self._doc_sep_token} ".join(docs) for docs in example_docs]
         # Remove all the unperturbed_docs from documents
