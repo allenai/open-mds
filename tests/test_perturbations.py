@@ -706,30 +706,24 @@ class TestPerturber:
         "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
     )
     def test_remove_unperturbed(self, perturbation: str, strategy: str) -> None:
-        num_docs = 16
         doc_sep_token = "<doc-sep>"
         inputs = [
-            f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs)),
-            f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs, num_docs * 2)),
+            f"Document 0 {doc_sep_token} Document 1 {doc_sep_token} Document 2",
+            # Include a document (Document 3) that should be unperturbed in the first example but not the second
+            f"Document 3 {doc_sep_token} Document 2 {doc_sep_token} Document 5",
         ]
-        unperturbed_indices = [0, 3]
+        # Purposefully provide these in non-ascending order, to ensure that the method can handle it
+        unperturbed_indices = [2, 0]
         # Include one document not in unperturbed_indices
-        documents = ["Document 0", "Document 19", "Document 2"]
+        documents = ["Document 0", "Document 1", "Document 2"]
 
         perturber = perturbations.Perturber(perturbation, doc_sep_token=doc_sep_token, strategy=strategy)
 
         # Build up the expected outputs
-        expected_inputs = [
-            f" {doc_sep_token} ".join(f"Document {i}" for i in range(num_docs) if i not in unperturbed_indices),
-            f" {doc_sep_token} ".join(
-                f"Document {i}" for i in range(num_docs, num_docs * 2) if (i - num_docs) not in unperturbed_indices
-            ),
-        ]
-        expected_unperturbed_docs = [
-            [util.split_docs(input_, doc_sep_token=doc_sep_token)[idx] for idx in unperturbed_indices]
-            for input_ in inputs
-        ]
-        expected_documents = ["Document 2"]
+        expected_inputs = ["Document 1", "Document 2"]
+        # Have to appear in same order as unperturbed_indices
+        expected_unperturbed_docs = [["Document 2", "Document 0"], ["Document 5", "Document 3"]]
+        expected_documents = ["Document 1"]
 
         # Check that the expected documents are unperturbed
         actual_inputs, actual_unperturbed_docs, actual_documents = perturber._remove_unperturbed(
