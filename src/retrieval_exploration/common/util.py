@@ -188,12 +188,12 @@ def preprocess_multi_x_science_sum(
 
 
 def preprocess_ms2(
-    text: str, summary: str, titles: List[str], abstracts: List[str], doc_sep_token: str
+    text: str, summary: str, titles: List[str], abstracts: List[str], doc_sep_token: str, max_included_studies: int = 25
 ) -> Tuple[str, str]:
     background = text.strip()
     articles = [f"{title.strip()} {abstract.strip()}" for title, abstract in zip(titles, abstracts)]
     # Following https://arxiv.org/abs/2104.06486, take the first 25 articles.
-    articles = articles[:25]
+    articles = articles[:max_included_studies]
     text = f" {doc_sep_token} ".join([background] + articles)
     summary = summary.strip()
     return text, summary
