@@ -581,9 +581,9 @@ class Perturber:
         """
         back_translated_docs = []
 
-        with Cache(util.CACHE_DIR) as reference:
-            for doc in documents:
-                key = f"{_BT_FROM_MODEL_NAME}_{_BT_TO_MODEL_NAME}_{util.sanitize_text(doc, lowercase=True)}"
+        for doc in documents:
+            key = f"{_BT_FROM_MODEL_NAME}_{_BT_TO_MODEL_NAME}_{util.sanitize_text(doc, lowercase=True)}"
+            with Cache(util.CACHE_DIR) as reference:
                 if key in reference:
                     back_translated_docs.append(reference[key])
                 else:
