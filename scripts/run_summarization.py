@@ -555,13 +555,13 @@ def main():
         for i in range(len(examples[text_column])):
             # remove pairs where at least one record is None
             if examples[text_column][i] is not None and examples[summary_column][i] is not None:
-                if data_args.dataset_name == "multi_news":
+                if "multi_news" in data_args.dataset_name:
                     text, summary = util.preprocess_multi_news(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif data_args.dataset_name == "multi_x_science_sum":
+                elif "multi_x_science_sum" in data_args.dataset_name:
                     text, summary = util.preprocess_multi_x_science_sum(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
@@ -612,7 +612,7 @@ def main():
             # whos related works section we are trying to generate, and the background section of the literature
             # review we are trying to generate, respectively. Both of these should be excluded from perturbation,
             # as they are not something we would retrieve.
-            if data_args.dataset_name == "multi_x_science_sum" or data_args.dataset_config_name == "ms2":
+            if "multi_x_science_sum" in data_args.dataset_name or data_args.dataset_config_name == "ms2":
                 unperturbed_indices = [0]
                 logger.info(f"Documents at indices '{unperturbed_indices}' will not be perturbed.")
 
