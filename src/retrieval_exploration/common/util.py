@@ -15,7 +15,7 @@ from tqdm import tqdm
 from transformers import PreTrainedTokenizer
 
 # Local constants
-_DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
+DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
 
 _BASELINE_DIR = "baseline"
 _PERTURBATIONS_DIR = "perturbations"
@@ -89,13 +89,13 @@ def get_num_docs(text: str, doc_sep_token: str) -> int:
 def get_doc_sep_token(tokenizer: PreTrainedTokenizer) -> str:
     """Returns a suitable document seperator token depending on `tokenizer`. In general, the
     function checks if this `tokenizer.name_or_path` has a special document token (defined in
-    `common.util._DOC_SEP_TOKENS`). If that is not found, it then checks for: `tokenizer.sep_token`,
+    `common.util.DOC_SEP_TOKENS`). If that is not found, it then checks for: `tokenizer.sep_token`,
     `tokenizer.bos_token`, `tokenizer.eos_token` in that order. If these are all `None`, a
     `ValueError` is raised.
     """
     # PRIMERA models have their own special token, <doc-sep>.
     if "primera" in tokenizer.name_or_path.lower():
-        return _DOC_SEP_TOKENS["primera"]
+        return DOC_SEP_TOKENS["primera"]
     elif tokenizer.sep_token is not None:
         return tokenizer.sep_token
     elif tokenizer.bos_token is not None:
@@ -171,8 +171,8 @@ def batch_decode_multi_doc(sequences, tokenizer: PreTrainedTokenizer, doc_sep_to
 
 
 def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
-    text = text.strip(_DOC_SEP_TOKENS["multi_news"]).strip()
-    text = text.replace(_DOC_SEP_TOKENS["multi_news"], doc_sep_token)
+    text = text.strip(DOC_SEP_TOKENS["multi_news"]).strip()
+    text = text.replace(DOC_SEP_TOKENS["multi_news"], doc_sep_token)
     summary = summary.strip()
     return text, summary
 
