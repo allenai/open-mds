@@ -121,7 +121,7 @@ def test_get_num_docs() -> None:
 def test_get_doc_sep_token(hf_tokenizer: Callable) -> None:
     # A model from the PRIMERA family
     tokenizer = hf_tokenizer("allenai/PRIMERA")
-    assert util.get_doc_sep_token(tokenizer) == util._DOC_SEP_TOKENS["primera"]
+    assert util.get_doc_sep_token(tokenizer) == util.DOC_SEP_TOKENS["primera"]
 
     # A model which defines a sep_token
     tokenizer = hf_tokenizer("bert-base-cased")
@@ -248,10 +248,10 @@ def test_preprocess_multi_news() -> None:
         "Document numero uno.",
         # Including a document separator token at the end. Some examples in multi-news do this,
         # so we should make sure it doesn't trip up our logic.
-        f"Document numero dos. {util._DOC_SEP_TOKENS['multi_news']}",
+        f"Document numero dos. {util.DOC_SEP_TOKENS['multi_news']}",
     ]
 
-    document = f" {util._DOC_SEP_TOKENS['multi_news']} ".join(docs)
+    document = f" {util.DOC_SEP_TOKENS['multi_news']} ".join(docs)
     summary = "This is the summary."
 
     expected_text, expected_summary = (
