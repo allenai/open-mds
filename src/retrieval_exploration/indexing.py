@@ -178,7 +178,7 @@ class MS2Dataset(pt.datasets.Dataset):
     def __init__(self, **kwargs):
         self.path = "allenai/mslr2022"
         self.name = "ms2"
-        super().__init__(self.path, self.name, **kwargs)
+        self._hf_dataset = load_dataset(self.path, self.name, **kwargs)
 
     def get_corpus_iter(self, verbose: bool = False):
         yielded = set()
