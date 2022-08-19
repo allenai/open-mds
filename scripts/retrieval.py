@@ -2,9 +2,9 @@ import copy
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
 
-import pandas as pd
+
 import pyterrier as pt
 import typer
 from retrieval_exploration import indexing
@@ -74,45 +74,13 @@ def main(
         pt_dataset = indexing.MultiNewsDataset()
         doc_sep_token = util.DOC_SEP_TOKENS[pt_dataset.path]
 
-        # Define a function to replace a datasets documents with the retrieved documents.
-        # See: https://huggingface.co/docs/datasets/main/en/package_reference/main_classes#datasets.Dataset.map
-        def _replace(
-            example: Dict[str, Any], idx: int, *, doc_sep_token: str, split: str, retrieved: pd.DataFrame
-        ) -> Dict[str, Any]:
-            qid = f"{split}_{idx}"
-            k = util.get_num_docs(example["document"], doc_sep_token=doc_sep_token)
-            retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
-            example["document"] = util.sanitize_text(f" {doc_sep_token} ".join(doc for doc in retrieved_docs))
-            return example
-
     elif hf_dataset_name == HFDatasets.multixscience:
         pt_dataset = indexing.MultiXScienceDataset()
         doc_sep_token = None
 
-        def _replace(
-            example: Dict[str, Any], idx: int, *, doc_sep_token: str, split: str, retrieved: pd.DataFrame
-        ) -> Dict[str, Any]:
-            qid = f"{split}_{idx}"
-            k = len(example["ref_abstract"]["abstract"])
-            retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
-            example["ref_abstract"]["abstract"] = [doc.strip() for doc in retrieved_docs]
-            return example
-
     elif hf_dataset_name == HFDatasets.ms2:
         pt_dataset = indexing.MS2Dataset()
         doc_sep_token = None
-
-        def _replace(
-            example: Dict[str, Any], idx: int, *, doc_sep_token: str, split: str, retrieved: pd.DataFrame
-        ) -> Dict[str, Any]:
-            qid = example["review_id"]
-            k = len(example["pmid"])
-            retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
-            # MS^2 breaks each document into a title and abstract section, but during indexing we collapsed them.
-            # Store the retrieved title + abstract under abstract and use empty strings to fill in the title field
-            example["title"] = [""] * k
-            example["abstract"] = [doc.strip() for doc in retrieved_docs]
-            return example
 
     # Create a directory to store the index if it wasn't provided
     index_path = Path(index_path) if index_path is not None else Path(util.CACHE_DIR) / "indexes" / pt_dataset.path
@@ -167,7 +135,7 @@ def main(
             continue
 
         hf_dataset[split] = hf_dataset[split].map(
-            partial(_replace, doc_sep_token=doc_sep_token, split=split, retrieved=retrieved),
+            partial(pt_dataset.replace, doc_sep_token=doc_sep_token, split=split, retrieved=retrieved),
             with_indices=True,
             load_from_cache_file=not overwrite_cache,
             writer_batch_size=_WRITER_BATCH_SIZE,
