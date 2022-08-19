@@ -140,9 +140,7 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
         super().__init__("multi_x_science_sum", None, **kwargs)
 
     @staticmethod
-    def replace(
-        example: Dict[str, Any], idx: int, *, doc_sep_token: str, split: str, retrieved: pd.DataFrame
-    ) -> Dict[str, Any]:
+    def replace(example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame) -> Dict[str, Any]:
         qid = f"{split}_{idx}"
         k = len(example["ref_abstract"]["abstract"])
         retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
@@ -192,9 +190,7 @@ class MS2Dataset(HuggingFacePyTerrierDataset):
         super().__init__("allenai/mslr2022", "ms2", **kwargs)
 
     @staticmethod
-    def replace(
-        example: Dict[str, Any], idx: int, *, doc_sep_token: str, split: str, retrieved: pd.DataFrame
-    ) -> Dict[str, Any]:
+    def replace(example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame) -> Dict[str, Any]:
         qid = example["review_id"]
         k = len(example["pmid"])
         retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
