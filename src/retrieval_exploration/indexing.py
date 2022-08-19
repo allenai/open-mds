@@ -44,11 +44,56 @@ def _sanitize_query(topics: pd.DataFrame) -> pd.DataFrame:
     return pt.apply.query(lambda x: _strip_markup(x.query))(topics)
 
 
-class MultiNewsDataset(pt.datasets.Dataset):
+class HuggingFacePyTerrierDataset(pt.datasets.Dataset):
+    """Simple wrapper for the PyTerrier Dataset class to make it easier to interface with HuggingFace Datasets."""
+
+    def __init__(self, path: str, name: Optional[str] = None, **kwargs) -> None:
+        self.path = path
+        self.name = name
+        self._hf_dataset = load_dataset(self.path, self.name, **kwargs)
+
+    @staticmethod
+    def replace(example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame) -> Dict[str, Any]:
+        """This method replaces the original source documents of an `example` from a HuggingFace dataset with those
+        in `retrieved`. It is expected that this function will be passed to the `map` method of the HuggingFace
+        Datasets library with the argument `with_indices=True`. Must be implemented by a child class.
+        """
+        raise NotImplementedError("Static method 'replace' must be implemented by the child class.")
+
+    def get_index(self, index_path: str, overwrite: bool = False, verbose: bool = True, **kwargs) -> pt.IndexRef:
+        """Returns the `IndexRef` for this dataset from `index_path`, creating it first if it doesn't already
+        exist. If `overwrite`, the index will be rebuilt. Any provided **kwargs are passed to `pt.IterDictIndexer`.
+        """
+        if any(Path(index_path).iterdir()):
+            if overwrite:
+                shutil.rmtree(index_path)
+            else:
+                return pt.IndexRef.of(index_path)
+
+        indexer = _get_iter_dict_indexer(index_path, dataset=self, **kwargs)
+
+        # Compose index from iterator
+        # See: https://pyterrier.readthedocs.io/en/latest/terrier-indexing.html#iterdictindexer
+        indexref = indexer.index(self.get_corpus_iter(verbose=verbose))
+        return indexref
+
+    def info_url(self) -> str:
+        return f"{_HF_DATASETS_URL}/{self.path}"
+
+
+class MultiNewsDataset(HuggingFacePyTerrierDataset):
     def __init__(self, **kwargs):
-        self.path = "multi_news"
-        self.name = None
-        self._hf_dataset = load_dataset(self.path, **kwargs)
+        super().__init__("multi_news", None, **kwargs)
+
+    @staticmethod
+    def replace(example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame) -> Dict[str, Any]:
+        # Multi-News has a special document seperator token that we need to parse out individual documents
+        doc_sep_token = "|||||"
+        qid = f"{split}_{idx}"
+        k = util.get_num_docs(example["document"], doc_sep_token=doc_sep_token)
+        retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
+        example["document"] = util.sanitize_text(f" {doc_sep_token} ".join(doc for doc in retrieved_docs))
+        return example
 
     def get_corpus_iter(self, verbose: bool = True) -> Iterator[Dict[str, Any]]:
         yielded = set()
@@ -68,23 +113,6 @@ class MultiNewsDataset(pt.datasets.Dataset):
                     yielded.add(doc)
                     # These documents don't have unique IDs, so create them using the split name and index
                     yield {"docno": f"{split}_{i}_{j}", "text": doc}
-
-    def get_index(self, index_path: str, overwrite: bool = False, verbose: bool = True, **kwargs) -> pt.IndexRef:
-        """Returns the `IndexRef` for this dataset from `index_path`, creating it first if it doesn't already
-        exist. If `overwrite`, the index will be rebuilt. Any provided **kwargs are passed to `pt.IterDictIndexer`.
-        """
-        if any(Path(index_path).iterdir()):
-            if overwrite:
-                shutil.rmtree(index_path)
-            else:
-                return pt.IndexRef.of(index_path)
-
-        indexer = _get_iter_dict_indexer(index_path, dataset=self, **kwargs)
-
-        # Compose index from iterator
-        # See: https://pyterrier.readthedocs.io/en/latest/terrier-indexing.html#iterdictindexer
-        indexref = indexer.index(self.get_corpus_iter(verbose=verbose))
-        return indexref
 
     def get_topics(self, split: str, max_examples: Optional[int] = None) -> pd.DataFrame:
         dataset = self._hf_dataset[split]
@@ -106,15 +134,20 @@ class MultiNewsDataset(pt.datasets.Dataset):
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
-    def info_url(self) -> str:
-        return f"{_HF_DATASETS_URL}/{self.path}"
 
-
-class MultiXScienceDataset(pt.datasets.Dataset):
+class MultiXScienceDataset(HuggingFacePyTerrierDataset):
     def __init__(self, **kwargs):
-        self.path = "multi_x_science_sum"
-        self.name = None
-        self._hf_dataset = load_dataset(self.path, **kwargs)
+        super().__init__("multi_x_science_sum", None, **kwargs)
+
+    @staticmethod
+    def replace(
+        example: Dict[str, Any], idx: int, *, doc_sep_token: str, split: str, retrieved: pd.DataFrame
+    ) -> Dict[str, Any]:
+        qid = f"{split}_{idx}"
+        k = len(example["ref_abstract"]["abstract"])
+        retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
+        example["ref_abstract"]["abstract"] = [doc.strip() for doc in retrieved_docs]
+        return example
 
     def get_corpus_iter(self, verbose: bool = True) -> Iterator[Dict[str, Any]]:
         yielded = set()
@@ -133,23 +166,6 @@ class MultiXScienceDataset(pt.datasets.Dataset):
                     yielded.add(doc)
                     # These documents don't have unique IDs, so create them using the split name and index
                     yield {"docno": f"{split}_{i}_{j}", "text": doc}
-
-    def get_index(self, index_path: str, overwrite: bool = False, verbose: bool = True, **kwargs) -> pt.IndexRef:
-        """Returns the `IndexRef` for this dataset from `index_path`, creating it first if it doesn't already
-        exist. If `overwrite`, the index will be rebuilt. Any provided **kwargs are passed to `pt.IterDictIndexer`.
-        """
-        if any(Path(index_path).iterdir()):
-            if overwrite:
-                shutil.rmtree(index_path)
-            else:
-                return pt.IndexRef.of(index_path)
-
-        indexer = _get_iter_dict_indexer(index_path, dataset=self, **kwargs)
-
-        # Compose index from iterator
-        # See: https://pyterrier.readthedocs.io/en/latest/terrier-indexing.html#iterdictindexer
-        indexref = indexer.index(self.get_corpus_iter(verbose=verbose))
-        return indexref
 
     def get_topics(self, split: str, max_examples: Optional[int] = None) -> pd.DataFrame:
         dataset = self._hf_dataset[split]
@@ -170,15 +186,23 @@ class MultiXScienceDataset(pt.datasets.Dataset):
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
-    def info_url(self) -> str:
-        return f"{_HF_DATASETS_URL}/{self.path}"
 
+class MS2Dataset(HuggingFacePyTerrierDataset):
+    def __init__(self, **kwargs) -> None:
+        super().__init__("allenai/mslr2022", "ms2", **kwargs)
 
-class MS2Dataset(pt.datasets.Dataset):
-    def __init__(self, **kwargs):
-        self.path = "allenai/mslr2022"
-        self.name = "ms2"
-        self._hf_dataset = load_dataset(self.path, self.name, **kwargs)
+    @staticmethod
+    def replace(
+        example: Dict[str, Any], idx: int, *, doc_sep_token: str, split: str, retrieved: pd.DataFrame
+    ) -> Dict[str, Any]:
+        qid = example["review_id"]
+        k = len(example["pmid"])
+        retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
+        # MS^2 breaks each document into a title and abstract section, but during indexing we collapsed them.
+        # Store the retrieved title + abstract under abstract and use empty strings to fill in the title field
+        example["title"] = [""] * k
+        example["abstract"] = [doc.strip() for doc in retrieved_docs]
+        return example
 
     def get_corpus_iter(self, verbose: bool = False):
         yielded = set()
@@ -198,23 +222,6 @@ class MS2Dataset(pt.datasets.Dataset):
                     yielded.add(pmid)
                     yield {"docno": pmid, "text": f"{title.strip()} {abstract.strip()}"}
 
-    def get_index(self, index_path: str, overwrite: bool = False, verbose: bool = True, **kwargs) -> pt.IndexRef:
-        """Returns the `IndexRef` for this dataset from `index_path`, creating it first if it doesn't already
-        exist. If `overwrite`, the index will be rebuilt. Any provided **kwargs are passed to `pt.IterDictIndexer`.
-        """
-        if any(Path(index_path).iterdir()):
-            if overwrite:
-                shutil.rmtree(index_path)
-            else:
-                return pt.IndexRef.of(index_path)
-
-        indexer = _get_iter_dict_indexer(index_path, dataset=self, **kwargs)
-
-        # Compose index from iterator
-        # See: https://pyterrier.readthedocs.io/en/latest/terrier-indexing.html#iterdictindexer
-        indexref = indexer.index(self.get_corpus_iter(verbose=verbose))
-        return indexref
-
     def get_topics(self, split: str, max_examples: Optional[int] = None) -> pd.DataFrame:
         dataset = self._hf_dataset[split]
         if max_examples:
@@ -232,6 +239,3 @@ class MS2Dataset(pt.datasets.Dataset):
             docnos.extend(example["pmid"])
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
-
-    def info_url(self) -> str:
-        return f"{_HF_DATASETS_URL}/{self.path}"
