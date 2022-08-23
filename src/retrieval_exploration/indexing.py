@@ -53,10 +53,13 @@ class HuggingFacePyTerrierDataset(pt.datasets.Dataset):
         self._hf_dataset = load_dataset(self.path, self.name, **kwargs)
 
     @staticmethod
-    def replace(example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame) -> Dict[str, Any]:
-        """This method replaces the original source documents of an `example` from a HuggingFace dataset with those
-        in `retrieved`. It is expected that this function will be passed to the `map` method of the HuggingFace
-        Datasets library with the argument `with_indices=True`. Must be implemented by a child class.
+    def replace(
+        example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """This method replaces the original source documents of an `example` from a HuggingFace dataset with the
+        top-`k` documents in `retrieved`. It is expected that this function will be passed to the `map` method of
+        the HuggingFace Datasets library with the argument `with_indices=True`. Must be implemented by child class.
+        If `k` is `None`, it will be set dynamically for each example as the original number of source documents.
         """
         raise NotImplementedError("Static method 'replace' must be implemented by the child class.")
 
@@ -86,11 +89,13 @@ class MultiNewsDataset(HuggingFacePyTerrierDataset):
         super().__init__("multi_news", None, **kwargs)
 
     @staticmethod
-    def replace(example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame) -> Dict[str, Any]:
+    def replace(
+        example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
+    ) -> Dict[str, Any]:
         # Multi-News has a special document seperator token that we need to parse out individual documents
-        doc_sep_token = "|||||"
+        doc_sep_token = util.DOC_SEP_TOKENS["multi_news"]
         qid = f"{split}_{idx}"
-        k = util.get_num_docs(example["document"], doc_sep_token=doc_sep_token)
+        k = k or util.get_num_docs(example["document"], doc_sep_token=doc_sep_token)
         retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
         example["document"] = util.sanitize_text(f" {doc_sep_token} ".join(doc for doc in retrieved_docs))
         return example
@@ -134,15 +139,24 @@ class MultiNewsDataset(HuggingFacePyTerrierDataset):
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
+    def get_document_stats(self) -> Dict[str, float]:
+        num_docs = []
+        for split in self._hf_dataset:
+            for example in self._hf_dataset[split]:
+                num_docs.append(util.get_num_docs(example["document"], doc_sep_token=util.DOC_SEP_TOKENS[self.path]))
+        return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}
+
 
 class MultiXScienceDataset(HuggingFacePyTerrierDataset):
     def __init__(self, **kwargs):
         super().__init__("multi_x_science_sum", None, **kwargs)
 
     @staticmethod
-    def replace(example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame) -> Dict[str, Any]:
+    def replace(
+        example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
+    ) -> Dict[str, Any]:
         qid = f"{split}_{idx}"
-        k = len(example["ref_abstract"]["abstract"])
+        k = k or len(example["ref_abstract"]["abstract"])
         retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
         example["ref_abstract"]["abstract"] = [doc.strip() for doc in retrieved_docs]
         return example
@@ -184,15 +198,24 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
+    def get_document_stats(self) -> Dict[str, float]:
+        num_docs = []
+        for split in self._hf_dataset:
+            for example in self._hf_dataset[split]:
+                num_docs.append(len(example["ref_abstract"]["abstract"]))
+        return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}
+
 
 class MS2Dataset(HuggingFacePyTerrierDataset):
     def __init__(self, **kwargs) -> None:
         super().__init__("allenai/mslr2022", "ms2", **kwargs)
 
     @staticmethod
-    def replace(example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame) -> Dict[str, Any]:
+    def replace(
+        example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
+    ) -> Dict[str, Any]:
         qid = example["review_id"]
-        k = len(example["pmid"])
+        k = k or len(example["pmid"])
         retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
         # MS^2 breaks each document into a title and abstract section, but during indexing we collapsed them.
         # Store the retrieved title + abstract under abstract and use empty strings to fill in the title field
@@ -235,3 +258,10 @@ class MS2Dataset(HuggingFacePyTerrierDataset):
             docnos.extend(example["pmid"])
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
+
+    def get_document_stats(self) -> Dict[str, float]:
+        num_docs = []
+        for split in self._hf_dataset:
+            for example in self._hf_dataset[split]:
+                num_docs.append(len(example["pmid"]))
+        return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}

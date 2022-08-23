@@ -31,6 +31,12 @@ class Retriever(str, Enum):
     dense_re_ranker = "dense+re-ranker"
 
 
+class TopKStrategy(str, Enum):
+    mean = "mean"
+    max_ = "max"
+    oracle = "oracle"
+
+
 @app.command()
 def main(
     hf_dataset_name: HFDatasets = typer.Argument(
@@ -54,12 +60,24 @@ def main(
     retriever: Retriever = typer.Option(
         Retriever.sparse, case_sensitive=False, help="The type of retrieval pipeline to use."
     ),
+    top_k_strategy: TopKStrategy = typer.Option(
+        TopKStrategy.oracle,
+        case_sensitive=False,
+        help=(
+            "The strategy to use when choosing the k top documents to retrieve. If 'oracle' (default), k is"
+            " chosen as the number of source documents in the original example. If 'max', k is chosen as the"
+            " maximum number of source documents across the examples of the dataset. If 'mean', k is chosen as the"
+            " mean number of source documents across the examples of the dataset."
+        ),
+    ),
     splits: List[str] = typer.Option(
         None, help="Which splits of the dataset to replace with retrieved documents. Defaults to all splits."
     ),
-    overwrite_index: bool = typer.Option(False, help="Overwrite the PyTerrier index at --index-path, if it exists."),
+    overwrite_index: bool = typer.Option(
+        False, "--overwrite-index", help="Overwrite the PyTerrier index at --index-path, if it exists."
+    ),
     overwrite_cache: bool = typer.Option(
-        False, help="Overwrite the cached copy of the HuggingFace dataset, if it exits."
+        False, "--overwrite-cache", help="Overwrite the cached copy of the HuggingFace dataset, if it exits."
     ),
     dry_run: bool = typer.Option(
         False,
@@ -72,15 +90,10 @@ def main(
     # Any dataset specific setup goes here
     if hf_dataset_name == HFDatasets.multinews:
         pt_dataset = indexing.MultiNewsDataset()
-        doc_sep_token = util.DOC_SEP_TOKENS[pt_dataset.path]
-
     elif hf_dataset_name == HFDatasets.multixscience:
         pt_dataset = indexing.MultiXScienceDataset()
-        doc_sep_token = None
-
     elif hf_dataset_name == HFDatasets.ms2:
         pt_dataset = indexing.MS2Dataset()
-        doc_sep_token = None
 
     # Create a directory to store the index if it wasn't provided
     index_path = Path(index_path) if index_path is not None else Path(util.CACHE_DIR) / "indexes" / pt_dataset.path
@@ -111,6 +124,10 @@ def main(
         raise NotImplementedError()
     print(f"[bold green]:white_check_mark: Loaded the '{retriever.value}' retrieval pipeline[/bold green]")
 
+    k = None
+    if top_k_strategy.value != TopKStrategy.oracle:
+        k = int(round(pt_dataset.get_document_stats()[top_k_strategy.value], 0))
+
     for split in splits:
         # Use PyTerrier to actually perform the retrieval and then replace the source docs with the retrieved docs
         # See: https://pyterrier.readthedocs.io/en/latest/terrier-retrieval.html
@@ -135,7 +152,7 @@ def main(
             continue
 
         hf_dataset[split] = hf_dataset[split].map(
-            partial(pt_dataset.replace, doc_sep_token=doc_sep_token, split=split, retrieved=retrieved),
+            partial(pt_dataset.replace, split=split, retrieved=retrieved, k=k),
             with_indices=True,
             load_from_cache_file=not overwrite_cache,
             writer_batch_size=_WRITER_BATCH_SIZE,
