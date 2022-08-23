@@ -568,7 +568,7 @@ def main():
                         ref_abstract=examples["ref_abstract"][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif data_args.dataset_config_name == "ms2":
+                elif "ms2" in data_args.dataset_name or "ms2" in data_args.dataset_config_name:
                     text, summary = util.preprocess_ms2(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
@@ -612,7 +612,9 @@ def main():
             # whos related works section we are trying to generate, and the background section of the literature
             # review we are trying to generate, respectively. Both of these should be excluded from perturbation,
             # as they are not something we would retrieve.
-            if "multi_x_science_sum" in data_args.dataset_name or data_args.dataset_config_name == "ms2":
+            if "multi_x_science_sum" in data_args.dataset_name or (
+                "ms2" in data_args.dataset_name or "ms2" in data_args.dataset_config_name
+            ):
                 unperturbed_indices = [0]
                 logger.info(f"Documents at indices '{unperturbed_indices}' will not be perturbed.")
 
