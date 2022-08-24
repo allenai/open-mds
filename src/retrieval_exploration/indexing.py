@@ -52,9 +52,8 @@ class HuggingFacePyTerrierDataset(pt.datasets.Dataset):
         self.name = name
         self._hf_dataset = load_dataset(self.path, self.name, **kwargs)
 
-    @staticmethod
     def replace(
-        example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
+        self, example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
     ) -> Dict[str, Any]:
         """This method replaces the original source documents of an `example` from a HuggingFace dataset with the
         top-`k` documents in `retrieved`. It is expected that this function will be passed to the `map` method of
@@ -88,16 +87,24 @@ class MultiNewsDataset(HuggingFacePyTerrierDataset):
     def __init__(self, **kwargs):
         super().__init__("multi_news", None, **kwargs)
 
-    @staticmethod
     def replace(
-        example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
+        self, example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
     ) -> Dict[str, Any]:
         # Multi-News has a special document seperator token that we need to parse out individual documents
         doc_sep_token = util.DOC_SEP_TOKENS["multi_news"]
         qid = f"{split}_{idx}"
         k = k or util.get_num_docs(example["document"], doc_sep_token=doc_sep_token)
-        retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
-        example["document"] = util.sanitize_text(f" {doc_sep_token} ".join(doc for doc in retrieved_docs))
+        # We would like to get the original, unaltered text from the dataset, so we use the docno's to key in.
+        # It would be less complicated to retrieve the text from the PyTerrier MetaIndex, but these documents are
+        # not identical due to some string processing.
+        retrieved_docs = []
+        retrieved_docnos = retrieved[retrieved.qid == qid][:k]["docno"].tolist()
+        for docno in retrieved_docnos:
+            retrieved_split, example_idx, document_idx = docno.split("_")
+            retrieved_example = self._hf_dataset[retrieved_split]["document"][int(example_idx)]
+            retrieved_doc = util.split_docs(retrieved_example, doc_sep_token=doc_sep_token)[int(document_idx)]
+            retrieved_docs.append(retrieved_doc)
+        example["document"] = f" {doc_sep_token} ".join(doc.strip() for doc in retrieved_docs)
         return example
 
     def get_corpus_iter(self, verbose: bool = True) -> Iterator[Dict[str, Any]]:
@@ -151,14 +158,23 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
     def __init__(self, **kwargs):
         super().__init__("multi_x_science_sum", None, **kwargs)
 
-    @staticmethod
     def replace(
-        example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
+        self, example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
     ) -> Dict[str, Any]:
         qid = f"{split}_{idx}"
         k = k or len(example["ref_abstract"]["abstract"])
-        retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
-        example["ref_abstract"]["abstract"] = [doc.strip() for doc in retrieved_docs]
+        # We would like to get the original, unaltered text from the dataset, so we use the docno's to key in.
+        # It would be less complicated to retrieve the text from the PyTerrier MetaIndex, but these documents are
+        # not identical due to some string processing.
+        retrieved_docs = []
+        retrieved_docnos = retrieved[retrieved.qid == qid][:k]["docno"].tolist()
+        for docno in retrieved_docnos:
+            retrieved_split, example_idx, document_idx = docno.split("_")
+            retrieved_doc = self._hf_dataset[retrieved_split][int(example_idx)]["ref_abstract"]["abstract"][
+                int(document_idx)
+            ]
+            retrieved_docs.append(retrieved_doc)
+        example["ref_abstract"]["abstract"] = [doc for doc in retrieved_docs]
         return example
 
     def get_corpus_iter(self, verbose: bool = True) -> Iterator[Dict[str, Any]]:
@@ -210,17 +226,28 @@ class MS2Dataset(HuggingFacePyTerrierDataset):
     def __init__(self, **kwargs) -> None:
         super().__init__("allenai/mslr2022", "ms2", **kwargs)
 
-    @staticmethod
     def replace(
-        example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
+        self, example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
     ) -> Dict[str, Any]:
         qid = example["review_id"]
         k = k or len(example["pmid"])
-        retrieved_docs = retrieved[retrieved.qid == qid][:k]["text"].tolist()
-        # MS^2 breaks each document into a title and abstract section, but during indexing we collapsed them.
-        # Store the retrieved title + abstract under abstract and use empty strings to fill in the title field
-        example["title"] = [""] * k
-        example["abstract"] = [doc.strip() for doc in retrieved_docs]
+        # We would like to get the original, unaltered text from the dataset, so we use the docno's to key in.
+        # It would be less complicated to retrieve the text from the PyTerrier MetaIndex, but these documents are
+        # not identical due to some string processing.
+        retrieved_titles, retrieved_abstracts, retrieved_pmids = [], [], []
+        retrieved_docnos = retrieved[retrieved.qid == qid][:k]["docno"].tolist()
+        for docno in retrieved_docnos:
+            retrieved_split, review_id, pmid = docno.split("_")
+            # Convert these strings to indices for easier lookup
+            example_idx = self._hf_dataset[retrieved_split]["review_id"].index(review_id)
+            retrieved_example = self._hf_dataset[retrieved_split][example_idx]
+            document_idx = retrieved_example["pmid"].index(pmid)
+            retrieved_titles.append(retrieved_example["title"][document_idx])
+            retrieved_abstracts.append(retrieved_example["abstract"][document_idx])
+            retrieved_pmids.append(pmid)
+        example["title"] = [title for title in retrieved_titles]
+        example["abstract"] = [abstract for abstract in retrieved_abstracts]
+        example["pmid"] = [pmid for pmid in retrieved_pmids]
         return example
 
     def get_corpus_iter(self, verbose: bool = False):
@@ -239,7 +266,10 @@ class MS2Dataset(HuggingFacePyTerrierDataset):
                     if pmid in yielded:
                         continue
                     yielded.add(pmid)
-                    yield {"docno": pmid, "text": f"{title.strip()} {abstract.strip()}"}
+                    yield {
+                        "docno": f'{split}_{example["review_id"]}_{pmid}',
+                        "text": f"{title.strip()} {abstract.strip()}",
+                    }
 
     def get_topics(self, split: str, max_examples: Optional[int] = None) -> pd.DataFrame:
         dataset = self._hf_dataset[split]
@@ -255,7 +285,7 @@ class MS2Dataset(HuggingFacePyTerrierDataset):
         qids, docnos = [], []
         for example in dataset:
             qids.extend([example["review_id"]] * len(example["pmid"]))
-            docnos.extend(example["pmid"])
+            docnos.extend([f'{split}_{example["review_id"]}_{pmid}' for pmid in example["pmid"]])
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
