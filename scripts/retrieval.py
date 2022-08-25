@@ -42,12 +42,9 @@ def main(
     hf_dataset_name: HFDatasets = typer.Argument(
         ..., case_sensitive=False, help="The name of a supported HuggingFace Dataset."
     ),
-    dataset_dict_path: Path = typer.Argument(
+    output_dir: Path = typer.Argument(
         ...,
-        help=(
-            "Path (e.g. dataset/train) or remote URI (e.g. s3://my-bucket/dataset/train) of the dataset dict"
-            " directory where the dataset dict will be saved to."
-        ),
+        help=("Path to the directory where the dataset and retrieval results will be saved."),
     ),
     index_path: Path = typer.Option(
         None,
@@ -124,9 +121,16 @@ def main(
         raise NotImplementedError()
     print(f"[bold green]:white_check_mark: Loaded the '{retriever.value}' retrieval pipeline[/bold green]")
 
-    k = None
+    top_k_strategy_msg = f"[bold blue]:hammer_and_wrench:  Using the '{top_k_strategy.value}' TopKStrategy. "
     if top_k_strategy.value != TopKStrategy.oracle:
         k = int(round(pt_dataset.get_document_stats()[top_k_strategy.value], 0))
+        print(top_k_strategy_msg + f"k will be set statically to {k} [/bold blue]")
+    else:
+        k = None
+        print(
+            top_k_strategy_msg
+            + "k will be set dynamically as the original number of documents in each example [/bold blue]"
+        )
 
     for split in splits:
         # Use PyTerrier to actually perform the retrieval and then replace the source docs with the retrieved docs
@@ -143,6 +147,8 @@ def main(
                 qrels=qrels,
                 eval_metrics=["ndcg", "recall_100", "recall_1000", "Rprec"],
                 names=[retriever.value],
+                save_dir=output_dir,
+                save_mode="overwrite",
                 round=4,
             )
         )
@@ -161,8 +167,8 @@ def main(
         print(f"[bold blue]:repeat: Source documents in '{split}' set replaced with retrieved documents[/bold blue]")
 
     if not dry_run:
-        hf_dataset.save_to_disk(dataset_dict_path)
-        print(f"[bold green]:floppy_disk: Re-built dataset saved to {dataset_dict_path} [/bold green]")
+        hf_dataset.save_to_disk(output_dir)
+        print(f"[bold green]:floppy_disk: Re-built dataset saved to {output_dir} [/bold green]")
 
 
 if __name__ == "__main__":
