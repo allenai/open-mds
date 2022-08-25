@@ -5,8 +5,8 @@
 
 ### Script arguments ###
 # Must be provided as argument to the script
-CONFIG_FILEPATH="$1"
-OUTPUT_DIR="$2"
+CONFIG_FILEPATH="$1"  # The path on disk to the yml config file
+OUTPUT_DIR="$2"       # The path on disk to save the output to
 # Constants
 PERTURBATIONS=("backtranslation" "duplication" "addition" "deletion" "replacement")
 STRATEGIES=("random" "best-case" "worst-case")

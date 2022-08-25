@@ -5,8 +5,8 @@
 
 ### Script arguments ###
 # Must be provided as argument to the script
-HF_DATASET_NAME="$1"
-OUTPUT_DIR="$2"
+HF_DATASET_NAME="$1"  # The name of a supported HuggingFace Dataset
+OUTPUT_DIR="$2"       # The path on disk to save the output to
 # Constants
 RETRIEVERS=("sparse")
 STRATEGIES=("mean" "max" "oracle")
@@ -20,7 +20,7 @@ do
     for strategy in "${STRATEGIES[@]}";
     do
         sbatch "./scripts/slurm/index.sh" "$HF_DATASET_NAME" \
-            "$OUTPUT_DIR/${HF_DATASET_NAME}_${retriever}_$strategy" \
+            "$OUTPUT_DIR/${HF_DATASET_NAME}_${retriever}_${strategy}" \
             "${retriever}" \
             "${strategy}" \
             "$SPLITS"
