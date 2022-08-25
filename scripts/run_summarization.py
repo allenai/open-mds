@@ -22,6 +22,7 @@ import logging
 import os
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import datasets
@@ -29,8 +30,8 @@ import flatten_dict
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
 import transformers
+from datasets import load_dataset, load_from_disk, load_metric
 from filelock import FileLock
-from datasets import load_dataset, load_metric
 from retrieval_exploration.common import util
 from retrieval_exploration.perturbations import Perturber
 from transformers import (
@@ -404,8 +405,17 @@ def main():
     #
     # In distributed training, the load_dataset function guarantee that only one local process can concurrently
     # download the dataset.
-    if data_args.dataset_name is not None:
-        # Downloading and loading a dataset from the hub.
+
+    #  Loading a dataset from a local directory.
+    if Path(data_args.dataset_name).is_dir():
+        raw_datasets = load_from_disk(
+            data_args.dataset_name,
+            data_args.dataset_config_name,
+            cache_dir=model_args.cache_dir,
+            use_auth_token=True if model_args.use_auth_token else None,
+        )
+    # Downloading and loading a dataset from the hub.
+    elif data_args.dataset_name is not None:
         raw_datasets = load_dataset(
             data_args.dataset_name,
             data_args.dataset_config_name,
@@ -554,26 +564,33 @@ def main():
         inputs, targets = [], []
         for i in range(len(examples[text_column])):
             # remove pairs where at least one record is None
-            if examples[text_column][i] is not None and examples[summary_column][i] is not None:
-                if data_args.dataset_name == "multi_news":
+            if examples[text_column][i]:
+                if "multi_news" in data_args.dataset_name:
                     text, summary = util.preprocess_multi_news(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif data_args.dataset_name == "multi_x_science_sum":
+                elif "multi_x_science_sum" in data_args.dataset_name:
                     text, summary = util.preprocess_multi_x_science_sum(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
                         ref_abstract=examples["ref_abstract"][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif data_args.dataset_config_name == "ms2":
+                elif "ms2" in data_args.dataset_name or "ms2" in data_args.dataset_config_name:
                     text, summary = util.preprocess_ms2(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
                         titles=examples["title"][i],
                         abstracts=examples["abstract"][i],
+                        doc_sep_token=doc_sep_token,
+                    )
+                elif "cochrane" in data_args.dataset_name or "cochrane" in data_args.dataset_config_name:
+                    text, summary = util.preprocess_cochrane(
+                        summary=examples[summary_column][i],
+                        titles=examples["title"][i],
+                        abstracts=examples[text_column][i],
                         doc_sep_token=doc_sep_token,
                     )
                 else:
@@ -612,7 +629,9 @@ def main():
             # whos related works section we are trying to generate, and the background section of the literature
             # review we are trying to generate, respectively. Both of these should be excluded from perturbation,
             # as they are not something we would retrieve.
-            if data_args.dataset_name == "multi_x_science_sum" or data_args.dataset_config_name == "ms2":
+            if "multi_x_science_sum" in data_args.dataset_name or (
+                "ms2" in data_args.dataset_name or "ms2" in data_args.dataset_config_name
+            ):
                 unperturbed_indices = [0]
                 logger.info(f"Documents at indices '{unperturbed_indices}' will not be perturbed.")
 
@@ -801,6 +820,13 @@ def main():
                 "fmeasure": [score.fmeasure * 100 for score in value],
                 "fmeasure_mean": np.mean([score.fmeasure for score in value]) * 100,
             }
+        # Compute the arithmetic mean of ROUGE-1, ROUGE-2 and ROUGE-L following: https://arxiv.org/abs/2110.08499
+        rouge_results["predict_rouge_avg_fmeasure"] = np.mean(
+            [rouge_results[key]["fmeasure"] for key in ["rouge1", "rouge2", "rougeL"]], axis=0
+        ).item()
+        rouge_results["predict_rouge_avg_fmeasure_mean"] = np.mean(
+            rouge_results["predict_rouge_avg_fmeasure"]
+        ).item()
 
         # Compute and post-process bertscore results
         bertscore_results = bertscore.compute(
