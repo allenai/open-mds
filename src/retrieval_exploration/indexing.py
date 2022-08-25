@@ -1,3 +1,4 @@
+import os
 import shutil
 from pathlib import Path
 from typing import Any, Dict, Iterator, Optional
@@ -13,9 +14,12 @@ from retrieval_exploration.common import util
 _HF_DATASETS_URL = "https://huggingface.co/datasets"
 
 if not pt.started():
-    # Required if you want to use pyterrier offline
-    pt.init(version=5.6, helper_version="0.0.6")
-    # pt.init()
+    # TODO: This is a bit of a hack, but the version and helper version are required if you want to use PyTerrier.
+    # offline. We will use the HF_DATASETS_OFFLINE environment variable to determine if we are offline or not.
+    if os.environ.get("HF_DATASETS_OFFLINE") == 1:
+        pt.init(version=5.6, helper_version="0.0.6")
+    else:
+        pt.init()
 
 
 def _get_iter_dict_indexer(index_path: str, dataset: pt.datasets.Dataset, **kwargs) -> pt.IterDictIndexer:
