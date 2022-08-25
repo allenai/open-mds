@@ -2,21 +2,20 @@ import json
 import re
 import sys
 import warnings
+from itertools import zip_longest
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import flatten_dict
 import numpy as np
 import pandas as pd
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import wordpunct_tokenize
 from omegaconf import OmegaConf
 from platformdirs import user_cache_dir
 from tqdm import tqdm
 from transformers import PreTrainedTokenizer
 
 # Local constants
-DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
-
 _BASELINE_DIR = "baseline"
 _PERTURBATIONS_DIR = "perturbations"
 
@@ -24,6 +23,8 @@ _RESULTS_FILENAME = "all_results.json"
 _TRAINER_STATE_FILENAME = "trainer_state.json"
 _LOG_HISTORY_KEY = "log_history"
 
+# Public constants
+DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||"}
 CACHE_DIR = user_cache_dir("retrieval-exploration", "ai2")
 
 
@@ -52,17 +53,6 @@ def parse_omega_conf() -> Dict[str, Any]:
     conf = OmegaConf.merge(*yml_confs, cli_conf)
     # HuggingFace expects a vanilla python dict, so perform the conversion here
     return OmegaConf.to_object(conf)
-
-
-def jaccard_similarity_score(string_1: str, string_2: str) -> float:
-    """Returns the Jaccard similarity score between two strings, using the sets of whitespace tokens. Returns 1.0
-    if both strings are empty."""
-    string_1_tokens = set(word_tokenize(string_1.strip()))
-    string_2_tokens = set(word_tokenize(string_2.strip()))
-    if not string_1_tokens and not string_2_tokens:
-        warnings.warn("Both string_1 and string_2 are empty. Returning 1.0.")
-        return 1.0
-    return len(string_1_tokens & string_2_tokens) / len(string_1_tokens | string_2_tokens)
 
 
 def split_docs(text: str, doc_sep_token: str) -> List[str]:
@@ -188,7 +178,12 @@ def preprocess_multi_x_science_sum(
 
 
 def preprocess_ms2(
-    text: str, summary: str, titles: List[str], abstracts: List[str], doc_sep_token: str, max_included_studies: int = 25
+    text: str,
+    summary: str,
+    titles: List[str],
+    abstracts: List[str],
+    doc_sep_token: str,
+    max_included_studies: int = 25,
 ) -> Tuple[str, str]:
     background = text.strip()
     articles = [f"{title.strip()} {abstract.strip()}" for title, abstract in zip(titles, abstracts)]
@@ -197,6 +192,46 @@ def preprocess_ms2(
     text = f" {doc_sep_token} ".join([background] + articles)
     summary = summary.strip()
     return text, summary
+
+
+def jaccard_similarity_score(string_1: str, string_2: str) -> float:
+    """Returns the Jaccard similarity score between two strings, by comparing their token sets. Returns 1.0
+    if both strings are empty."""
+    string_1 = sanitize_text(string_1, lowercase=True)
+    string_2 = sanitize_text(string_2, lowercase=True)
+    string_1_tokens = set(wordpunct_tokenize(string_1.strip()))
+    string_2_tokens = set(wordpunct_tokenize(string_2.strip()))
+    if not string_1_tokens and not string_2_tokens:
+        warnings.warn("Both string_1 and string_2 are empty. Returning 1.0.")
+        return 1.0
+    return len(string_1_tokens & string_2_tokens) / len(string_1_tokens | string_2_tokens)
+
+
+def fraction_docs_perturbed(pre_perturbation: str, post_perturbation: str, doc_sep_token: str) -> float:
+    """Given two strings, `pre_perturbation` and `post_perturbation`, representing the documents
+    (separated by `doc_sep_token`) of an example before and after perturbation, returns the fraction of documents
+    that were perturbed.
+    """
+    pre_perturbation = sanitize_text(pre_perturbation, lowercase=True)
+    post_perturbation = sanitize_text(post_perturbation, lowercase=True)
+
+    if not pre_perturbation:
+        warnings.warn("pre_perturbation string is empty. Returning 0.0.")
+        return 0.0
+
+    pre_perturbation_docs = split_docs(pre_perturbation, doc_sep_token=doc_sep_token)
+    post_perturbation_docs = split_docs(post_perturbation, doc_sep_token=doc_sep_token)
+
+    num_perturbed = 0
+
+    # If there are less documents post-perturbation, this is deletion, and we need to compute things differently
+    if len(post_perturbation_docs) < len(pre_perturbation_docs):
+        num_perturbed = len([doc for doc in pre_perturbation_docs if doc not in post_perturbation_docs])
+    else:
+        for pre, post in zip_longest(pre_perturbation_docs, post_perturbation_docs):
+            if pre is None or post is None or pre != post:
+                num_perturbed += 1
+    return num_perturbed / len(pre_perturbation_docs)
 
 
 def _read_result_dict(results_dict: Union[Dict[str, Any], List[Dict[str, Any]]], **kwargs) -> pd.DataFrame:
@@ -277,22 +312,17 @@ def load_results_dicts(
                 perturbation_df = _read_result_dict(results_dict)
             if baseline_df is not None:
                 # The perturbation and baseline data should pertain to the same examples.
-                if not np.array_equal(baseline_df.eval_example_idx, perturbation_df.eval_example_idx):
+                if not np.array_equal(baseline_df.predict_example_idx, perturbation_df.predict_example_idx):
                     raise ValueError("The perturbation and baseline data do not correspond to the same examples!")
 
+                perturbation_df["jaccard_similarity_scores"] = [
+                    jaccard_similarity_score(pre, post)
+                    for pre, post in zip(perturbation_df.predict_inputs, baseline_df.predict_inputs)
+                ]
                 if metric_columns is not None:
                     for metric in metric_columns:
-                        # TODO: Can be removed when all experiments have been run with the new jaccard_similarity_score
-                        perturbation_df["jaccard_similarity_scores"] = [
-                            jaccard_similarity_score(pre, post)
-                            for pre, post in zip(perturbation_df.eval_inputs, baseline_df.eval_inputs)
-                        ]
                         # Compute the per-instance absolute differences
                         perturbation_df[f"{metric}_delta"] = perturbation_df[metric] - baseline_df[metric]
-                        # Compute the aggregated, relative difference as a percent
-                        perturbation_df[f"{metric}_rel_diff"] = perturbation_df[f"{metric}_delta"] / np.abs(
-                            baseline_df[metric]
-                        )
             perturbation_dfs.append(perturbation_df)
     baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
     perturbed_df = pd.concat(perturbation_dfs, ignore_index=True)

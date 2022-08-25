@@ -45,25 +45,6 @@ def test_parse_omega_conf() -> None:
     assert expected == actual
 
 
-def test_jaccard_similarity_score() -> None:
-    # Both strings cannot be empty
-    with warnings.catch_warnings(record=True) as w:
-        assert util.jaccard_similarity_score("", "") == 1.0
-        assert len(w) == 1
-
-    # One string is empty
-    assert util.jaccard_similarity_score("", "hello") == 0.0
-
-    # Strings are identical
-    assert util.jaccard_similarity_score("hello", "hello") == 1.0
-
-    # String are non-identical
-    assert util.jaccard_similarity_score("hello world", "hello you") == 1 / 3
-
-    # Check that punctation is treated as its own token
-    assert util.jaccard_similarity_score("hello world", "hello world!") == 2 / 3
-
-
 def test_split_docs() -> None:
     doc_sep_token = "<doc-sep>"
 
@@ -311,3 +292,77 @@ def test_preprocess_ms2() -> None:
     )
     assert expected_text == actual_text
     assert expected_summary == actual_summary
+
+
+def test_jaccard_similarity_score() -> None:
+    # Both strings cannot be empty
+    with warnings.catch_warnings(record=True) as w:
+        assert util.jaccard_similarity_score("", "") == 1.0
+        assert len(w) == 1
+
+    # One string is empty
+    assert util.jaccard_similarity_score("", "hello") == 0.0
+
+    # Strings are identical
+    assert util.jaccard_similarity_score("hello", "hello") == 1.0
+
+    # String are non-identical
+    assert util.jaccard_similarity_score("hello world", "hello you") == 1 / 3
+
+    # Check that punctation is treated as its own token
+    assert util.jaccard_similarity_score("hello world", "hello world!") == 2 / 3
+
+
+def test_fraction_docs_perturbed() -> None:
+    doc_sep_token = "<doc-sep>"
+
+    # pre_perturbation string cannot be empty
+    with warnings.catch_warnings(record=True) as w:
+        assert util.fraction_docs_perturbed("", "Not empty", doc_sep_token=doc_sep_token) == 0.0
+        assert len(w) == 1
+
+    # Backtranslation
+    assert (
+        util.fraction_docs_perturbed(
+            f"These docs are identical {doc_sep_token} These are not",
+            f"These docs are identical {doc_sep_token} These are nott",
+            doc_sep_token=doc_sep_token,
+        )
+        == 0.50
+    )
+    # Sorting
+    assert (
+        util.fraction_docs_perturbed(
+            f"Doc 1 {doc_sep_token} Doc 2 {doc_sep_token} Doc 3",
+            f"Doc 2 {doc_sep_token} Doc 1 {doc_sep_token} Doc 3",
+            doc_sep_token=doc_sep_token,
+        )
+        == 2 / 3
+    )
+    # Addition
+    assert (
+        util.fraction_docs_perturbed(
+            f"Doc 1 {doc_sep_token} Doc 2 {doc_sep_token} Doc 3",
+            f"Doc 2 {doc_sep_token} Doc 1 {doc_sep_token} Doc 3",
+            doc_sep_token=doc_sep_token,
+        )
+        == 2 / 3
+    )
+    # Deletion
+    assert (
+        util.fraction_docs_perturbed(
+            f"Doc 1 {doc_sep_token} Doc 2 {doc_sep_token} Doc 3",
+            f"Doc 1 {doc_sep_token} Doc 2",
+            doc_sep_token=doc_sep_token,
+        )
+        == 1 / 3
+    )
+    # Replacement
+    assert (
+        util.fraction_docs_perturbed(
+            f"Doc 1 {doc_sep_token} Doc 2 {doc_sep_token} Doc 3",
+            f"Doc 1 {doc_sep_token} Doc 4 {doc_sep_token} Doc 3",
+            doc_sep_token=doc_sep_token,
+        )
+        == 1 / 3
+    )
