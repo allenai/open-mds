@@ -121,7 +121,7 @@ def main(
         raise NotImplementedError()
     print(f"[bold green]:white_check_mark: Loaded the '{retriever.value}' retrieval pipeline[/bold green]")
 
-    top_k_strategy_msg = f"[bold blue]:hammer_and_wrench:  Using the '{top_k_strategy.value}' TopKStrategy. "
+    top_k_strategy_msg = f"[bold blue]:hammer_and_wrench: Using the '{top_k_strategy.value}' TopKStrategy. "
     if top_k_strategy.value != TopKStrategy.oracle:
         k = int(round(pt_dataset.get_document_stats()[top_k_strategy.value], 0))
         print(top_k_strategy_msg + f"k will be set statically to {k} [/bold blue]")
