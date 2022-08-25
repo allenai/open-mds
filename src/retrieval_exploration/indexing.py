@@ -16,7 +16,8 @@ _HF_DATASETS_URL = "https://huggingface.co/datasets"
 if not pt.started():
     # TODO: This is a bit of a hack, but the version and helper version are required if you want to use PyTerrier.
     # offline. We will use the HF_DATASETS_OFFLINE environment variable to determine if we are offline or not.
-    if os.environ.get("HF_DATASETS_OFFLINE") == 1:
+    # See: https://pyterrier.readthedocs.io/en/latest/installation.html#pyterrier.init
+    if os.environ.get("HF_DATASETS_OFFLINE") == "1":
         pt.init(version=5.6, helper_version="0.0.6")
     else:
         pt.init()
