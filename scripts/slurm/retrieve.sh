@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:a100:1
 # Wall time and job details
 #SBATCH --time=3:00:00
-#SBATCH --job-name=retrieval
+#SBATCH --job-name=retrieve
 #SBATCH --account=def-wanglab-ab
 # Emails me when job starts, ends or fails
 #SBATCH --mail-user=johnmgiorgi@gmail.com
