@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### Example usage ###
-# bash "./scripts/slurm/submit_retrieval.sh" "./conf/multinews/primera/eval.yml" \
+# bash "./scripts/slurm/submit_retrieve.sh" "./conf/multinews/primera/eval.yml" \
 #     "./output/multinews/primera" \
 #     "./output/datasets/multinews" \
 
@@ -21,7 +21,7 @@ for retriever in "${RETRIEVERS[@]}";
 do
     for strategy in "${STRATEGIES[@]}";
     do
-        sbatch "./scripts/slurm/retrieval.sh" "$CONFIG_FILEPATH" \
+        sbatch "./scripts/slurm/retrieve.sh" "$CONFIG_FILEPATH" \
             "$OUTPUT_DIR/perturbations/retrieval/$retriever/$strategy" \
             "${DATASET_DIR}_${retriever}_${strategy}" \
             "${retriever}" \

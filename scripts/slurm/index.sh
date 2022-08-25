@@ -14,7 +14,7 @@
 # salloc --mem=96G --cpus-per-task=1 --time=3:00:00 --account=def-gbader
 
 ### Example usage ###
-# sbatch ./scripts/slurm/retrieval.sh "multinews" "./output/datasets/multinews_sparse_oracle" "sparse" "oracle" "test"
+# sbatch ./scripts/slurm/retrieve.sh "multinews" "./output/datasets/multinews_sparse_oracle" "sparse" "oracle" "test"
  
 module purge  # suggested in alliancecan docs: https://docs.alliancecan.ca/wiki/Running_jobs
 module load StdEnv/2020 gcc/9.3.0 python/3.9 arrow/7.0.0 java/14.0.2
