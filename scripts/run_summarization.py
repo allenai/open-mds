@@ -307,6 +307,29 @@ class PerturbationArguments:
     )
 
 
+@dataclass
+class RetrievalArguments:
+    """
+    Arguments pertaining to the retrieval experiements. Have no effect, but will be recorded in the output.
+    """
+
+    retriever: Optional[str] = field(
+        default=None,
+        metadata={"help": "The type of retrieval pipeline to use."},
+    )
+    top_k_strategy: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": (
+                "The strategy to use when choosing the k top documents to retrieve. If 'oracle' (default), k is"
+                " chosen as the number of source documents in the original example. If 'max', k is chosen as the"
+                " maximum number of source documents across the examples of the dataset. If 'mean', k is chosen as"
+                " the mean number of source documents across the examples of the dataset."
+            ),
+        },
+    )
+
+
 summarization_name_mapping = {
     "amazon_reviews_multi": ("review_body", "review_title"),
     "big_patent": ("description", "abstract"),
@@ -328,19 +351,21 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments, PerturbationArguments))
+    parser = HfArgumentParser(
+        (ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments, PerturbationArguments, RetrievalArguments)
+    )
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
-        model_args, data_args, training_args, perturbation_args = parser.parse_json_file(
+        model_args, data_args, training_args, perturbation_args, retrieval_args = parser.parse_json_file(
             json_file=os.path.abspath(sys.argv[1])
         )
     # Our unique parsing strategy (which depends on OmegaConf) exists here
     elif any(argv.endswith(".yml") for argv in sys.argv[1:]):
         conf = util.parse_omega_conf()
-        model_args, data_args, training_args, perturbation_args = parser.parse_dict(conf)
+        model_args, data_args, training_args, perturbation_args, retrieval_args = parser.parse_dict(conf)
     else:
-        model_args, data_args, training_args, perturbation_args = parser.parse_args_into_dataclasses()
+        model_args, data_args, training_args, perturbation_args, retrieval_args = parser.parse_args_into_dataclasses()
 
     # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
     # information sent is the one passed as arguments along with your Python/PyTorch versions.
@@ -411,8 +436,6 @@ def main():
         raw_datasets = load_from_disk(
             data_args.dataset_name,
             data_args.dataset_config_name,
-            cache_dir=model_args.cache_dir,
-            use_auth_token=True if model_args.use_auth_token else None,
         )
     # Downloading and loading a dataset from the hub.
     elif data_args.dataset_name is not None:
@@ -564,21 +587,21 @@ def main():
         inputs, targets = [], []
         for i in range(len(examples[text_column])):
             # remove pairs where at least one record is None
-            if examples[text_column][i] is not None and examples[summary_column][i] is not None:
-                if data_args.dataset_name == "multi_news":
+            if examples[text_column][i]:
+                if "multinews" in data_args.dataset_name or data_args.dataset_name == "multi_news":
                     text, summary = util.preprocess_multi_news(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif "multi_x_science_sum" in data_args.dataset_name:
+                elif "multixscience" in data_args.dataset_name or data_args.dataset_name == "multi_x_science_sum":
                     text, summary = util.preprocess_multi_x_science_sum(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
                         ref_abstract=examples["ref_abstract"][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif "ms2" in data_args.dataset_name or "ms2" in data_args.dataset_config_name:
+                elif "ms2" in data_args.dataset_name or data_args.dataset_config_name == "ms2":
                     text, summary = util.preprocess_ms2(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
@@ -586,7 +609,7 @@ def main():
                         abstracts=examples["abstract"][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif "cochrane" in data_args.dataset_name or "cochrane" in data_args.dataset_config_name:
+                elif "cochrane" in data_args.dataset_name or data_args.dataset_config_name == "cochrane":
                     text, summary = util.preprocess_cochrane(
                         summary=examples[summary_column][i],
                         titles=examples["title"][i],
@@ -823,10 +846,8 @@ def main():
         # Compute the arithmetic mean of ROUGE-1, ROUGE-2 and ROUGE-L following: https://arxiv.org/abs/2110.08499
         rouge_results["predict_rouge_avg_fmeasure"] = np.mean(
             [rouge_results[key]["fmeasure"] for key in ["rouge1", "rouge2", "rougeL"]], axis=0
-        ).item()
-        rouge_results["predict_rouge_avg_fmeasure_mean"] = np.mean(
-            rouge_results["predict_rouge_avg_fmeasure"]
-        ).item()
+        ).tolist()
+        rouge_results["predict_rouge_avg_fmeasure_mean"] = np.mean(rouge_results["predict_rouge_avg_fmeasure"]).item()
 
         # Compute and post-process bertscore results
         bertscore_results = bertscore.compute(
@@ -858,20 +879,24 @@ def main():
 
         if inputs is not None:
             decoded_inputs = util.batch_decode_multi_doc(inputs, tokenizer, doc_sep_token=doc_sep_token)
-
             # TODO (John): A lot of these should be logged OUTSIDE this function.
+            # Basic training details
+            results["seed"] = training_args.seed
             results["example_idx"] = list(range(len(decoded_inputs)))
+            results["doc_sep_token"] = doc_sep_token
+            results["model_name_or_path"] = model_args.model_name_or_path
+            # Perturbations
             results["perturbation"] = perturbation_args.perturbation
             results["selection_strategy"] = perturbation_args.selection_strategy
             results["perturbed_frac"] = perturbation_args.perturbed_frac
             results["perturbed_seed"] = perturbation_args.perturbed_seed
-            results["seed"] = training_args.seed
-            results["model_name_or_path"] = model_args.model_name_or_path
-            results["doc_sep_token"] = doc_sep_token
+            # Retrieval
+            results["retriever"] = retrieval_args.retriever
+            results["top_k_strategy"] = retrieval_args.top_k_strategy
+            # I/O
             results["inputs"] = decoded_inputs
             results["labels"] = decoded_labels
             results["preds"] = decoded_preds
-
             input_lens = [np.count_nonzero(example != tokenizer.pad_token_id) for example in inputs]
             results["input_len"] = input_lens
 

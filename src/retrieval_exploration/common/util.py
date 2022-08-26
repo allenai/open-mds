@@ -293,6 +293,20 @@ def load_results_dicts(
                     f"Did not find any of the expected files in {baseline_dir}. Looking for one of"
                     f" {_RESULTS_FILENAME} or {_TRAINER_STATE_FILENAME}."
                 )
+
+            # TODO: Add rougeG
+            rouge1_fmeasure = results_dict["predict_rouge1_fmeasure"]
+            rouge2_fmeasure = results_dict["predict_rouge2_fmeasure"]
+            rougeL_fmeasure = results_dict["predict_rougeL_fmeasure"]
+            results_dict["predict_rouge_avg_fmeasure"] = np.mean(
+                [rouge1_fmeasure, rouge2_fmeasure, rougeL_fmeasure], axis=0
+            ).tolist()
+            results_dict["predict_rouge_avg_fmeasure_mean"] = np.mean(
+                results_dict["predict_rouge_avg_fmeasure"]
+            ).item()
+            with filepath.open("w") as f:
+                json.dump(results_dict, f, indent=4)
+
             baseline_df = _read_result_dict(results_dict)
             baseline_dfs.append(baseline_df)
 
@@ -306,6 +320,20 @@ def load_results_dicts(
 
         for filepath in tqdm(filepaths):
             results_dict = json.loads(filepath.read_text())
+
+            # TODO: Add rougeG
+            rouge1_fmeasure = results_dict["predict_rouge1_fmeasure"]
+            rouge2_fmeasure = results_dict["predict_rouge2_fmeasure"]
+            rougeL_fmeasure = results_dict["predict_rougeL_fmeasure"]
+            results_dict["predict_rouge_avg_fmeasure"] = np.mean(
+                [rouge1_fmeasure, rouge2_fmeasure, rougeL_fmeasure], axis=0
+            ).tolist()
+            results_dict["predict_rouge_avg_fmeasure_mean"] = np.mean(
+                results_dict["predict_rouge_avg_fmeasure"]
+            ).item()
+            with filepath.open("w") as f:
+                json.dump(results_dict, f, indent=4)
+
             if train:
                 perturbation_df = _read_result_dict(results_dict[_LOG_HISTORY_KEY][:-1])
             else:
@@ -319,6 +347,14 @@ def load_results_dicts(
                     jaccard_similarity_score(pre, post)
                     for pre, post in zip(perturbation_df.predict_inputs, baseline_df.predict_inputs)
                 ]
+
+                perturbation_df["frac_docs_perturbed"] = [
+                    fraction_docs_perturbed(pre, post, doc_sep_token=doc_sep_token)
+                    for pre, post, doc_sep_token in zip(
+                        baseline_df.predict_inputs, perturbation_df.predict_inputs, baseline_df.predict_doc_sep_token
+                    )
+                ]
+
                 if metric_columns is not None:
                     for metric in metric_columns:
                         # Compute the per-instance absolute differences
