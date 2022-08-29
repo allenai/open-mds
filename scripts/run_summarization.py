@@ -435,7 +435,6 @@ def main():
     if Path(data_args.dataset_name).is_dir():
         raw_datasets = load_from_disk(
             data_args.dataset_name,
-            data_args.dataset_config_name,
         )
     # Downloading and loading a dataset from the hub.
     elif data_args.dataset_name is not None:
@@ -844,10 +843,10 @@ def main():
                 "fmeasure_mean": np.mean([score.fmeasure for score in value]) * 100,
             }
         # Compute the arithmetic mean of ROUGE-1, ROUGE-2 and ROUGE-L following: https://arxiv.org/abs/2110.08499
-        rouge_results["predict_rouge_avg_fmeasure"] = np.mean(
+        rouge_results["rouge_avg_fmeasure"] = np.mean(
             [rouge_results[key]["fmeasure"] for key in ["rouge1", "rouge2", "rougeL"]], axis=0
         ).tolist()
-        rouge_results["predict_rouge_avg_fmeasure_mean"] = np.mean(rouge_results["predict_rouge_avg_fmeasure"]).item()
+        rouge_results["rouge_avg_fmeasure_mean"] = np.mean(rouge_results["rouge_avg_fmeasure_mean"]).item()
 
         # Compute and post-process bertscore results
         bertscore_results = bertscore.compute(
