@@ -43,7 +43,7 @@ poetry install
 
 ## Usage
 
-The intention of this repository is to study end-to-end performance of __multi-document summarization__ (MDS) models, when the input document set must be retrieved. To do this, we provide a modified `run_summarization.py` script from HuggingFace, which makes it easy to subject different MDS models on different MDS datasets to a suite of __perturbations__. In particular, these perturbations mimic errors that a __retriever__ might make:
+The intention of this repository is to study end-to-end performance of __multi-document summarization__ (MDS) models, when the input document set must be retrieved. To do this, we provide a modified [`run_summarization.py`](scripts/run_summarization.py) script from HuggingFace, which makes it easy to subject different MDS models on different MDS datasets to a suite of __perturbations__. In particular, these perturbations mimic errors that a __retriever__ might make:
 
 - `"sorting"`: Shuffle the order of input documents to simulate different rank-ordered lists from a retriever.
 - `"duplication"`: Duplicate input documents to simulate the retrieval of duplicate (or near-duplicate) documents from a large corpus.
