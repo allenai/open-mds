@@ -1,0 +1,14 @@
+# ModelArguments
+model_name_or_path: "allenai/led-base-16384-cochrane"
+
+# DataTrainingArguments
+dataset_name: "allenai/mslr2022"
+dataset_config_name: "cochrane"
+text_column: "abstract"
+summary_column: "target"
+max_source_length: 16384
+max_target_length: 256
+
+# Seq2SeqTrainingArguments
+do_eval: true
+per_device_eval_batch_size: 2
