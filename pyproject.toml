@@ -24,7 +24,7 @@ nlpaug = "^1.1.11"
 more-itertools = "^8.13.0"
 nltk = "^3.7"
 # Can install from PyPI when this branch is merged into latest release
-python-terrier = {git = "https://github.com/terrier-org/pyterrier.git", rev = "jnius1.4"}
+python-terrier = {git = "https://github.com/terrier-org/pyterrier.git", rev = "master"}
 py7zr = {version = "^0.18.5", optional = true}
 protobuf = {version = "^3.20.1", optional = true}
 rouge-score = {version = "^0.0.4", optional = true}
