@@ -2,8 +2,8 @@
 
 ### Example usage ###
 # bash "./scripts/slurm/submit_retrieve.sh" "./conf/multinews/primera/eval.yml" \
-#     "./output/multinews/primera" \
-#     "./output/datasets/multinews" \
+#     "./output/results/multinews/primera" \
+#     "./output/datasets/multinews"
 
 ### Script arguments ###
 # Must be provided as argument to the script

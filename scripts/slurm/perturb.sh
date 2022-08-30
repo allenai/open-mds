@@ -1,6 +1,6 @@
 #!/bin/bash
 # Requested resources
-#SBATCH --mem=24G
+#SBATCH --mem=36G
 #SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu:a100:1
 # Wall time and job details
