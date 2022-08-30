@@ -846,7 +846,7 @@ def main():
         rouge_results["rouge_avg_fmeasure"] = np.mean(
             [rouge_results[key]["fmeasure"] for key in ["rouge1", "rouge2", "rougeL"]], axis=0
         ).tolist()
-        rouge_results["rouge_avg_fmeasure_mean"] = np.mean(rouge_results["rouge_avg_fmeasure_mean"]).item()
+        rouge_results["rouge_avg_fmeasure_mean"] = np.mean(rouge_results["rouge_avg_fmeasure"]).item()
 
         # Compute and post-process bertscore results
         bertscore_results = bertscore.compute(
