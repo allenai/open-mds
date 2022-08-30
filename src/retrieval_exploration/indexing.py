@@ -156,7 +156,7 @@ class MultiNewsDataset(HuggingFacePyTerrierDataset):
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
                 num_docs.append(util.get_num_docs(example["document"], doc_sep_token=util.DOC_SEP_TOKENS[self.path]))
-        return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}
+        return {"max": np.max(num_docs), "mean": round(np.mean(num_docs), 4), "min": np.min(num_docs)}
 
 
 class MultiXScienceDataset(HuggingFacePyTerrierDataset):
@@ -224,7 +224,7 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
                 num_docs.append(len(example["ref_abstract"]["abstract"]))
-        return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}
+        return {"max": np.max(num_docs), "mean": round(np.mean(num_docs), 4), "min": np.min(num_docs)}
 
 
 class MS2Dataset(HuggingFacePyTerrierDataset):
@@ -293,4 +293,4 @@ class MS2Dataset(HuggingFacePyTerrierDataset):
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
                 num_docs.append(len(example["pmid"]))
-        return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}
+        return {"max": np.max(num_docs), "mean": round(np.mean(num_docs), 4), "min": np.min(num_docs)}
