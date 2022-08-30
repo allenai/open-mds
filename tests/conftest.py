@@ -1,9 +1,10 @@
 from typing import Callable
-import pytest
-from transformers import AutoTokenizer, PreTrainedTokenizer, AutoModel, AutoConfig
+
 import datasets
+import pytest
 from datasets.dataset_dict import DatasetDict
-from transformers import PretrainedConfig
+from retrieval_exploration import indexing
+from transformers import AutoConfig, AutoModel, AutoTokenizer, PretrainedConfig, PreTrainedTokenizer
 
 
 @pytest.fixture
@@ -52,3 +53,18 @@ def hf_model() -> Callable:
         return AutoModel.from_pretrained(model_name_or_path, **kwargs)
 
     return _hf_model
+
+
+@pytest.fixture
+def multinews_pt_dataset() -> indexing.HuggingFacePyTerrierDataset:
+    return indexing.MultiNewsDataset()
+
+
+@pytest.fixture
+def multxscience_pt_dataset() -> indexing.HuggingFacePyTerrierDataset:
+    return indexing.MultiXScienceDataset()
+
+
+@pytest.fixture
+def ms2_pt_dataset() -> indexing.HuggingFacePyTerrierDataset:
+    return indexing.MS2Dataset()
