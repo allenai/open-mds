@@ -3,8 +3,8 @@ model_name_or_path: "allenai/led-base-16384"
 
 # DataTrainingArguments
 dataset_name: "allenai/mslr2022"
-dataset_config_name: "ms2"
-text_column: "background"
+dataset_config_name: "cochrane"
+text_column: "abstract"
 summary_column: "target"
 max_source_length: 16384
 max_target_length: 256
@@ -13,13 +13,13 @@ max_target_length: 256
 do_train: true
 do_eval: true
 evaluation_strategy: "steps"
-per_device_train_batch_size: 1
-per_device_eval_batch_size: 1
-gradient_accumulation_steps: 4  # Expects 4 GPUs to be used for a total effective batch size of 16
+per_device_train_batch_size: 2
+per_device_eval_batch_size: 2
+gradient_accumulation_steps: 2  # Expects 4 GPUs to be used for a total effective batch size of 16
 eval_delay: 5000
 learning_rate: 3e-5
 weight_decay: 0.01
-num_train_epochs: 10
+num_train_epochs: 20
 warmup_ratio: 0.1
 save_strategy: "steps"
 save_steps: 500
