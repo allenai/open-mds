@@ -92,6 +92,8 @@ def main(
     elif hf_dataset_name == HFDatasets.ms2:
         pt_dataset = indexing.MS2Dataset()
 
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
     # Create a directory to store the index if it wasn't provided
     index_path = Path(index_path) if index_path is not None else Path(util.CACHE_DIR) / "indexes" / pt_dataset.path
     if pt_dataset.name is not None:
