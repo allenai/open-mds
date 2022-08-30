@@ -179,6 +179,7 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
         # It would be less complicated to retrieve the text from the PyTerrier MetaIndex, but these documents are
         # not identical due to some string processing.
         retrieved_docnos = retrieved[retrieved.qid == qid][:k]["docno"].tolist()
+        example["ref_abstract"]["mid"] = retrieved_docnos
         example["ref_abstract"]["abstract"] = [self._documents[docno] for docno in retrieved_docnos]
         return example
 
@@ -197,7 +198,6 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
                     if docno in yielded or not text:
                         continue
                     yielded.add(docno)
-                    # These documents don't have unique IDs, so create them using the split name and index
                     yield {"docno": docno, "text": text}
 
     def get_topics(self, split: str, max_examples: Optional[int] = None) -> pd.DataFrame:
