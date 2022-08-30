@@ -1,6 +1,6 @@
 #!/bin/bash
 # Requested resources
-#SBATCH --mem=24G
+#SBATCH --mem=36G
 #SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu:a100:1
 # Wall time and job details
@@ -13,7 +13,6 @@
 # Use this command to run the same job interactively
 # salloc --mem=16G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=def-wanglab-ab
 # salloc --mem=16G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=def-gbader
-# salloc --mem=16G --cpus-per-task=1 --time=3:00:00 --account=def-gbader
 
 ### Example usage ###
 # sbatch "./scripts/slurm/retrieve.sh" "./conf/multi_news/primera/eval.yml" \

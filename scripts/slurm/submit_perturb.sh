@@ -1,7 +1,9 @@
 #!/bin/bash
 
 ### Example usage ###
-# bash "./scripts/slurm/submit_perturb.sh" "./conf/multi_news/primera/eval.yml"
+# bash "./scripts/slurm/submit_perturb.sh" \
+# "./conf/multinews/primera/eval.yml" \
+# "./output/results/multinews/primera"
 
 ### Script arguments ###
 # Must be provided as argument to the script
