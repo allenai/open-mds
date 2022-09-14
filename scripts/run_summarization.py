@@ -974,7 +974,10 @@ def main():
                 predictions = tokenizer.batch_decode(
                     predict_results.predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
                 )
-                predictions = [pred.strip() for pred in predictions]
+                # Predictions may contain "\n", which causes this file to contain an incorrect number of lines.
+                # Pointed this out to HF maintainers here: https://github.com/huggingface/transformers/issues/18992
+                # but they weren't interested in fixing it.
+                predictions = [util.sanitize_text(pred) for pred in predictions]
                 output_prediction_file = os.path.join(training_args.output_dir, "generated_predictions.txt")
                 with open(output_prediction_file, "w") as writer:
                     writer.write("\n".join(predictions))
