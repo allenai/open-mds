@@ -1,9 +1,11 @@
 from typing import Callable
-import pytest
-from transformers import AutoTokenizer, PreTrainedTokenizer, AutoModel, AutoConfig
+
 import datasets
+import pytest
 from datasets.dataset_dict import DatasetDict
-from transformers import PretrainedConfig
+from retrieval_exploration import indexing
+from transformers import AutoConfig, AutoModel, AutoTokenizer, PretrainedConfig, PreTrainedTokenizer
+from retrieval_exploration.common import util
 
 
 @pytest.fixture
@@ -52,3 +54,23 @@ def hf_model() -> Callable:
         return AutoModel.from_pretrained(model_name_or_path, **kwargs)
 
     return _hf_model
+
+
+@pytest.fixture(scope="module", params=["multi_news", "ccdv/WCEP-10"])
+def canonical_mds_pt_dataset(request) -> indexing.HuggingFacePyTerrierDataset:
+    return indexing.CanonicalMDSDataset(request.param, doc_sep_token=util.DOC_SEP_TOKENS[request.param])
+
+
+@pytest.fixture
+def multxscience_pt_dataset() -> indexing.HuggingFacePyTerrierDataset:
+    return indexing.MultiXScienceDataset()
+
+
+@pytest.fixture
+def ms2_pt_dataset() -> indexing.HuggingFacePyTerrierDataset:
+    return indexing.MSLR2022Dataset(name="ms2")
+
+
+@pytest.fixture
+def cochrane_pt_dataset() -> indexing.HuggingFacePyTerrierDataset:
+    return indexing.MSLR2022Dataset(name="cochrane")

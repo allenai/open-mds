@@ -294,6 +294,28 @@ def test_preprocess_ms2() -> None:
     assert expected_summary == actual_summary
 
 
+def test_preprocess_cochrane() -> None:
+    doc_sep_token = "<doc-sep>"
+
+    titles = ["This is title 1.", "This is title 2."]
+    abstracts = ["This is abstract 1.", "This is abstract 2."]
+    summary = "This is the summary."
+
+    expected_text, expected_summary = (
+        ("This is title 1. This is abstract 1. <doc-sep> This is title 2." " This is abstract 2."),
+        "This is the summary.",
+    )
+
+    actual_text, actual_summary = util.preprocess_cochrane(
+        summary=summary,
+        titles=titles,
+        abstracts=abstracts,
+        doc_sep_token=doc_sep_token,
+    )
+    assert expected_text == actual_text
+    assert expected_summary == actual_summary
+
+
 def test_jaccard_similarity_score() -> None:
     # Both strings cannot be empty
     with warnings.catch_warnings(record=True) as w:
