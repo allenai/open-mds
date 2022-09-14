@@ -14,11 +14,13 @@ from retrieval_exploration.common import util
 _HF_DATASETS_URL = "https://huggingface.co/datasets"
 
 if not pt.started():
-    # TODO: This is a bit of a hack, but the version and helper version are required if you want to use PyTerrier.
-    # offline. We will use the HF_DATASETS_OFFLINE environment variable to determine if we are offline or not.
+    # This is a bit of a hack, but the version and helper version are required if you want to use PyTerrier.
+    # offline. We will use the HF_DATASETS_OFFLINE environment variable to determine if we are offline or not, as
+    # our usage of PyTerrier is tightly coupled to the HuggingFace datasets library.
     # See: https://pyterrier.readthedocs.io/en/latest/installation.html#pyterrier.init
     if os.environ.get("HF_DATASETS_OFFLINE") == "1":
-        pt.init(version=5.6, helper_version="0.0.6")
+        version, helper_version = util.get_pyterrier_versions()
+        pt.init(version=version, helper_version=helper_version)
     else:
         pt.init()
 

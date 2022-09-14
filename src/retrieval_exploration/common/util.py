@@ -245,6 +245,20 @@ def fraction_docs_perturbed(pre_perturbation: str, post_perturbation: str, doc_s
     return num_perturbed / len(pre_perturbation_docs)
 
 
+def get_pyterrier_versions() -> Tuple[str, str]:
+    """Returns the versions of the currently installed Terrier assembly and Terrier python helper jars. These
+    are required to use PyTerrier offline.
+    """
+    # Get the filenames of the terrier assembly and terrier python helper jars
+    pyterrier_path = Path.home() / ".pyterrier"
+    terrier_assemblies_fn = list(pyterrier_path.glob("terrier-assemblies-*.jar"))[0].stem
+    terrier_python_helper_fn = list(pyterrier_path.glob("terrier-python-helper-*.jar"))[0].stem
+    # Extract the versions from each
+    version = terrier_assemblies_fn.lstrip("terrier-assemblies-").split("-")[0]
+    helper_version = terrier_python_helper_fn.lstrip("terrier-python-helper-")
+    return version, helper_version
+
+
 def _read_result_dict(results_dict: Union[Dict[str, Any], List[Dict[str, Any]]], **kwargs) -> pd.DataFrame:
     """Reads an arbitrary dictionary or list of dictionaries, flattens it by joining all nested keys
     with a `'_'`, and returns it as a single pandas DataFrame. `**kwargs` are passed to `pd.DataFrame`.
