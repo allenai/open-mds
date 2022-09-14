@@ -23,6 +23,7 @@ class HFDatasets(str, Enum):
     multixscience = "multixscience"
     ms2 = "ms2"
     cochrane = "cochrane"
+    wcep = "wcep"
 
 
 class Retriever(str, Enum):
@@ -87,7 +88,13 @@ def main(
 
     # Any dataset specific setup goes here
     if hf_dataset_name == HFDatasets.multinews:
-        pt_dataset = indexing.MultiNewsDataset()
+        path = "multi_news"
+        doc_sep_token = util.DOC_SEP_TOKENS[path]
+        pt_dataset = indexing.CanonicalMDSDataset(path, doc_sep_token=doc_sep_token)
+    elif hf_dataset_name == HFDatasets.wcep:
+        path = "ccdv/WCEP-10"
+        doc_sep_token = util.DOC_SEP_TOKENS[path]
+        pt_dataset = indexing.CanonicalMDSDataset(path, doc_sep_token=doc_sep_token)
     elif hf_dataset_name == HFDatasets.multixscience:
         pt_dataset = indexing.MultiXScienceDataset()
     elif hf_dataset_name == HFDatasets.ms2 or hf_dataset_name == HFDatasets.cochrane:

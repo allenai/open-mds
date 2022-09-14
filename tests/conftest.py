@@ -5,6 +5,7 @@ import pytest
 from datasets.dataset_dict import DatasetDict
 from retrieval_exploration import indexing
 from transformers import AutoConfig, AutoModel, AutoTokenizer, PretrainedConfig, PreTrainedTokenizer
+from retrieval_exploration.common import util
 
 
 @pytest.fixture
@@ -55,9 +56,9 @@ def hf_model() -> Callable:
     return _hf_model
 
 
-@pytest.fixture
-def multinews_pt_dataset() -> indexing.HuggingFacePyTerrierDataset:
-    return indexing.MultiNewsDataset()
+@pytest.fixture(scope="module", params=["multi_news", "ccdv/WCEP-10"])
+def canonical_mds_pt_dataset(request) -> indexing.HuggingFacePyTerrierDataset:
+    return indexing.CanonicalMDSDataset(request.param, doc_sep_token=util.DOC_SEP_TOKENS[request.param])
 
 
 @pytest.fixture

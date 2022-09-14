@@ -12,13 +12,13 @@ def test_sanitize_query() -> None:
     assert actual["query"].iloc[0] != topics["query"].iloc[0]
 
 
-class TestMultiNewsDataset:
-    doc_sep_token = util.DOC_SEP_TOKENS["multi_news"]
+class TestCanonicalMDSDataset:
+    def test_info_url(self, canonical_mds_pt_dataset: indexing.HuggingFacePyTerrierDataset):
+        assert (
+            canonical_mds_pt_dataset.info_url() == f"https://huggingface.co/datasets/{canonical_mds_pt_dataset.path}"
+        )
 
-    def test_info_url(self, multinews_pt_dataset: indexing.HuggingFacePyTerrierDataset):
-        assert multinews_pt_dataset.info_url() == "https://huggingface.co/datasets/multi_news"
-
-    def test_replace(self, multinews_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
+    def test_replace(self, canonical_mds_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
         # Choose a query
         split = "train"
         idx = 0
@@ -26,40 +26,41 @@ class TestMultiNewsDataset:
 
         # Create dummy retrieval results
         retrieved = pd.DataFrame({"qid": [qid], "docno": ["validation_0_0"]})
-        expected_document = multinews_pt_dataset._hf_dataset["validation"][0]["document"].split(
-            TestMultiNewsDataset.doc_sep_token
+        expected_document = canonical_mds_pt_dataset._hf_dataset["validation"][0]["document"].split(
+            canonical_mds_pt_dataset._doc_sep_token
         )[0]
 
         # Check that the example is modified as expected
         example = {"document": "This can be anything", "summary": "This could be anything"}
-        actual = multinews_pt_dataset.replace(example, idx, split=split, retrieved=retrieved)
+        actual = canonical_mds_pt_dataset.replace(example, idx, split=split, retrieved=retrieved)
         assert actual["document"].strip() == expected_document.strip()
         # Check that the target summary is not modified
         assert actual["summary"] == example["summary"]
         # Check that the modified example contains only expected keys
         assert all(key in ["document", "summary"] for key in actual)
 
-    def test_get_corpus_iter(self, multinews_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
+    def test_get_corpus_iter(self, canonical_mds_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
         expected_docno = "train_0_0"
         expected_text = util.split_docs(
-            multinews_pt_dataset._hf_dataset["train"]["document"][0], doc_sep_token=TestMultiNewsDataset.doc_sep_token
+            canonical_mds_pt_dataset._hf_dataset["train"]["document"][0],
+            doc_sep_token=canonical_mds_pt_dataset._doc_sep_token,
         )[0]
-        corpus_iter = multinews_pt_dataset.get_corpus_iter(verbose=False)
+        corpus_iter = canonical_mds_pt_dataset.get_corpus_iter(verbose=False)
         # Check that the first yielded document is as expected
         first_item = next(corpus_iter)
         assert first_item == {"docno": expected_docno, "text": expected_text}
 
-    def test_get_topics(self, multinews_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
+    def test_get_topics(self, canonical_mds_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
         expected_qid = "train_0"
-        expected_query = multinews_pt_dataset._hf_dataset["train"]["summary"][0]
-        topics = multinews_pt_dataset.get_topics(split="train", max_examples=1)
+        expected_query = canonical_mds_pt_dataset._hf_dataset["train"]["summary"][0]
+        topics = canonical_mds_pt_dataset.get_topics(split="train", max_examples=1)
         # Check that the first query is as expected
         assert topics["qid"].tolist() == [expected_qid]
         # Because the query is sanitized, check they original query
         assert topics["query_0"].tolist() == [expected_query]
 
-    def test_get_qrels(self, multinews_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
-        qrels = multinews_pt_dataset.get_qrels(split="validation")
+    def test_get_qrels(self, canonical_mds_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
+        qrels = canonical_mds_pt_dataset.get_qrels(split="validation")
         expected_qid = "validation_0"
         expected_docnos = "validation_0_0"
         expected_labels = 1
@@ -68,12 +69,18 @@ class TestMultiNewsDataset:
         assert qrels["docno"].iloc[0] == expected_docnos
         assert qrels["label"].iloc[0] == expected_labels
 
-    def test_get_document_stats(self, multinews_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
-        document_stats = multinews_pt_dataset.get_document_stats()
-        assert document_stats["max"] == 10
-        assert round(document_stats["mean"], 2) == 2.75
-        # Some examples are empty
-        assert document_stats["min"] == 0
+    def test_get_document_stats(self, canonical_mds_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
+        document_stats = canonical_mds_pt_dataset.get_document_stats()
+
+        if canonical_mds_pt_dataset.path == "multi_news":
+            assert document_stats["max"] == 10
+            assert round(document_stats["mean"], 2) == 2.75
+            # Some examples are empty
+            assert document_stats["min"] == 0
+        elif canonical_mds_pt_dataset.path == "ccdv/WCEP-10":
+            assert document_stats["max"] == 10
+            assert round(document_stats["mean"], 2) == 9.05
+            assert document_stats["min"] == 1
 
 
 class TestMultiXScienceDataset:

@@ -88,17 +88,21 @@ class HuggingFacePyTerrierDataset(pt.datasets.Dataset):
         return f"{_HF_DATASETS_URL}/{self.path}"
 
 
-class MultiNewsDataset(HuggingFacePyTerrierDataset):
-    def __init__(self, **kwargs):
-        super().__init__("multi_news", None, **kwargs)
+class CanonicalMDSDataset(HuggingFacePyTerrierDataset):
+    """Supports datasets in a simple, two column format with fields "document" and "summary". The "document" field
+    should contain several documents seperated by a special document seperator token. The "summary" field should
+    contain the reference summary.
+    """
+
+    def __init__(self, path: str, doc_sep_token: str, **kwargs):
+        super().__init__(path, None, **kwargs)
+        self._doc_sep_token = doc_sep_token
 
     def replace(
         self, example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
     ) -> Dict[str, Any]:
-        # Multi-News has a special document seperator token that we need to parse out individual documents
-        doc_sep_token = util.DOC_SEP_TOKENS[self.path]
         qid = f"{split}_{idx}"
-        k = k or util.get_num_docs(example["document"], doc_sep_token=doc_sep_token)
+        k = k or util.get_num_docs(example["document"], doc_sep_token=self._doc_sep_token)
         # We would like to get the original, unaltered text from the dataset, so we use the docno's to key in.
         # It would be less complicated to retrieve the text from the PyTerrier MetaIndex, but these documents are
         # not identical due to some string processing.
@@ -107,9 +111,9 @@ class MultiNewsDataset(HuggingFacePyTerrierDataset):
         for docno in retrieved_docnos:
             retrieved_split, example_idx, document_idx = docno.split("_")
             retrieved_example = self._hf_dataset[retrieved_split]["document"][int(example_idx)]
-            retrieved_doc = util.split_docs(retrieved_example, doc_sep_token=doc_sep_token)[int(document_idx)]
+            retrieved_doc = util.split_docs(retrieved_example, doc_sep_token=self._doc_sep_token)[int(document_idx)]
             retrieved_docs.append(retrieved_doc)
-        example["document"] = f" {doc_sep_token} ".join(doc.strip() for doc in retrieved_docs)
+        example["document"] = f" {self._doc_sep_token} ".join(doc.strip() for doc in retrieved_docs)
         return example
 
     def get_corpus_iter(self, verbose: bool = True) -> Iterator[Dict[str, Any]]:
@@ -121,7 +125,7 @@ class MultiNewsDataset(HuggingFacePyTerrierDataset):
                 total=len(self._hf_dataset[split]),
                 disable=not verbose,
             ):
-                docs = util.split_docs(example["document"], doc_sep_token=util.DOC_SEP_TOKENS[self.path])
+                docs = util.split_docs(example["document"], doc_sep_token=self._doc_sep_token)
                 for j, doc in enumerate(docs):
                     doc = doc.strip()
                     # Don't index duplicate or empty documents
@@ -144,7 +148,7 @@ class MultiNewsDataset(HuggingFacePyTerrierDataset):
         dataset = self._hf_dataset[split]
         qids, docnos = [], []
         for i, example in enumerate(dataset):
-            docs = util.split_docs(example["document"], doc_sep_token=util.DOC_SEP_TOKENS[self.path])
+            docs = util.split_docs(example["document"], doc_sep_token=self._doc_sep_token)
             for j, _ in enumerate(docs):
                 qids.append(f"{split}_{i}")
                 docnos.append(f"{split}_{i}_{j}")
@@ -155,7 +159,8 @@ class MultiNewsDataset(HuggingFacePyTerrierDataset):
         num_docs = []
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
-                num_docs.append(util.get_num_docs(example["document"], doc_sep_token=util.DOC_SEP_TOKENS[self.path]))
+                num_docs.append(util.get_num_docs(example["document"], doc_sep_token=self._doc_sep_token))
+
         return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}
 
 
