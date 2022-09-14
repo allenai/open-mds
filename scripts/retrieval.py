@@ -15,13 +15,14 @@ app = typer.Typer()
 
 # This controls the sizes of batches which are written to disk by HuggingFace Datasets.
 # Smaller values save memory at the cost of more compute
-_WRITER_BATCH_SIZE = 250
+_WRITER_BATCH_SIZE = 500
 
 
 class HFDatasets(str, Enum):
     multinews = "multinews"
     multixscience = "multixscience"
     ms2 = "ms2"
+    cochrane = "cochrane"
 
 
 class Retriever(str, Enum):
@@ -89,8 +90,8 @@ def main(
         pt_dataset = indexing.MultiNewsDataset()
     elif hf_dataset_name == HFDatasets.multixscience:
         pt_dataset = indexing.MultiXScienceDataset()
-    elif hf_dataset_name == HFDatasets.ms2:
-        pt_dataset = indexing.MS2Dataset()
+    elif hf_dataset_name == HFDatasets.ms2 or hf_dataset_name == HFDatasets.cochrane:
+        pt_dataset = indexing.MSLR2022Dataset(config=hf_dataset_name)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 

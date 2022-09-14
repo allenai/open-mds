@@ -67,4 +67,9 @@ def multxscience_pt_dataset() -> indexing.HuggingFacePyTerrierDataset:
 
 @pytest.fixture
 def ms2_pt_dataset() -> indexing.HuggingFacePyTerrierDataset:
-    return indexing.MS2Dataset()
+    return indexing.MSLR2022Dataset(name="ms2")
+
+
+@pytest.fixture
+def cochrane_pt_dataset() -> indexing.HuggingFacePyTerrierDataset:
+    return indexing.MSLR2022Dataset(name="cochrane")

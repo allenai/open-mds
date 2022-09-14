@@ -96,7 +96,7 @@ class MultiNewsDataset(HuggingFacePyTerrierDataset):
         self, example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
     ) -> Dict[str, Any]:
         # Multi-News has a special document seperator token that we need to parse out individual documents
-        doc_sep_token = util.DOC_SEP_TOKENS["multi_news"]
+        doc_sep_token = util.DOC_SEP_TOKENS[self.path]
         qid = f"{split}_{idx}"
         k = k or util.get_num_docs(example["document"], doc_sep_token=doc_sep_token)
         # We would like to get the original, unaltered text from the dataset, so we use the docno's to key in.
@@ -156,7 +156,7 @@ class MultiNewsDataset(HuggingFacePyTerrierDataset):
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
                 num_docs.append(util.get_num_docs(example["document"], doc_sep_token=util.DOC_SEP_TOKENS[self.path]))
-        return {"max": np.max(num_docs), "mean": round(np.mean(num_docs), 4), "min": np.min(num_docs)}
+        return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}
 
 
 class MultiXScienceDataset(HuggingFacePyTerrierDataset):
@@ -224,12 +224,12 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
                 num_docs.append(len(example["ref_abstract"]["abstract"]))
-        return {"max": np.max(num_docs), "mean": round(np.mean(num_docs), 4), "min": np.min(num_docs)}
+        return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}
 
 
-class MS2Dataset(HuggingFacePyTerrierDataset):
+class MSLR2022Dataset(HuggingFacePyTerrierDataset):
     def __init__(self, **kwargs) -> None:
-        super().__init__("allenai/mslr2022", "ms2", **kwargs)
+        super().__init__("allenai/mslr2022", **kwargs)
 
         # Collect all documents in the dataset in a way thats easy to lookup
         self._documents = {}
@@ -274,7 +274,8 @@ class MS2Dataset(HuggingFacePyTerrierDataset):
         dataset = self._hf_dataset[split]
         if max_examples:
             dataset = dataset[:max_examples]
-        queries = dataset["background"]
+        # Cochrane does not contain a background section, so use the target as query instead
+        queries = dataset["background"] if self.name == "ms2" else dataset["target"]
         qids = dataset["review_id"]
         topics = pd.DataFrame({"qid": qids, "query": queries})
         return _sanitize_query(topics)
@@ -293,4 +294,4 @@ class MS2Dataset(HuggingFacePyTerrierDataset):
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
                 num_docs.append(len(example["pmid"]))
-        return {"max": np.max(num_docs), "mean": round(np.mean(num_docs), 4), "min": np.min(num_docs)}
+        return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}
