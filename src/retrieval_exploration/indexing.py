@@ -62,10 +62,25 @@ class HuggingFacePyTerrierDataset(pt.datasets.Dataset):
     ) -> Dict[str, Any]:
         """This method replaces the original source documents of an `example` from a HuggingFace dataset with the
         top-`k` documents in `retrieved`. It is expected that this function will be passed to the `map` method of
-        the HuggingFace Datasets library with the argument `with_indices=True`. Must be implemented by child class.
-        If `k` is `None`, it will be set dynamically for each example as the original number of source documents.
+        the HuggingFace Datasets library with the argument `with_indices=True`. If `k` is `None`, it will be set
+        dynamically for each example as the original number of source documents. Must be implemented by child class.
         """
-        raise NotImplementedError("Static method 'replace' must be implemented by the child class.")
+        raise NotImplementedError("Method 'replace' must be implemented by the child class.")
+
+    def get_corpus_iter(self, verbose: bool = True) -> Iterator[Dict[str, Any]]:
+        """Returns an iterator that yields dictionaries with the keys "docno" and "text" for each example in the
+        dataset. Must be implemented by child class.
+        """
+        raise NotImplementedError("Method 'get_corpus_iter' must be implemented by the child class.")
+
+    def get_topics(self, split: str, max_examples: Optional[int] = None) -> pd.DataFrame:
+        """Returns a Pandas DataFrame with the topics (queries) for the given `split`. If `max_examples` is provided,
+        only this many topics will be returned. Must be implemented by child class."""
+        raise NotImplementedError("Method 'get_topics' must be implemented by the child class.")
+
+    def get_qrels(self, split: str) -> pd.DataFrame:
+        """Returns a Pandas DataFrame with the qrels for the given `split`. Must be implemented by child class."""
+        raise NotImplementedError("Method 'get_qrels' must be implemented by the child class.")
 
     def get_index(self, index_path: str, overwrite: bool = False, verbose: bool = True, **kwargs) -> pt.IndexRef:
         """Returns the `IndexRef` for this dataset from `index_path`, creating it first if it doesn't already
@@ -83,6 +98,10 @@ class HuggingFacePyTerrierDataset(pt.datasets.Dataset):
         # See: https://pyterrier.readthedocs.io/en/latest/terrier-indexing.html#iterdictindexer
         indexref = indexer.index(self.get_corpus_iter(verbose=verbose))
         return indexref
+
+    def get_document_stats(self) -> Dict[str, float]:
+        """Returns a dictionary with corpus statistics for the given dataset. Must be implemented by child class."""
+        raise NotImplementedError("Method 'get_document_stats' must be implemented by the child class.")
 
     def info_url(self) -> str:
         return f"{_HF_DATASETS_URL}/{self.path}"
