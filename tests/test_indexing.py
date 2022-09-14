@@ -273,5 +273,5 @@ class TestMSLR2022CochraneDataset:
     def test_get_document_stats(self, cochrane_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
         document_stats = cochrane_pt_dataset.get_document_stats()
         assert document_stats["max"] == 537
-        assert round(document_stats["mean"], 2) == 23.23
+        assert round(document_stats["mean"], 2) == 10.91
         assert document_stats["min"] == 1
