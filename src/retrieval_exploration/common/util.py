@@ -194,6 +194,17 @@ def preprocess_ms2(
     return text, summary
 
 
+def preprocess_cochrane(
+    summary: str, titles: List[str], abstracts: List[str], doc_sep_token: str, max_included_studies: int = 25
+) -> Tuple[str, str]:
+    articles = [f"{title.strip()} {abstract.strip()}" for title, abstract in zip(titles, abstracts)]
+    # Following https://arxiv.org/abs/2104.06486, take the first 25 articles.
+    articles = articles[:max_included_studies]
+    text = f" {doc_sep_token} ".join(articles)
+    summary = summary.strip()
+    return text, summary
+
+
 def jaccard_similarity_score(string_1: str, string_2: str) -> float:
     """Returns the Jaccard similarity score between two strings, by comparing their token sets. Returns 1.0
     if both strings are empty."""
