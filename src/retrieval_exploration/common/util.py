@@ -319,19 +319,6 @@ def load_results_dicts(
                     f" {_RESULTS_FILENAME} or {_TRAINER_STATE_FILENAME}."
                 )
 
-            # TODO: Add rougeG
-            rouge1_fmeasure = results_dict["predict_rouge1_fmeasure"]
-            rouge2_fmeasure = results_dict["predict_rouge2_fmeasure"]
-            rougeL_fmeasure = results_dict["predict_rougeL_fmeasure"]
-            results_dict["predict_rouge_avg_fmeasure"] = np.mean(
-                [rouge1_fmeasure, rouge2_fmeasure, rougeL_fmeasure], axis=0
-            ).tolist()
-            results_dict["predict_rouge_avg_fmeasure_mean"] = np.mean(
-                results_dict["predict_rouge_avg_fmeasure"]
-            ).item()
-            with filepath.open("w") as f:
-                json.dump(results_dict, f, indent=4)
-
             baseline_df = _read_result_dict(results_dict)
             baseline_dfs.append(baseline_df)
 
@@ -345,19 +332,6 @@ def load_results_dicts(
 
         for filepath in tqdm(filepaths):
             results_dict = json.loads(filepath.read_text())
-
-            # TODO: Add rougeG
-            rouge1_fmeasure = results_dict["predict_rouge1_fmeasure"]
-            rouge2_fmeasure = results_dict["predict_rouge2_fmeasure"]
-            rougeL_fmeasure = results_dict["predict_rougeL_fmeasure"]
-            results_dict["predict_rouge_avg_fmeasure"] = np.mean(
-                [rouge1_fmeasure, rouge2_fmeasure, rougeL_fmeasure], axis=0
-            ).tolist()
-            results_dict["predict_rouge_avg_fmeasure_mean"] = np.mean(
-                results_dict["predict_rouge_avg_fmeasure"]
-            ).item()
-            with filepath.open("w") as f:
-                json.dump(results_dict, f, indent=4)
 
             if train:
                 perturbation_df = _read_result_dict(results_dict[_LOG_HISTORY_KEY][:-1])
