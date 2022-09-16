@@ -167,6 +167,13 @@ def preprocess_multi_news(text: str, summary: str, doc_sep_token: str) -> Tuple[
     return text, summary
 
 
+def preprocess_wcep(text: str, summary: str, doc_sep_token: str) -> Tuple[str, str]:
+    text = text.strip(DOC_SEP_TOKENS["ccdv/WCEP-10"]).strip()
+    text = text.replace(DOC_SEP_TOKENS["ccdv/WCEP-10"], doc_sep_token)
+    summary = summary.strip()
+    return text, summary
+
+
 def preprocess_multi_x_science_sum(
     text: str, summary: str, ref_abstract: Dict[str, List[str]], doc_sep_token: str
 ) -> Tuple[str, str]:

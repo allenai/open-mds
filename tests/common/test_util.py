@@ -246,6 +246,28 @@ def test_preprocess_multi_news() -> None:
     assert expected_summary == actual_summary
 
 
+def test_preprocess_wcep() -> None:
+    doc_sep_token = "<doc-sep>"
+
+    docs = [
+        "Document numero uno.",
+        # Including a document separator token at the end. Some examples in multi-news do this,
+        # so we should make sure it doesn't trip up our logic.
+        f"Document numero dos. {util.DOC_SEP_TOKENS['ccdv/WCEP-10']}",
+    ]
+
+    document = f" {util.DOC_SEP_TOKENS['ccdv/WCEP-10']} ".join(docs)
+    summary = "This is the summary."
+
+    expected_text, expected_summary = (
+        "Document numero uno. <doc-sep> Document numero dos.",
+        "This is the summary.",
+    )
+    actual_text, actual_summary = util.preprocess_wcep(text=document, summary=summary, doc_sep_token=doc_sep_token)
+    assert expected_text == actual_text
+    assert expected_summary == actual_summary
+
+
 def test_preprocess_multi_x_science_sum() -> None:
     doc_sep_token = "<doc-sep>"
 
