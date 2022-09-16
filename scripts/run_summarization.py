@@ -109,6 +109,16 @@ class ModelArguments:
             )
         },
     )
+    trust_remote_code: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "Whether or not to allow for custom models defined on the Hub in their own modeling files. This "
+                "option should only be set to `True` for repositories you trust and in which you have read the "
+                "code, as it will execute code present on the Hub on your local machine."
+            )
+        },
+    )
     resize_position_embeddings: Optional[bool] = field(
         default=None,
         metadata={
@@ -474,6 +484,7 @@ def main():
         cache_dir=model_args.cache_dir,
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
+        trust_remote_code=model_args.trust_remote_code,
     )
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
@@ -481,6 +492,7 @@ def main():
         use_fast=model_args.use_fast_tokenizer,
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
+        trust_remote_code=model_args.trust_remote_code,
     )
     model = AutoModelForSeq2SeqLM.from_pretrained(
         model_args.model_name_or_path,
@@ -489,6 +501,7 @@ def main():
         cache_dir=model_args.cache_dir,
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
+        trust_remote_code=model_args.trust_remote_code,
     )
 
     model.resize_token_embeddings(len(tokenizer))
@@ -593,6 +606,12 @@ def main():
                         summary=examples[summary_column][i],
                         doc_sep_token=doc_sep_token,
                     )
+                elif "wcep" in data_args.dataset_name or data_args.dataset_name == "ccdv/WCEP-10":
+                    text, summary = util.preprocess_wcep(
+                        text=examples[text_column][i],
+                        summary=examples[summary_column][i],
+                        doc_sep_token=doc_sep_token,
+                    )
                 elif "multixscience" in data_args.dataset_name or data_args.dataset_name == "multi_x_science_sum":
                     text, summary = util.preprocess_multi_x_science_sum(
                         text=examples[text_column][i],
@@ -687,9 +706,8 @@ def main():
 
         model_inputs = tokenizer(inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
 
-        # Setup the tokenizer for targets
-        with tokenizer.as_target_tokenizer():
-            labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
+        # Tokenize targets with the `text_target` keyword argument
+        labels = tokenizer(text_target=targets, max_length=max_target_length, padding=padding, truncation=True)
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
