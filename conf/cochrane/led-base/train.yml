@@ -13,9 +13,9 @@ max_target_length: 256
 do_train: true
 do_eval: true
 evaluation_strategy: "steps"
-per_device_train_batch_size: 2
-per_device_eval_batch_size: 2
-gradient_accumulation_steps: 2  # Expects 4 GPUs to be used for a total effective batch size of 16
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 4  # Expects 4 GPUs to be used for a total effective batch size of 16
 eval_delay: 5000
 learning_rate: 3e-5
 weight_decay: 0.01
