@@ -278,7 +278,9 @@ def _read_result_dict(results_dict: Union[Dict[str, Any], List[Dict[str, Any]]],
 
 
 def load_results_dicts(
-    data_dir: str, metric_columns: Optional[List[str]] = None
+    data_dir: str,
+    metric_columns: Optional[List[str]] = None,
+    metric_key_prefix: Optional[str] = "predict",
 ) -> Tuple[Optional[pd.DataFrame], pd.DataFrame]:
     """Loads the result dictionaries at `data_dir`. Assumes this directory is organized as follows:
 
@@ -294,10 +296,11 @@ def load_results_dicts(
     │   └── ...
     └── ...
 
-    If the subdirectory `"baseline"` is present and `metric_columns` is provided, a new column
-    `<metric>_delta`, one for each `metric` in `metric_columns`, will be computed as the difference
-    between the perturbed results and the baseline results for the column `metric` and added to the
-    returned dataframe.
+    If the subdirectory `"baseline"` is present and `metric_columns` is provided, a new column `<metric>_delta`,
+    one for each `metric` in `metric_columns`, will be computed as the difference between the perturbed results and
+    the baseline results for the column `metric` and added to the returned dataframe. The metrics are assumed to be
+    prefixed with `metric_key_prefix`, which is added by the HuggingFace Trainer (and defaults to "eval" for the
+    validation set and "predict" for the test set).
     """
 
     baseline_dfs = []
@@ -346,18 +349,18 @@ def load_results_dicts(
                 perturbation_df = _read_result_dict(results_dict)
             if baseline_df is not None:
                 # The perturbation and baseline data should pertain to the same examples.
-                if not np.array_equal(baseline_df.predict_example_idx, perturbation_df.predict_example_idx):
+                if not np.array_equal(
+                    baseline_df[f"{metric_key_prefix}_labels"],
+                    perturbation_df[f"{metric_key_prefix}_labels"],
+                ):
                     raise ValueError("The perturbation and baseline data do not correspond to the same examples!")
-
-                perturbation_df["jaccard_similarity_scores"] = [
-                    jaccard_similarity_score(pre, post)
-                    for pre, post in zip(perturbation_df.predict_inputs, baseline_df.predict_inputs)
-                ]
 
                 perturbation_df["frac_docs_perturbed"] = [
                     fraction_docs_perturbed(pre, post, doc_sep_token=doc_sep_token)
                     for pre, post, doc_sep_token in zip(
-                        baseline_df.predict_inputs, perturbation_df.predict_inputs, baseline_df.predict_doc_sep_token
+                        baseline_df[f"{metric_key_prefix}_inputs"],
+                        perturbation_df[f"{metric_key_prefix}_inputs"],
+                        baseline_df.doc_sep_token,
                     )
                 ]
 
