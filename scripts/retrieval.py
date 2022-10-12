@@ -4,7 +4,6 @@ from functools import partial
 from pathlib import Path
 from typing import List
 
-
 import pyterrier as pt
 import typer
 from retrieval_exploration import indexing
@@ -17,20 +16,21 @@ app = typer.Typer()
 # Smaller values save memory at the cost of more compute
 _WRITER_BATCH_SIZE = 500
 
+# The neural retirever to use for dense retireval pipeline. This could be made an argument to the script.
+_DEFAULT_NEURAL_RETRIEVER = "facebook/contriever-msmarco"
+
 
 class HFDatasets(str, Enum):
     multinews = "multinews"
+    wcep = "wcep"
     multixscience = "multixscience"
     ms2 = "ms2"
     cochrane = "cochrane"
-    wcep = "wcep"
 
 
 class Retriever(str, Enum):
     sparse = "sparse"
     dense = "dense"
-    sparse_re_ranker = "sparse+re-ranker"
-    dense_re_ranker = "dense+re-ranker"
 
 
 class TopKStrategy(str, Enum):
@@ -58,6 +58,14 @@ def main(
     ),
     retriever: Retriever = typer.Option(
         Retriever.sparse, case_sensitive=False, help="The type of retrieval pipeline to use."
+    ),
+    model_name_or_path: str = typer.Option(
+        _DEFAULT_NEURAL_RETRIEVER,
+        help=(
+            "Which model to use for dense retrieval. Can be any Sentence Transformer or HuggingFace Transformer"
+            f" model. Defaults to {_DEFAULT_NEURAL_RETRIEVER} Has no effect if choosen retriever does not use a"
+            " neural model."
+        ),
     ),
     top_k_strategy: TopKStrategy = typer.Option(
         TopKStrategy.oracle,
@@ -98,7 +106,7 @@ def main(
     elif hf_dataset_name == HFDatasets.multixscience:
         pt_dataset = indexing.MultiXScienceDataset()
     elif hf_dataset_name == HFDatasets.ms2 or hf_dataset_name == HFDatasets.cochrane:
-        pt_dataset = indexing.MSLR2022Dataset(config=hf_dataset_name)
+        pt_dataset = indexing.MSLR2022Dataset(name=hf_dataset_name)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -109,26 +117,35 @@ def main(
     index_path.mkdir(parents=True, exist_ok=True)
 
     # Use all splits if not specified
-    splits = splits or list(pt_dataset.keys())
+    splits = splits or list(pt_dataset._hf_dataset.keys())
 
     # Create a new copy of the dataset and replace its source documents with retrieved documents
     hf_dataset = copy.deepcopy(pt_dataset._hf_dataset)
     print(f"[bold green]:white_check_mark: Loaded the dataset from '{pt_dataset.info_url()}' [/bold green]")
 
-    indexref = pt_dataset.get_index(str(index_path), overwrite=overwrite_index, verbose=True)
-    # In general, we should always load the actual index
-    # See: https://pyterrier.readthedocs.io/en/latest/terrier-retrieval.html#index-like-objects
-    index = pt.IndexFactory.of(indexref)
-    print(f"[bold green]:white_check_mark: Loaded the index from '{index_path}' [/bold green]")
-
     if retriever == Retriever.sparse:
+        indexref = pt_dataset.get_index(str(index_path), overwrite=overwrite_index, verbose=True)
+        # In general, we should always load the actual index
+        # See: https://pyterrier.readthedocs.io/en/latest/terrier-retrieval.html#index-like-objects
+        index = pt.IndexFactory.of(indexref)
+        print(f"[bold green]:white_check_mark: Loaded the index from '{index_path}' [/bold green]")
         retrieval_pipeline = pt.BatchRetrieve(index, wmodel="BM25", metadata=["docno", "text"], verbose=True)
-    elif retriever == Retriever.dense:
-        raise NotImplementedError()
-    elif retriever == Retriever.sparse_re_ranker:
-        raise NotImplementedError
-    elif retriever == Retriever.dense_re_ranker:
-        raise NotImplementedError()
+    else:
+        # Import here as PyTerrier will have been initialized by this point
+        from pyterrier_sentence_transformers import SentenceTransformersIndexer, SentenceTransformersRetriever
+
+        indexer = SentenceTransformersIndexer(
+            model_name_or_path=model_name_or_path,
+            index_path=str(index_path),
+            overwrite=overwrite_index,
+            normalize=False,
+            verbose=False,
+        )
+        indexer.index(pt_dataset.get_corpus_iter(verbose=True))
+        print(f"[bold green]:white_check_mark: Loaded the index from '{index_path}' [/bold green]")
+        retrieval_pipeline = SentenceTransformersRetriever(
+            model_name_or_path=model_name_or_path, index_path=str(index_path), verbose=False
+        )
     print(f"[bold green]:white_check_mark: Loaded the '{retriever.value}' retrieval pipeline[/bold green]")
 
     top_k_strategy_msg = f"[bold blue]:hammer_and_wrench: Using the '{top_k_strategy.value}' TopKStrategy. "
