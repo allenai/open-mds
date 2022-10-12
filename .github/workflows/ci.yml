@@ -30,7 +30,7 @@ jobs:
           poetry-version: 1.2.0b2
       - name: Install dependencies with Poetry
         run: |
-          poetry install --all-extras
+          poetry install
       - name: Download required NLTK data 
         run: |
           poetry run python -m nltk.downloader punkt
