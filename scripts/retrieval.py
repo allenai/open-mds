@@ -16,6 +16,9 @@ app = typer.Typer()
 # Smaller values save memory at the cost of more compute
 _WRITER_BATCH_SIZE = 500
 
+# The default location to save document indices.
+_DOCUMENT_INDEX_DIR = Path(util.CACHE_DIR) / "indices"
+
 # The neural retirever to use for dense retireval pipeline. This could be made an argument to the script.
 _DEFAULT_NEURAL_RETRIEVER = "facebook/contriever-msmarco"
 
@@ -111,7 +114,7 @@ def main(
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     # Create a directory to store the index if it wasn't provided
-    index_path = Path(index_path) if index_path is not None else Path(util.CACHE_DIR) / "indexes" / pt_dataset.path
+    index_path = Path(index_path) if index_path is not None else _DOCUMENT_INDEX_DIR / pt_dataset.path
     if pt_dataset.name is not None:
         index_path = index_path / pt_dataset.name
     index_path.mkdir(parents=True, exist_ok=True)
