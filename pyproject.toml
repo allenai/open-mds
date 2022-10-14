@@ -23,17 +23,17 @@ sentencepiece = "^0.1.96"
 nlpaug = "^1.1.11"
 more-itertools = "^8.13.0"
 nltk = "^3.7"
+py7zr = "^0.18.5"
+protobuf = "^3.20.1"
+rouge-score = "^0.0.4"
+bert-score = "^0.3.11"
 # Can install from PyPI when this branch is merged into latest release
-python-terrier = {git = "https://github.com/terrier-org/pyterrier.git", rev = "master"}
-py7zr = {version = "^0.18.5", optional = true}
-protobuf = {version = "^3.20.1", optional = true}
-rouge-score = {version = "^0.0.4", optional = true}
-bert-score = {version = "^0.3.11", optional = true}
+python-terrier = {git = "https://github.com/terrier-org/pyterrier.git", rev = "master", optional = true}
+pyterrier-sentence-transformers = {git = "https://github.com/soldni/pyterrier_sentence_transformers.git", optional = true}
 
 [tool.poetry.extras]
-# Extra dependencies required for summarization tasks.
-# Taken from: https://github.com/huggingface/transformers/blob/main/examples/pytorch/summarization/requirements.txt
-summarization = ["py7zr", "protobuf", "rouge-score", "bert-score"]
+# Extra dependencies required for retrieval.
+retrieval = ["python-terrier", "pyterrier-sentence-transformers"]
 
 [tool.poetry.dev-dependencies]
 black = {version = "^22.3.0", extras = ["jupyter"]}
@@ -70,5 +70,5 @@ exclude = '''
 '''
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.2.2"]
 build-backend = "poetry.core.masonry.api"
