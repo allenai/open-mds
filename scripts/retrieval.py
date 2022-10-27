@@ -156,7 +156,7 @@ def main(
     if top_k_strategy.value != TopKStrategy.oracle:
         # Following https://arxiv.org/abs/2104.06486, take the first 25 articles
         if hf_dataset_name == HFDatasets.ms2 or hf_dataset_name == HFDatasets.cochrane:
-            document_stats = pt_dataset.get_document_stats(max_included_studies=25)
+            document_stats = pt_dataset.get_document_stats(max_documents=25)
         else:
             document_stats = pt_dataset.get_document_stats()
         k = int(round(document_stats[top_k_strategy.value], 0))

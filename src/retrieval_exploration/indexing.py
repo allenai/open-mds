@@ -317,9 +317,9 @@ class MSLR2022Dataset(HuggingFacePyTerrierDataset):
 
     def get_document_stats(self, **kwargs) -> Dict[str, float]:
         num_docs = []
-        max_included_studies = kwargs.get("max_included_studies")
+        max_documents = kwargs.get("max_documents")
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
                 num_studies = len(example["pmid"])
-                num_docs.append(min(num_studies, max_included_studies) if max_included_studies else num_studies)
+                num_docs.append(min(num_studies, max_documents) if max_documents else num_studies)
         return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}
