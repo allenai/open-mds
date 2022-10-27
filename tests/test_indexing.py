@@ -215,6 +215,12 @@ class TestMSLR2022MS2Dataset:
         assert round(document_stats["mean"], 2) == 23.23
         assert document_stats["min"] == 1
 
+        # Check that we can cap the max number of documents
+        document_stats = ms2_pt_dataset.get_document_stats(max_documents=25)
+        assert document_stats["max"] == 25
+        assert round(document_stats["mean"], 2) == 16.57
+        assert document_stats["min"] == 1
+
 
 class TestMSLR2022CochraneDataset:
     def test_info_url(self, cochrane_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
@@ -281,4 +287,10 @@ class TestMSLR2022CochraneDataset:
         document_stats = cochrane_pt_dataset.get_document_stats()
         assert document_stats["max"] == 537
         assert round(document_stats["mean"], 2) == 10.91
+        assert document_stats["min"] == 1
+
+        # Check that we can cap the max number of documents
+        document_stats = cochrane_pt_dataset.get_document_stats(max_documents=25)
+        assert document_stats["max"] == 25
+        assert round(document_stats["mean"], 2) == 8.9
         assert document_stats["min"] == 1

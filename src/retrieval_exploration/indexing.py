@@ -101,7 +101,7 @@ class HuggingFacePyTerrierDataset(pt.datasets.Dataset):
         indexref = indexer.index(self.get_corpus_iter(verbose=verbose))
         return indexref
 
-    def get_document_stats(self) -> Dict[str, float]:
+    def get_document_stats(self, **kwargs) -> Dict[str, float]:
         """Returns a dictionary with corpus statistics for the given dataset. Must be implemented by child class."""
         raise NotImplementedError("Method 'get_document_stats' must be implemented by the child class.")
 
@@ -176,7 +176,7 @@ class CanonicalMDSDataset(HuggingFacePyTerrierDataset):
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
-    def get_document_stats(self) -> Dict[str, float]:
+    def get_document_stats(self, **kwargs) -> Dict[str, float]:
         num_docs = []
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
@@ -245,7 +245,7 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
-    def get_document_stats(self) -> Dict[str, float]:
+    def get_document_stats(self, **kwargs) -> Dict[str, float]:
         num_docs = []
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
@@ -315,9 +315,11 @@ class MSLR2022Dataset(HuggingFacePyTerrierDataset):
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
-    def get_document_stats(self) -> Dict[str, float]:
+    def get_document_stats(self, **kwargs) -> Dict[str, float]:
         num_docs = []
+        max_documents = kwargs.get("max_documents")
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
-                num_docs.append(len(example["pmid"]))
+                num_studies = len(example["pmid"])
+                num_docs.append(min(num_studies, max_documents) if max_documents else num_studies)
         return {"max": np.max(num_docs), "mean": np.mean(num_docs), "min": np.min(num_docs)}

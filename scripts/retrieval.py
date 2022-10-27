@@ -121,6 +121,7 @@ def main(
 
     # Use all splits if not specified
     splits = splits or list(pt_dataset._hf_dataset.keys())
+    print(f"[bold blue]:information: Will replace documents in {', '.join(splits)} splits.")
 
     # Create a new copy of the dataset and replace its source documents with retrieved documents
     hf_dataset = copy.deepcopy(pt_dataset._hf_dataset)
@@ -153,7 +154,12 @@ def main(
 
     top_k_strategy_msg = f"[bold blue]:hammer_and_wrench: Using the '{top_k_strategy.value}' TopKStrategy. "
     if top_k_strategy.value != TopKStrategy.oracle:
-        k = int(round(pt_dataset.get_document_stats()[top_k_strategy.value], 0))
+        # Following https://arxiv.org/abs/2104.06486, take the first 25 articles
+        if hf_dataset_name == HFDatasets.ms2 or hf_dataset_name == HFDatasets.cochrane:
+            document_stats = pt_dataset.get_document_stats(max_documents=25)
+        else:
+            document_stats = pt_dataset.get_document_stats()
+        k = int(round(document_stats[top_k_strategy.value], 0))
         print(top_k_strategy_msg + f"k will be set statically to {k} [/bold blue]")
     else:
         k = None
