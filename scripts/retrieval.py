@@ -14,7 +14,8 @@ app = typer.Typer()
 
 # The maximum number of results to retrieve per query. Large values will increase the amount of memory consumed.
 # This is a good default and likely only needs to be changed if you wish to evaluate Recall at values > 1000.
-NUM_RESULTS_PER_QUERY = 1000
+# This could be made an argument to the script.
+_NUM_RESULTS_PER_QUERY = 1000
 
 # The default location to save document indices.
 _DOCUMENT_INDEX_DIR = Path(util.CACHE_DIR) / "indices"
@@ -134,7 +135,7 @@ def main(
         index = pt.IndexFactory.of(indexref)
         print(f"[bold green]:white_check_mark: Loaded the index from '{index_path}' [/bold green]")
         retrieval_pipeline = pt.BatchRetrieve(
-            index, wmodel="BM25", metadata=["docno", "text"], num_results=NUM_RESULTS_PER_QUERY, verbose=True
+            index, wmodel="BM25", metadata=["docno", "text"], num_results=_NUM_RESULTS_PER_QUERY, verbose=True
         )
     else:
         # Import here as PyTerrier will have been initialized by this point
@@ -152,7 +153,7 @@ def main(
         retrieval_pipeline = SentenceTransformersRetriever(
             model_name_or_path=model_name_or_path,
             index_path=str(index_path),
-            num_results=NUM_RESULTS_PER_QUERY,
+            num_results=_NUM_RESULTS_PER_QUERY,
             verbose=False,
         )
     print(f"[bold green]:white_check_mark: Loaded the '{retriever.value}' retrieval pipeline[/bold green]")
