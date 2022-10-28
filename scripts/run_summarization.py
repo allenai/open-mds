@@ -898,7 +898,6 @@ def main():
         }
 
         # Log some additional, split-dependent information in the results dictionary
-
         # Perturbations
         results["perturbation"] = perturbation_args.perturbation
         results["selection_strategy"] = perturbation_args.selection_strategy
