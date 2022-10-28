@@ -672,6 +672,7 @@ def main():
             # as they are not something we would retrieve.
             if (
                 data_args.dataset_name == "multi_x_science_sum"
+                or "multixscience" in data_args.dataset_name
                 or data_args.dataset_config_name == "ms2"
                 or "ms2" in data_args.dataset_name
             ):
