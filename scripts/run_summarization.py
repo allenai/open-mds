@@ -600,26 +600,26 @@ def main():
         for i in range(len(examples[text_column])):
             # remove pairs where at least one record is None
             if examples[text_column][i]:
-                if "multinews" in data_args.dataset_name or data_args.dataset_name == "multi_news":
+                if data_args.dataset_name == "multi_news" or "multinews" in data_args.dataset_name:
                     text, summary = util.preprocess_multi_news(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif "wcep" in data_args.dataset_name or data_args.dataset_name == "ccdv/WCEP-10":
+                elif data_args.dataset_name == "ccdv/WCEP-10" or "wcep" in data_args.dataset_name:
                     text, summary = util.preprocess_wcep(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif "multixscience" in data_args.dataset_name or data_args.dataset_name == "multi_x_science_sum":
+                elif data_args.dataset_name == "multi_x_science_sum" or "multixscience" in data_args.dataset_name:
                     text, summary = util.preprocess_multi_x_science_sum(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
                         ref_abstract=examples["ref_abstract"][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif "ms2" in data_args.dataset_name or data_args.dataset_config_name == "ms2":
+                elif data_args.dataset_config_name == "ms2" or "ms2" in data_args.dataset_name:
                     text, summary = util.preprocess_ms2(
                         text=examples[text_column][i],
                         summary=examples[summary_column][i],
@@ -627,7 +627,7 @@ def main():
                         abstracts=examples["abstract"][i],
                         doc_sep_token=doc_sep_token,
                     )
-                elif "cochrane" in data_args.dataset_name or data_args.dataset_config_name == "cochrane":
+                elif data_args.dataset_config_name == "cochrane" or "cochrane" in data_args.dataset_name:
                     text, summary = util.preprocess_cochrane(
                         summary=examples[summary_column][i],
                         titles=examples["title"][i],
@@ -666,12 +666,15 @@ def main():
             )
 
             unperturbed_indices = None
-            # Both Multi-XScience  and MS^2 examples begin with a "special" document, the abstract of the paper
+            # Both Multi-XScience and MS^2 examples begin with a "special" document, the abstract of the paper
             # whos related works section we are trying to generate, and the background section of the literature
             # review we are trying to generate, respectively. Both of these should be excluded from perturbation,
             # as they are not something we would retrieve.
-            if "multi_x_science_sum" in data_args.dataset_name or (
-                "ms2" in data_args.dataset_name or "ms2" in data_args.dataset_config_name
+            if (
+                data_args.dataset_name == "multi_x_science_sum"
+                or "multixscience" in data_args.dataset_name
+                or data_args.dataset_config_name == "ms2"
+                or "ms2" in data_args.dataset_name
             ):
                 unperturbed_indices = [0]
                 logger.info(f"Documents at indices '{unperturbed_indices}' will not be perturbed.")
@@ -894,35 +897,32 @@ def main():
             **flatten_dict.flatten({"bertscore": bertscore_results}, reducer="underscore"),
         }
 
+        # Log some additional, split-dependent information in the results dictionary
+        # Perturbations
+        results["perturbation"] = perturbation_args.perturbation
+        results["selection_strategy"] = perturbation_args.selection_strategy
+        results["perturbed_frac"] = perturbation_args.perturbed_frac
+        results["perturbed_seed"] = perturbation_args.perturbed_seed
+        # Retrieval
+        results["retriever"] = retrieval_args.retriever
+        results["top_k_strategy"] = retrieval_args.top_k_strategy
+        # I/O
+        results["labels"] = decoded_labels
+        results["preds"] = decoded_preds
         if inputs is not None:
-            decoded_inputs = util.batch_decode_multi_doc(inputs, tokenizer, doc_sep_token=doc_sep_token)
-            # TODO (John): A lot of these should be logged OUTSIDE this function.
-            # Basic training details
-            results["seed"] = training_args.seed
-            results["example_idx"] = list(range(len(decoded_inputs)))
-            results["doc_sep_token"] = doc_sep_token
-            results["model_name_or_path"] = model_args.model_name_or_path
-            # Perturbations
-            results["perturbation"] = perturbation_args.perturbation
-            results["selection_strategy"] = perturbation_args.selection_strategy
-            results["perturbed_frac"] = perturbation_args.perturbed_frac
-            results["perturbed_seed"] = perturbation_args.perturbed_seed
-            # Retrieval
-            results["retriever"] = retrieval_args.retriever
-            results["top_k_strategy"] = retrieval_args.top_k_strategy
-            # I/O
-            results["inputs"] = decoded_inputs
-            results["labels"] = decoded_labels
-            results["preds"] = decoded_preds
-            input_lens = [np.count_nonzero(example != tokenizer.pad_token_id) for example in inputs]
-            results["input_len"] = input_lens
-
+            results["inputs"] = util.batch_decode_multi_doc(inputs, tokenizer, doc_sep_token=doc_sep_token)
         # Add length of reference and generated summaries
-        label_lens = [np.count_nonzero(label != tokenizer.pad_token_id) for label in labels]
-        prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
-        results["label_len"] = label_lens
-        results["gen_len"] = prediction_lens
+        results["label_len"] = [np.count_nonzero(label != tokenizer.pad_token_id) for label in labels]
+        results["pred_len"] = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
+        results["input_len"] = [np.count_nonzero(example != tokenizer.pad_token_id) for example in inputs]
         return results
+
+    # Log some additional, split-agnositic information in the all_results dictionary
+    metadata = {
+        "seed": training_args.seed,
+        "doc_sep_token": doc_sep_token,
+        "model_name_or_path": model_args.model_name_or_path,
+    }
 
     # Initialize our Trainer
     trainer = Seq2SeqTrainer(
@@ -950,6 +950,7 @@ def main():
             data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
         )
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
+        metrics.update(metadata)
 
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
@@ -968,6 +969,7 @@ def main():
         metrics = trainer.evaluate(max_length=max_length, num_beams=num_beams, metric_key_prefix="eval")
         max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
+        metrics.update(metadata)
 
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
@@ -983,6 +985,7 @@ def main():
             data_args.max_predict_samples if data_args.max_predict_samples is not None else len(predict_dataset)
         )
         metrics["predict_samples"] = min(max_predict_samples, len(predict_dataset))
+        metrics.update(metadata)
 
         trainer.log_metrics("predict", metrics)
         trainer.save_metrics("predict", metrics)
