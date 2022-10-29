@@ -225,7 +225,7 @@ def jaccard_similarity_score(string_1: str, string_2: str) -> float:
     return len(string_1_tokens & string_2_tokens) / len(string_1_tokens | string_2_tokens)
 
 
-def fraction_docs_perturbed(pre_perturbation: str, post_perturbation: str, doc_sep_token: str) -> float:
+def get_frac_docs_perturbed(pre_perturbation: str, post_perturbation: str, doc_sep_token: str) -> float:
     """Given two strings, `pre_perturbation` and `post_perturbation`, representing the documents
     (separated by `doc_sep_token`) of an example before and after perturbation, returns the fraction of documents
     that were perturbed.
@@ -322,13 +322,11 @@ def load_results_dicts(
             elif (baseline_dir / _RESULTS_FILENAME).is_file():
                 filepath = baseline_dir / _RESULTS_FILENAME
                 results_dict = json.loads(filepath.read_text())
-
             else:
                 raise ValueError(
                     f"Did not find any of the expected files in {baseline_dir}. Looking for one of"
                     f" {_RESULTS_FILENAME} or {_TRAINER_STATE_FILENAME}."
                 )
-
             baseline_df = _read_result_dict(results_dict)
             baseline_dfs.append(baseline_df)
 
@@ -356,7 +354,7 @@ def load_results_dicts(
                     raise ValueError("The perturbation and baseline data do not correspond to the same examples!")
 
                 perturbation_df["frac_docs_perturbed"] = [
-                    fraction_docs_perturbed(pre, post, doc_sep_token=doc_sep_token)
+                    get_frac_docs_perturbed(pre, post, doc_sep_token=doc_sep_token)
                     for pre, post, doc_sep_token in zip(
                         baseline_df[f"{metric_key_prefix}_inputs"],
                         perturbation_df[f"{metric_key_prefix}_inputs"],

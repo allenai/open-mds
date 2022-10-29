@@ -357,17 +357,17 @@ def test_jaccard_similarity_score() -> None:
     assert util.jaccard_similarity_score("hello world", "hello world!") == 2 / 3
 
 
-def test_fraction_docs_perturbed() -> None:
+def test_get_frac_docs_perturbed() -> None:
     doc_sep_token = "<doc-sep>"
 
     # pre_perturbation string cannot be empty
     with warnings.catch_warnings(record=True) as w:
-        assert util.fraction_docs_perturbed("", "Not empty", doc_sep_token=doc_sep_token) == 0.0
+        assert util.get_frac_docs_perturbed("", "Not empty", doc_sep_token=doc_sep_token) == 0.0
         assert len(w) == 1
 
     # Backtranslation
     assert (
-        util.fraction_docs_perturbed(
+        util.get_frac_docs_perturbed(
             f"These docs are identical {doc_sep_token} These are not",
             f"These docs are identical {doc_sep_token} These are nott",
             doc_sep_token=doc_sep_token,
@@ -376,7 +376,7 @@ def test_fraction_docs_perturbed() -> None:
     )
     # Sorting
     assert (
-        util.fraction_docs_perturbed(
+        util.get_frac_docs_perturbed(
             f"Doc 1 {doc_sep_token} Doc 2 {doc_sep_token} Doc 3",
             f"Doc 2 {doc_sep_token} Doc 1 {doc_sep_token} Doc 3",
             doc_sep_token=doc_sep_token,
@@ -385,7 +385,7 @@ def test_fraction_docs_perturbed() -> None:
     )
     # Addition
     assert (
-        util.fraction_docs_perturbed(
+        util.get_frac_docs_perturbed(
             f"Doc 1 {doc_sep_token} Doc 2 {doc_sep_token} Doc 3",
             f"Doc 2 {doc_sep_token} Doc 1 {doc_sep_token} Doc 3",
             doc_sep_token=doc_sep_token,
@@ -394,7 +394,7 @@ def test_fraction_docs_perturbed() -> None:
     )
     # Deletion
     assert (
-        util.fraction_docs_perturbed(
+        util.get_frac_docs_perturbed(
             f"Doc 1 {doc_sep_token} Doc 2 {doc_sep_token} Doc 3",
             f"Doc 1 {doc_sep_token} Doc 2",
             doc_sep_token=doc_sep_token,
@@ -403,7 +403,7 @@ def test_fraction_docs_perturbed() -> None:
     )
     # Replacement
     assert (
-        util.fraction_docs_perturbed(
+        util.get_frac_docs_perturbed(
             f"Doc 1 {doc_sep_token} Doc 2 {doc_sep_token} Doc 3",
             f"Doc 1 {doc_sep_token} Doc 4 {doc_sep_token} Doc 3",
             doc_sep_token=doc_sep_token,
