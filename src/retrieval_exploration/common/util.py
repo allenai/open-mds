@@ -18,10 +18,7 @@ from transformers import PreTrainedTokenizer
 # Local constants
 _BASELINE_DIR = "baseline"
 _PERTURBATIONS_DIR = "perturbations"
-
 _RESULTS_FILENAME = "all_results.json"
-_TRAINER_STATE_FILENAME = "trainer_state.json"
-_LOG_HISTORY_KEY = "log_history"
 
 # Public constants
 DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||", "ccdv/WCEP-10": "</s>"}
@@ -309,42 +306,21 @@ def load_results_dicts(
     for model_dir in Path(data_dir).iterdir():
         baseline_df = None
         baseline_dir = Path(model_dir) / _BASELINE_DIR
+
+        # Load baseline data, if it exists
         if baseline_dir.is_dir():
-            # We need to parse different files depending if the model was trained or not.
-            # These files require slightly different parsing strategies.
-            if (baseline_dir / _TRAINER_STATE_FILENAME).is_file():
-                filepath = baseline_dir / _TRAINER_STATE_FILENAME
-                results_dict = json.loads(filepath.read_text())
-                # TODO: This makes the assumption that logging happens ONLY at the end of training,
-                # in which case all other elements in the log_history are evaluations. Load each
-                # as a separate DataFrame and concatenate them.
-                results_dict = results_dict[_LOG_HISTORY_KEY][:-1]
-            elif (baseline_dir / _RESULTS_FILENAME).is_file():
-                filepath = baseline_dir / _RESULTS_FILENAME
-                results_dict = json.loads(filepath.read_text())
-            else:
-                raise ValueError(
-                    f"Did not find any of the expected files in {baseline_dir}. Looking for one of"
-                    f" {_RESULTS_FILENAME} or {_TRAINER_STATE_FILENAME}."
-                )
+            filepath = baseline_dir / _RESULTS_FILENAME
+            results_dict = json.loads(filepath.read_text())
             baseline_df = _read_result_dict(results_dict)
             baseline_dfs.append(baseline_df)
 
+        # Load perturbed data
         perturbation_dir = Path(model_dir) / _PERTURBATIONS_DIR
-        filepaths = list(Path(perturbation_dir).glob(f"**/{_TRAINER_STATE_FILENAME}"))
-        if filepaths:
-            train = True
-        else:
-            train = False
-            filepaths = list(Path(perturbation_dir).glob(f"**/{_RESULTS_FILENAME}"))
-
+        filepaths = list(Path(perturbation_dir).glob(f"**/{_RESULTS_FILENAME}"))
         for filepath in tqdm(filepaths):
             results_dict = json.loads(filepath.read_text())
+            perturbation_df = _read_result_dict(results_dict)
 
-            if train:
-                perturbation_df = _read_result_dict(results_dict[_LOG_HISTORY_KEY][:-1])
-            else:
-                perturbation_df = _read_result_dict(results_dict)
             if baseline_df is not None:
                 # The perturbation and baseline data should pertain to the same examples.
                 if not np.array_equal(
@@ -366,6 +342,7 @@ def load_results_dicts(
                     for metric in metric_columns:
                         # Compute the per-instance absolute differences
                         perturbation_df[f"{metric}_delta"] = perturbation_df[metric] - baseline_df[metric]
+
             perturbation_dfs.append(perturbation_df)
     baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
     perturbed_df = pd.concat(perturbation_dfs, ignore_index=True)
