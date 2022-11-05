@@ -15,7 +15,7 @@ app = typer.Typer()
 # The maximum number of results to retrieve per query. Large values will increase the amount of memory consumed.
 # This is a good default and likely only needs to be changed if you wish to evaluate Recall at values > 1000.
 # This could be made an argument to the script.
-_NUM_RESULTS_PER_QUERY = 1000
+_NUM_RESULTS_PER_QUERY = 100
 
 # The default location to save document indices.
 _DOCUMENT_INDEX_DIR = Path(util.CACHE_DIR) / "indices"
@@ -24,7 +24,7 @@ _DOCUMENT_INDEX_DIR = Path(util.CACHE_DIR) / "indices"
 _DEFAULT_NEURAL_RETRIEVER = "facebook/contriever-msmarco"
 
 
-class HFDatasets(str, Enum):
+class Dataset(str, Enum):
     multinews = "multinews"
     wcep = "wcep"
     multixscience = "multixscience"
@@ -45,7 +45,7 @@ class TopKStrategy(str, Enum):
 
 @app.command()
 def main(
-    hf_dataset_name: HFDatasets = typer.Argument(
+    hf_dataset_name: Dataset = typer.Argument(
         ..., case_sensitive=False, help="The name of a supported HuggingFace Dataset."
     ),
     output_dir: Path = typer.Argument(
@@ -99,18 +99,18 @@ def main(
     """Recreates the chosen HuggingFace dataset using the documents retrieved from an IR system."""
 
     # Any dataset specific setup goes here
-    if hf_dataset_name == HFDatasets.multinews:
+    if hf_dataset_name == Dataset.multinews:
         path = "multi_news"
         doc_sep_token = util.DOC_SEP_TOKENS[path]
         pt_dataset = indexing.CanonicalMDSDataset(path, doc_sep_token=doc_sep_token)
-    elif hf_dataset_name == HFDatasets.wcep:
+    elif hf_dataset_name == Dataset.wcep:
         path = "ccdv/WCEP-10"
         doc_sep_token = util.DOC_SEP_TOKENS[path]
         pt_dataset = indexing.CanonicalMDSDataset(path, doc_sep_token=doc_sep_token)
-    elif hf_dataset_name == HFDatasets.multixscience:
+    elif hf_dataset_name == Dataset.multixscience:
         pt_dataset = indexing.MultiXScienceDataset()
-    elif hf_dataset_name == HFDatasets.ms2 or hf_dataset_name == HFDatasets.cochrane:
-        pt_dataset = indexing.MSLR2022Dataset(name=hf_dataset_name)
+    elif hf_dataset_name == Dataset.ms2 or hf_dataset_name == Dataset.cochrane:
+        pt_dataset = indexing.MSLR2022Dataset(name=hf_dataset_name.value)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -128,12 +128,12 @@ def main(
     hf_dataset = copy.deepcopy(pt_dataset._hf_dataset)
     print(f"[bold green]:white_check_mark: Loaded the dataset from '{pt_dataset.info_url()}' [/bold green]")
 
+    # Index the documents and load the retriever
     if retriever == Retriever.sparse:
         indexref = pt_dataset.get_index(str(index_path), overwrite=overwrite_index, verbose=True)
         # In general, we should always load the actual index
         # See: https://pyterrier.readthedocs.io/en/latest/terrier-retrieval.html#index-like-objects
         index = pt.IndexFactory.of(indexref)
-        print(f"[bold green]:white_check_mark: Loaded the index from '{index_path}' [/bold green]")
         retrieval_pipeline = pt.BatchRetrieve(
             index, wmodel="BM25", metadata=["docno", "text"], num_results=_NUM_RESULTS_PER_QUERY, verbose=True
         )
@@ -149,19 +149,19 @@ def main(
             verbose=False,
         )
         indexer.index(pt_dataset.get_corpus_iter(verbose=True))
-        print(f"[bold green]:white_check_mark: Loaded the index from '{index_path}' [/bold green]")
         retrieval_pipeline = SentenceTransformersRetriever(
             model_name_or_path=model_name_or_path,
             index_path=str(index_path),
             num_results=_NUM_RESULTS_PER_QUERY,
             verbose=False,
         )
+    print(f"[bold green]:white_check_mark: Loaded the index from '{index_path}' [/bold green]")
     print(f"[bold green]:white_check_mark: Loaded the '{retriever.value}' retrieval pipeline[/bold green]")
 
     top_k_strategy_msg = f"[bold blue]:gear: Using the '{top_k_strategy.value}' TopKStrategy. "
     if top_k_strategy.value != TopKStrategy.oracle:
         # Following https://arxiv.org/abs/2104.06486, take the first 25 articles
-        if hf_dataset_name == HFDatasets.ms2 or hf_dataset_name == HFDatasets.cochrane:
+        if hf_dataset_name == Dataset.ms2 or hf_dataset_name == Dataset.cochrane:
             document_stats = pt_dataset.get_document_stats(max_documents=25)
         else:
             document_stats = pt_dataset.get_document_stats()
@@ -184,13 +184,17 @@ def main(
         qrels = pt_dataset.get_qrels(split)
         retrieved = retrieval_pipeline.transform(topics)
 
+        eval_metrics = ["recall_100", "Rprec"]
+        if k is not None:
+            eval_metrics += [f"P_{k}", f"recall_{k}"]
+
         print(f"[bold]:test_tube: Evaluating retrieved results on the '{split}' set [/bold]")
         print(
             pt.Experiment(
                 [retrieved],
                 topics=topics,
                 qrels=qrels,
-                eval_metrics=["ndcg", "recall_100", "recall_1000", "Rprec"],
+                eval_metrics=eval_metrics,
                 names=[retriever.value],
                 save_dir=output_dir,
                 save_mode="overwrite",
