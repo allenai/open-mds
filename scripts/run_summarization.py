@@ -30,8 +30,9 @@ import flatten_dict
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
 import transformers
-from datasets import load_dataset, load_from_disk, load_metric
+from datasets import load_dataset, load_from_disk
 from filelock import FileLock
+from retrieval_exploration import metrics as summarization_metrics
 from retrieval_exploration.common import util
 from retrieval_exploration.perturbations import Perturber
 from transformers import (
@@ -820,19 +821,6 @@ def main():
     )
 
     # Metrics
-    rouge = load_metric("rouge")
-    bertscore = load_metric("bertscore")
-
-    def postprocess_text(preds, labels):
-        # Clean text by removing whitespace, newlines and tabs
-        preds = [" ".join(pred.strip().split()) for pred in preds]
-        labels = [" ".join(label.strip().split()) for label in labels]
-
-        # rougeLSum expects newline after each sentence
-        preds = ["\n".join(nltk.sent_tokenize(pred)) for pred in preds]
-        labels = ["\n".join(nltk.sent_tokenize(label)) for label in labels]
-
-        return preds, labels
 
     def compute_metrics(eval_preds):
         preds, labels, inputs = eval_preds.predictions, eval_preds.label_ids, eval_preds.inputs
@@ -846,50 +834,15 @@ def main():
                 inputs = np.where(inputs != -100, inputs, tokenizer.pad_token_id)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
-        # Some simple post-processing
-        decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
-
         # Compute and post-process rouge results
-        rouge_results = rouge.compute(
+        rouge_results = summarization_metrics.compute_rouge(predictions=decoded_preds, references=decoded_labels)
+        bertscore_results = summarization_metrics.compute_bertscore(
             predictions=decoded_preds,
             references=decoded_labels,
-            use_stemmer=True,
-            use_aggregator=False,
-        )
-        for key, value in rouge_results.items():
-            rouge_results[key] = {
-                "precision": [score.precision * 100 for score in value],
-                "recall": [score.recall * 100 for score in value],
-                "fmeasure": [score.fmeasure * 100 for score in value],
-                "fmeasure_mean": np.mean([score.fmeasure for score in value]) * 100,
-            }
-        # Compute the arithmetic mean of ROUGE-1, ROUGE-2 and ROUGE-L following: https://arxiv.org/abs/2110.08499
-        rouge_results["rouge_avg_fmeasure"] = np.mean(
-            [rouge_results[key]["fmeasure"] for key in ["rouge1", "rouge2", "rougeL"]], axis=0
-        ).tolist()
-        rouge_results["rouge_avg_fmeasure_mean"] = np.mean(rouge_results["rouge_avg_fmeasure"]).item()
-
-        # Compute and post-process bertscore results
-        bertscore_results = bertscore.compute(
-            predictions=decoded_preds,
-            references=decoded_labels,
-            # These are mostly based on the recommendations in https://github.com/Tiiiger/bert_score
-            model_type="microsoft/deberta-xlarge-mnli",
             # We can generally afford to use a batch size 4X greater than the eval batch size
             batch_size=training_args.per_device_eval_batch_size * 4,
             device=training_args.device,
-            lang="en",
-            rescale_with_baseline=True,
-            use_fast_tokenizer=True,
         )
-        bertscore_results["f1_mean"] = np.mean(bertscore_results["f1"])
-        for key, value in bertscore_results.items():
-            if key == "hashcode":
-                continue
-            if isinstance(value, list):
-                bertscore_results[key] = [score * 100 for score in value]
-            else:
-                bertscore_results[key] = value * 100
 
         # Collect results in final (flat) dict
         results = {

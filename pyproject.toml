@@ -12,7 +12,9 @@ diskcache = "^5.4.0"
 platformdirs = "^2.5.2"
 typer = "^0.6.1"
 rich = "^12.5.1"
-torch = "^1.10.0"
+# Currently facing an issue installing torch>1.13 with poetry (see https://github.com/pytorch/pytorch/issues/88049)
+# The upper bound on pinned version can be removed if that issue is resolved
+torch = "^1.10.0,<1.13.0"
 transformers = "^4.19.0"
 tokenizers = "^0.12.1"
 datasets = "^2.4.0"
