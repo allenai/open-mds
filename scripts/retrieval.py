@@ -178,7 +178,7 @@ def main(
         # Use PyTerrier to actually perform the retrieval and then replace the source docs with the retrieved docs
         # See: https://pyterrier.readthedocs.io/en/latest/terrier-retrieval.html
         print(
-            f"[bold]:magnifying_glass_tilted_right: Retrieving documents for each example in the '{split}' set... [/bold]"
+            f"[bold]:magnifying_glass_tilted_right: Retrieving docs for each example in the '{split}' set... [/bold]"
         )
         topics = pt_dataset.get_topics(split)
         qrels = pt_dataset.get_qrels(split)
