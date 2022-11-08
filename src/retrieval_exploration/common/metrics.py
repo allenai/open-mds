@@ -6,7 +6,7 @@ import numpy as np
 
 def _postprocess_text(*, predictions: List[str], references: List[str]) -> Tuple[List[str], List[str]]:
     """Simple post-processing of the text to make it compatible with the summarization evaluation metrics."""
-    
+
     # Clean text by removing whitespace, newlines and tabs
     predictions = [" ".join(pred.strip().split()) for pred in predictions]
     references = [" ".join(ref.strip().split()) for ref in references]
