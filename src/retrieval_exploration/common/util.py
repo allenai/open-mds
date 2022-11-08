@@ -18,6 +18,7 @@ from transformers import PreTrainedTokenizer
 # Local constants
 _BASELINE_DIR = "baseline"
 _PERTURBATIONS_DIR = "perturbations"
+_RETRIEVAL_DIR = "retrieval"
 _RESULTS_FILENAME = "all_results.json"
 
 # Public constants
@@ -278,30 +279,33 @@ def load_results_dicts(
     data_dir: str,
     metric_columns: Optional[List[str]] = None,
     metric_key_prefix: Optional[str] = "predict",
+    load_perturbation_results: bool = True,
+    load_retrieval_results: bool = True,
 ) -> Tuple[Optional[pd.DataFrame], pd.DataFrame]:
     """Loads the result dictionaries at `data_dir`. Assumes this directory is organized as follows:
 
     data_dir
     ├── model_1
     │   ├── baseline
-    │   └── perturbations
-    |       ├── perturbation_1
-    |       |   └── all_results.json
-    │       └── perturbation_2
-    |           └── ...
+    │   ├── perturbations
+    |   |   ├── perturbation_1
+    |   |   |   └── all_results.json
+    │   |   └── perturbation_2
+    |   |       └── ...
+    │   └── retrieval
     ├── model_2
     │   └── ...
     └── ...
 
     If the subdirectory `"baseline"` is present and `metric_columns` is provided, a new column `<metric>_delta`,
-    one for each `metric` in `metric_columns`, will be computed as the difference between the perturbed results and
-    the baseline results for the column `metric` and added to the returned dataframe. The metrics are assumed to be
-    prefixed with `metric_key_prefix`, which is added by the HuggingFace Trainer (and defaults to "eval" for the
-    validation set and "predict" for the test set).
+    one for each `metric` in `metric_columns`, will be computed as the difference between the experimental results
+    and the baseline results for the column `metric` and added to the returned dataframe. The metrics are assumed
+    to be prefixed with `metric_key_prefix`, which is added by the HuggingFace Trainer (and defaults to "eval" for
+    the validation set and "predict" for the test set).
     """
 
     baseline_dfs = []
-    perturbation_dfs = []
+    results_dfs = []
 
     for model_dir in Path(data_dir).iterdir():
         baseline_df = None
@@ -314,26 +318,34 @@ def load_results_dicts(
             baseline_df = _read_result_dict(results_dict)
             baseline_dfs.append(baseline_df)
 
-        # Load perturbed data
-        perturbation_dir = Path(model_dir) / _PERTURBATIONS_DIR
-        filepaths = list(Path(perturbation_dir).glob(f"**/{_RESULTS_FILENAME}"))
-        for filepath in tqdm(filepaths):
+        # Load the experimental results
+        filepaths = []
+
+        if load_perturbation_results:
+            perturbation_dir = Path(model_dir) / _PERTURBATIONS_DIR
+            filepaths += list(Path(perturbation_dir).glob(f"**/{_RESULTS_FILENAME}"))
+
+        if load_retrieval_results:
+            retrieval_dir = Path(model_dir) / _RETRIEVAL_DIR
+            filepaths += list(Path(retrieval_dir).glob(f"**/{_RESULTS_FILENAME}"))
+
+        for filepath in tqdm(filepaths, desc=f"Loading results from {model_dir}"):
             results_dict = json.loads(filepath.read_text())
-            perturbation_df = _read_result_dict(results_dict)
+            results_df = _read_result_dict(results_dict)
 
             if baseline_df is not None:
                 # The perturbation and baseline data should pertain to the same examples.
                 if not np.array_equal(
                     baseline_df[f"{metric_key_prefix}_labels"],
-                    perturbation_df[f"{metric_key_prefix}_labels"],
+                    results_df[f"{metric_key_prefix}_labels"],
                 ):
                     raise ValueError("The perturbation and baseline data do not correspond to the same examples!")
 
-                perturbation_df["frac_docs_perturbed"] = [
+                results_df["frac_docs_perturbed"] = [
                     get_frac_docs_perturbed(pre, post, doc_sep_token=doc_sep_token)
                     for pre, post, doc_sep_token in zip(
                         baseline_df[f"{metric_key_prefix}_inputs"],
-                        perturbation_df[f"{metric_key_prefix}_inputs"],
+                        results_df[f"{metric_key_prefix}_inputs"],
                         baseline_df.doc_sep_token,
                     )
                 ]
@@ -341,9 +353,10 @@ def load_results_dicts(
                 if metric_columns is not None:
                     for metric in metric_columns:
                         # Compute the per-instance absolute differences
-                        perturbation_df[f"{metric}_delta"] = perturbation_df[metric] - baseline_df[metric]
+                        results_df[f"{metric}_delta"] = results_df[metric] - baseline_df[metric]
 
-            perturbation_dfs.append(perturbation_df)
+            results_dfs.append(results_df)
+
     baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
-    perturbed_df = pd.concat(perturbation_dfs, ignore_index=True)
+    perturbed_df = pd.concat(results_dfs, ignore_index=True)
     return baseline_df, perturbed_df
