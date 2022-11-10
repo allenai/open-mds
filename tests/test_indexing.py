@@ -70,17 +70,18 @@ class TestCanonicalMDSDataset:
         assert qrels["label"].iloc[0] == expected_labels
 
     def test_get_document_stats(self, canonical_mds_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
-        document_stats = canonical_mds_pt_dataset.get_document_stats()
+        document_stats = canonical_mds_pt_dataset.get_document_stats(avg_tokens_per_doc=True)
 
         if canonical_mds_pt_dataset.path == "multi_news":
             assert document_stats["max"] == 10
             assert round(document_stats["mean"], 2) == 2.75
-            # Some examples are empty
-            assert document_stats["min"] == 0
+            assert document_stats["min"] == 1
+            assert round(document_stats["avg_tokens_per_doc"]) == 788
         elif canonical_mds_pt_dataset.path == "ccdv/WCEP-10":
             assert document_stats["max"] == 10
-            assert round(document_stats["mean"], 2) == 9.05
+            assert round(document_stats["mean"], 2) == 9.07
             assert document_stats["min"] == 1
+            assert round(document_stats["avg_tokens_per_doc"]) == 494
 
 
 class TestMultiXScienceDataset:
@@ -139,11 +140,12 @@ class TestMultiXScienceDataset:
         assert qrels["docno"].iloc[0] == expected_docnos
         assert qrels["label"].iloc[0] == expected_labels
 
-        def test_get_document_stats(self, multxscience_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
-            document_stats = multxscience_pt_dataset.get_document_stats()
-            assert document_stats["max"] == 20
-            assert round(document_stats["mean"], 2) == 4.08
-            assert document_stats["min"] == 1
+    def test_get_document_stats(self, multxscience_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
+        document_stats = multxscience_pt_dataset.get_document_stats(avg_tokens_per_doc=True)
+        assert document_stats["max"] == 20
+        assert round(document_stats["mean"], 2) == 4.08
+        assert document_stats["min"] == 1
+        assert round(document_stats["avg_tokens_per_doc"]) == 153
 
 
 class TestMSLR2022MS2Dataset:
@@ -216,10 +218,11 @@ class TestMSLR2022MS2Dataset:
         assert document_stats["min"] == 1
 
         # Check that we can cap the max number of documents
-        document_stats = ms2_pt_dataset.get_document_stats(max_documents=25)
+        document_stats = ms2_pt_dataset.get_document_stats(max_documents=25, avg_tokens_per_doc=True)
         assert document_stats["max"] == 25
         assert round(document_stats["mean"], 2) == 16.57
         assert document_stats["min"] == 1
+        assert round(document_stats["avg_tokens_per_doc"]) == 332
 
 
 class TestMSLR2022CochraneDataset:
@@ -290,7 +293,8 @@ class TestMSLR2022CochraneDataset:
         assert document_stats["min"] == 1
 
         # Check that we can cap the max number of documents
-        document_stats = cochrane_pt_dataset.get_document_stats(max_documents=25)
+        document_stats = cochrane_pt_dataset.get_document_stats(max_documents=25, avg_tokens_per_doc=True)
         assert document_stats["max"] == 25
         assert round(document_stats["mean"], 2) == 8.9
         assert document_stats["min"] == 1
+        assert round(document_stats["avg_tokens_per_doc"]) == 266
