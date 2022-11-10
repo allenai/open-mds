@@ -125,6 +125,13 @@ class CanonicalMDSDataset(HuggingFacePyTerrierDataset):
     def replace(
         self, example: Dict[str, Any], idx: int, *, split: str, retrieved: pd.DataFrame, k: Optional[int] = None
     ) -> Dict[str, Any]:
+
+        # The decision to skip examples with no input documents is also made in the HF run_summarization.py script.
+        # It has very little effect as this is rare (maybe 1 example in an entire dataset). However, to be
+        # consistent and to avoid errors downstream, we skip these examples as well.
+        if not example["document"].strip():
+            return example
+
         qid = f"{split}_{idx}"
         k = k or util.get_num_docs(example["document"], doc_sep_token=self._doc_sep_token)
         # We would like to get the original, unaltered text from the dataset, so we use the docno's to key in.
