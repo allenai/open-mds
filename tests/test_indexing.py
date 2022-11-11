@@ -1,6 +1,7 @@
 from retrieval_exploration import indexing
 from retrieval_exploration.common import util
 import pandas as pd
+from copy import deepcopy
 
 
 def test_sanitize_query() -> None:
@@ -32,12 +33,21 @@ class TestCanonicalMDSDataset:
 
         # Check that the example is modified as expected
         example = {"document": "This can be anything", "summary": "This could be anything"}
-        actual = canonical_mds_pt_dataset.replace(example, idx, split=split, retrieved=retrieved)
+        actual = canonical_mds_pt_dataset.replace(deepcopy(example), idx, split=split, retrieved=retrieved)
         assert actual["document"].strip() == expected_document.strip()
         # Check that the target summary is not modified
         assert actual["summary"] == example["summary"]
         # Check that the modified example contains only expected keys
         assert all(key in ["document", "summary"] for key in actual)
+
+        # Check that if an empty input document is provided, this example is unmodified.
+        # The decision to skip examples with no input documents is also made in the HF run_summarization.py script.
+        # It has very little effect as this is rare (maybe 1 example in an entire dataset). However, to be
+        # consistent and to avoid errors downstream, we skip these examples as well.
+        # Note that k needs to be at least 1 to force the retrieval results to be used.
+        example = {"document": "", "summary": "This could be anything"}
+        actual = canonical_mds_pt_dataset.replace(deepcopy(example), idx, split=split, retrieved=retrieved, k=1)
+        assert actual == example
 
     def test_get_corpus_iter(self, canonical_mds_pt_dataset: indexing.HuggingFacePyTerrierDataset) -> None:
         expected_docno = "train_0_0"
@@ -105,7 +115,7 @@ class TestMultiXScienceDataset:
             "related_work": "This can be anything",
             "ref_abstract": {"mid": [expected_docno], "abstract": ["This can be anything"]},
         }
-        actual = multxscience_pt_dataset.replace(example, idx, split=split, retrieved=retrieved)
+        actual = multxscience_pt_dataset.replace(deepcopy(example), idx, split=split, retrieved=retrieved)
         assert actual["ref_abstract"]["mid"] == [expected_docno]
         assert actual["ref_abstract"]["abstract"] == [expected_document]
         # Check that the target summary is not modified
@@ -172,7 +182,7 @@ class TestMSLR2022MS2Dataset:
             "title": [expected_title],
             "abstract": [expected_abstract],
         }
-        actual = ms2_pt_dataset.replace(example, idx, split=split, retrieved=retrieved)
+        actual = ms2_pt_dataset.replace(deepcopy(example), idx, split=split, retrieved=retrieved)
         assert actual["pmid"] == [expected_docno]
         assert actual["title"] == [expected_title]
         assert actual["abstract"] == [expected_abstract]
@@ -248,7 +258,7 @@ class TestMSLR2022CochraneDataset:
             "title": [expected_title],
             "abstract": [expected_abstract],
         }
-        actual = cochrane_pt_dataset.replace(example, idx, split=split, retrieved=retrieved)
+        actual = cochrane_pt_dataset.replace(deepcopy(example), idx, split=split, retrieved=retrieved)
         assert actual["pmid"] == [expected_docno]
         assert actual["title"] == [expected_title]
         assert actual["abstract"] == [expected_abstract]
