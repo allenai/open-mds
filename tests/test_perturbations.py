@@ -10,7 +10,7 @@ from retrieval_exploration.common import util
 
 
 class TestPerturber:
-    @pytest.mark.parametrize("strategy", ["random", "best-case", "worst-case"])
+    @pytest.mark.parametrize("strategy", ["random", "oracle"])
     def test_invalid_perturbation(self, strategy: str) -> None:
         with pytest.raises(ValueError):
             _ = perturbations.Perturber("this-is-invalid", doc_sep_token="<doc-sep>", strategy=strategy)
@@ -55,16 +55,15 @@ class TestPerturber:
     @pytest.mark.parametrize(
         "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
     )
-    @pytest.mark.parametrize("strategy", ["best-case", "worst-case"])
-    def test_falsey_query_and_target(self, perturbation: str, strategy: str) -> None:
+    def test_falsey_query_and_target(self, perturbation: str) -> None:
         documents = ["document 1 <doc-sep> document 2", "document 3 <doc-sep> document 4"]
 
         # Fail to provide query and/or target when strategy is not "random"
-        perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>", strategy=strategy)
+        perturber = perturbations.Perturber(perturbation, doc_sep_token="<doc-sep>", strategy="oracle")
         with pytest.raises(ValueError):
             _ = perturber._select_docs(documents, query=None, target=None, k=2)
 
-    @pytest.mark.parametrize("strategy", ["best-case", "worst-case"])
+    @pytest.mark.parametrize("strategy", ["random", "oracle"])
     @pytest.mark.parametrize("perturbation", ["backtranslation", "duplication", "addition", "deletion", "replacement"])
     def test_invalid_k(self, strategy: str, perturbation: str) -> None:
         documents = ["document 1 <doc-sep> document 2", "document 3 <doc-sep> document 4"]
@@ -134,8 +133,7 @@ class TestPerturber:
         assert documents[0] not in sampled_docs
         assert all(doc in documents for doc in sampled_docs)
 
-    @pytest.mark.parametrize("strategy", ["best-case", "worst-case"])
-    def test_select_docs_non_random(self, strategy: str) -> None:
+    def test_select_docs_oracle(self) -> None:
         doc_sep_token = "<doc-sep>"
         documents = [
             "A mitochondrion is a double-membrane-bound organelle found in most eukaryotic organisms",
@@ -148,7 +146,7 @@ class TestPerturber:
         ]
 
         # select_docs function is independent of perturbation type, or strategy
-        perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy=strategy)
+        perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy="oracle")
 
         query, remaining = documents[0], documents[1:]
 
@@ -271,8 +269,8 @@ class TestPerturber:
 
         input_docs = util.split_docs(inputs[0], doc_sep_token=doc_sep_token)
 
-        # best-case
-        perturber = perturbations.Perturber("backtranslation", doc_sep_token=doc_sep_token, strategy="best-case")
+        # oracle
+        perturber = perturbations.Perturber("backtranslation", doc_sep_token=doc_sep_token, strategy="oracle")
         actual = perturber(
             inputs,
             perturbed_frac=0.10,
@@ -281,17 +279,6 @@ class TestPerturber:
         actual_docs = util.split_docs(actual[0], doc_sep_token=doc_sep_token)
         assert actual_docs[0] != input_docs[0]
         assert actual_docs[1] == input_docs[1]
-
-        # worst-case
-        perturber = perturbations.Perturber("backtranslation", doc_sep_token=doc_sep_token, strategy="worst-case")
-        actual = perturber(
-            inputs,
-            perturbed_frac=0.10,
-            targets=targets,
-        )
-        actual_docs = util.split_docs(actual[0], doc_sep_token=doc_sep_token)
-        assert actual_docs[0] == input_docs[0]
-        assert actual_docs[1] != input_docs[1]
 
     def test_sorting(self) -> None:
         # We need a large number of documents to make it unlikely a random sort gives us same order
@@ -321,15 +308,9 @@ class TestPerturber:
         inputs = [f"this is a story about a dog {doc_sep_token} this is a story about a cat"]
         targets = ["this is a story about a cat"]
 
-        # best-case
-        perturber = perturbations.Perturber("sorting", doc_sep_token=doc_sep_token, strategy="best-case")
+        # oracle
+        perturber = perturbations.Perturber("sorting", doc_sep_token=doc_sep_token, strategy="oracle")
         expected = [f"this is a story about a cat {doc_sep_token} this is a story about a dog"]
-        actual = perturber(inputs, targets=targets)
-        assert expected == actual
-
-        # worst-case
-        perturber = perturbations.Perturber("sorting", doc_sep_token=doc_sep_token, strategy="worst-case")
-        expected = [f"this is a story about a dog {doc_sep_token} this is a story about a cat"]
         actual = perturber(inputs, targets=targets)
         assert expected == actual
 
@@ -369,27 +350,12 @@ class TestPerturber:
         inputs = [f"this is a story about a dog {doc_sep_token} this is a story about a cat"]
         targets = ["this is a story about a cat"]
 
-        # best-case
-        perturber = perturbations.Perturber("duplication", doc_sep_token=doc_sep_token, strategy="best-case")
+        # oracle
+        perturber = perturbations.Perturber("duplication", doc_sep_token=doc_sep_token, strategy="oracle")
         expected = [
             (
                 f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
                 " this is a story about a cat"
-            )
-        ]
-        actual = perturber(
-            inputs=inputs,
-            perturbed_frac=0.10,
-            targets=targets,
-        )
-        assert expected == actual
-
-        # worst-case
-        perturber = perturbations.Perturber("duplication", doc_sep_token=doc_sep_token, strategy="worst-case")
-        expected = [
-            (
-                f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
-                " this is a story about a dog"
             )
         ]
         actual = perturber(
@@ -437,9 +403,9 @@ class TestPerturber:
         targets = ["this is a story about a cat", "this is a story about a cat"]
         documents = [f"this is yet another story about a cat {doc_sep_token} this is yet another story about a dog"]
 
-        perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy="best-case")
+        perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy="oracle")
 
-        # best-case, no documents
+        # oracle, no documents
         expected = [
             (
                 f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
@@ -457,7 +423,7 @@ class TestPerturber:
         )
         assert expected == actual
 
-        # best-case, with documents
+        # oracle, with documents
         expected = [
             (
                 f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
@@ -466,45 +432,6 @@ class TestPerturber:
             (
                 f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar {doc_sep_token}"
                 f" this is a story about a cat {doc_sep_token} this is yet another story about a cat"
-            ),
-        ]
-        actual = perturber(
-            inputs=inputs,
-            perturbed_frac=1.0,
-            targets=targets,
-            documents=documents,
-        )
-        assert expected == actual
-
-        perturber = perturbations.Perturber("addition", doc_sep_token=doc_sep_token, strategy="worst-case")
-
-        # worst-case, no documents
-        expected = [
-            (
-                f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
-                " this looks purposfully dissimilar"
-            ),
-            (
-                f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar {doc_sep_token}"
-                " this is a story about a dog"
-            ),
-        ]
-        actual = perturber(
-            inputs=inputs,
-            perturbed_frac=0.1,
-            targets=targets,
-        )
-        assert expected == actual
-
-        # worst-case, with documents
-        expected = [
-            (
-                f"this is a story about a dog {doc_sep_token} this is a story about a cat {doc_sep_token}"
-                f" this looks purposfully dissimilar {doc_sep_token} this is yet another story about a dog"
-            ),
-            (
-                f"this is another story about a cat {doc_sep_token} this looks purposfully dissimilar {doc_sep_token}"
-                f" this is yet another story about a dog {doc_sep_token} this is a story about a dog"
             ),
         ]
         actual = perturber(
@@ -551,19 +478,9 @@ class TestPerturber:
         inputs = [f"this is a story about a dog {doc_sep_token} this is a story about a cat"]
         targets = ["this is a story about a cat"]
 
-        # best-case
-        perturber = perturbations.Perturber("deletion", doc_sep_token=doc_sep_token, strategy="best-case")
+        # oracle
+        perturber = perturbations.Perturber("deletion", doc_sep_token=doc_sep_token, strategy="oracle")
         expected = ["this is a story about a cat"]
-        actual = perturber(
-            inputs=inputs,
-            perturbed_frac=0.10,
-            targets=targets,
-        )
-        assert expected == actual
-
-        # worst-case
-        perturber = perturbations.Perturber("deletion", doc_sep_token=doc_sep_token, strategy="worst-case")
-        expected = ["this is a story about a dog"]
         actual = perturber(
             inputs=inputs,
             perturbed_frac=0.10,
@@ -613,9 +530,9 @@ class TestPerturber:
         targets = ["this is a story about a cat", "this is a story about a dog", "this is a story about a dog"]
         documents = [f"this is yet another story about a cat {doc_sep_token} this is yet another story about a dog"]
 
-        perturber = perturbations.Perturber("replacement", doc_sep_token=doc_sep_token, strategy="best-case")
+        perturber = perturbations.Perturber("replacement", doc_sep_token=doc_sep_token, strategy="oracle")
 
-        # best-case, no documents
+        # oracle, no documents
         expected = [
             f"this is a story about a siamese cat {doc_sep_token} this is a story about a cat",
             "this is a story about a dog",
@@ -628,7 +545,7 @@ class TestPerturber:
         )
         assert expected == actual
 
-        # best-case, with documents
+        # oracle, with documents
         expected = [
             f"this is yet another story about a cat {doc_sep_token} this is a story about a siamese cat",
             "this is a story about a dog",
@@ -642,36 +559,7 @@ class TestPerturber:
         )
         assert expected == actual
 
-        perturber = perturbations.Perturber("replacement", doc_sep_token=doc_sep_token, strategy="worst-case")
-
-        # worst-case, no documents
-        expected = [
-            f"this is a story about a dog {doc_sep_token} this is a story about something else",
-            "this is a story about something else",
-            "this is a story about a siamese cat",
-        ]
-        actual = perturber(
-            inputs=inputs,
-            perturbed_frac=0.10,
-            targets=targets,
-        )
-        assert expected == actual
-
-        # worst-case, with documents
-        expected = [
-            f"this is a story about something else {doc_sep_token} this is yet another story about a dog",
-            "this is a story about something else",
-            "this is a story about a siamese cat",
-        ]
-        actual = perturber(
-            inputs=inputs,
-            perturbed_frac=1.0,
-            targets=targets,
-            documents=documents,
-        )
-        assert expected == actual
-
-    @pytest.mark.parametrize("strategy", ["random", "best-case", "worst-case"])
+    @pytest.mark.parametrize("strategy", ["random", "oracle"])
     @pytest.mark.parametrize(
         "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
     )
@@ -701,7 +589,7 @@ class TestPerturber:
             assert input_docs[0][idx] not in perturbed_docs[1]
             assert input_docs[1][idx] not in perturbed_docs[0]
 
-    @pytest.mark.parametrize("strategy", ["random", "best-case", "worst-case"])
+    @pytest.mark.parametrize("strategy", ["random", "oracle"])
     @pytest.mark.parametrize(
         "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
     )
@@ -733,7 +621,7 @@ class TestPerturber:
         assert expected_unperturbed_docs == actual_unperturbed_docs
         assert expected_documents == actual_documents
 
-    @pytest.mark.parametrize("strategy", ["random", "best-case", "worst-case"])
+    @pytest.mark.parametrize("strategy", ["random", "oracle"])
     @pytest.mark.parametrize(
         "perturbation", ["backtranslation", "sorting", "duplication", "addition", "deletion", "replacement"]
     )

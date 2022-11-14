@@ -32,7 +32,7 @@ class Perturber:
         doc_sep_token : `str`
             The token that separates individual documents in the input strings.
         strategy : `str`, optional (default="random")
-            The strategy to use for perturbation. Must be one of `"random"`, `"best-case"`, or `"worst-case"`.
+            The strategy to use for perturbation. Must be one of `"random"` or `"oracle"`.
         seed : `int`, optional (default=None)
             If provided, will locally set the seed of the `random` module with this value.
 
@@ -48,7 +48,7 @@ class Perturber:
         perturbation_func = getattr(self, self._perturbation, None)
         if perturbation_func is None:
             raise ValueError(f"Got an unexpected value for perturbation: {perturbation}")
-        if strategy not in ["random", "best-case", "worst-case"]:
+        if strategy not in ["random", "oracle"]:
             raise ValueError(f"Got an unexpected value for strategy: {strategy}")
 
         self._perturbation_func = perturbation_func
@@ -191,12 +191,7 @@ class Perturber:
         elif self._strategy == "random":
             sampled_docs = self._select_docs(input_docs, k=k)
         else:
-            sampled_docs = self._select_docs(
-                documents=input_docs,
-                k=k,
-                target=target,
-                largest=self._strategy == "worst-case",
-            )
+            sampled_docs = self._select_docs(documents=input_docs, k=k, target=target, largest=False)
 
         # Back translate the sampled documents. To save computation, cache the backtranslation results to disk
         back_translated_docs = self._get_backtranslated_docs(sampled_docs)
@@ -238,7 +233,6 @@ class Perturber:
                 documents=input_docs,
                 k=len(input_docs),
                 target=target,
-                largest=self._strategy == "best-case",
             )
 
         perturbed_example = f" {self._doc_sep_token} ".join(input_docs)
@@ -283,7 +277,6 @@ class Perturber:
                 documents=input_docs,
                 k=k,
                 target=target,
-                largest=self._strategy == "best-case",
             )
 
         perturbed_example = f" {self._doc_sep_token} ".join(input_docs + repeaters)
@@ -327,7 +320,6 @@ class Perturber:
                 k=k,
                 query=example,
                 target=target,
-                largest=self._strategy == "best-case",
             )
 
         perturbed_example = f" {self._doc_sep_token} ".join(input_docs + sampled_docs)
@@ -420,21 +412,19 @@ class Perturber:
             to_replace = to_replace or self._select_docs(input_docs, k=k)
 
         else:
-            # In the best case, replace the least similar documents with the most similar documents and vice versa
-            # in the worst case.
-            largest = self._strategy == "best-case"
+            # Replace the least similar documents with the most similar documents
             sampled_docs = self._select_docs(
                 documents=documents,
                 k=k,
                 query=example,
                 target=target,
-                largest=largest,
+                largest=True,
             )
             to_replace = to_replace or self._select_docs(
                 documents=input_docs,
                 k=k,
                 target=target,
-                largest=not largest,
+                largest=False,
             )
         replace_indices = [input_docs.index(doc) for doc in to_replace]
 
