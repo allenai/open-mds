@@ -6,7 +6,8 @@ dataset_name: "multi_news"
 text_column: "document"
 summary_column: "summary"
 max_source_length: 4096
-max_target_length: 1024
+max_target_length: 256
+num_beams: 5
 
 # Seq2SeqTrainingArguments
 do_predict: true
