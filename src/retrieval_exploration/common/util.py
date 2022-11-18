@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import flatten_dict
-import numpy as np
 import pandas as pd
 from nltk.tokenize import wordpunct_tokenize
 from omegaconf import OmegaConf
@@ -335,11 +334,16 @@ def load_results_dicts(
 
             if baseline_df is not None:
                 # The perturbation and baseline data should pertain to the same examples.
-                if not np.array_equal(
-                    baseline_df[f"{metric_key_prefix}_labels"],
-                    results_df[f"{metric_key_prefix}_labels"],
+                for i, (baseline_ref_summ, results_ref_summ) in enumerate(
+                    zip(baseline_df[f"{metric_key_prefix}_labels"], results_df[f"{metric_key_prefix}_labels"])
                 ):
-                    raise ValueError("The perturbation and baseline data do not correspond to the same examples!")
+                    # Sanitize because we don't care about minor differences like whitespace (handled during eval).
+                    if sanitize_text(baseline_ref_summ) != sanitize_text(results_ref_summ):
+                        raise ValueError(
+                            f"For at least one example (index={i}), the baseline and experimental results"
+                            f" dataframes have different reference summaries. This may indicate that baseline and"
+                            " experimental results do not correspond to the same examples."
+                        )
 
                 results_df["frac_docs_perturbed"] = [
                     get_frac_docs_perturbed(pre, post, doc_sep_token=doc_sep_token)
