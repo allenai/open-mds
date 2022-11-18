@@ -1,6 +1,6 @@
 # Usage
 
-This directory contains the SLURM submission scripts that were used to organize the experiments. Even if you aren't using SLURM, they are helpful to reproduce our results or understand our experiments.
+This directory contains the SLURM submission scripts that were used to organize the experiments. Even if you are not using SLURM, they help to reproduce our results or understand our experiments.
 
 ## Perturbation Experiments
 
@@ -18,7 +18,7 @@ sbatch "./scripts/slurm/perturb.sh" "./conf/multinews/primera/eval.yml" \
   "0.1"
 ```
 
-would submit the `"addition"` perturbation experiment with the `"random"` strategy, perturbing 10% of the input documents, and save the results to `"./output/results/multinews/primera/peturbations/random/addition/0.1"`.
+would submit a job evaluating the [PRIMERA](https://arxiv.org/abs/2110.08499) model on the [Multi-News](https://aclanthology.org/P19-1102/) dataset, subject to the `"addition"` perturbation experiment with the `"random"` strategy (perturbing 10% of the input documents) and save the results to `"./output/results/multinews/primera/peturbations/random/addition/0.1"`.
 
 ### [`submit_perturb.sh`](submit_perturb.sh)
 
@@ -38,11 +38,29 @@ This is only required if you want to re-index the datasets. We have already done
 
 ### [`index.sh`](index.sh)
 
-TODO
+This script is used to index a dataset and replace its documents with those retrieved from the index, using a single retriever and top-k strategy, e.g.
+
+```bash
+sbatch ./scripts/slurm/index.sh "multinews" "./output/datasets/multinews_sparse_oracle" "sparse" "oracle"
+```
+
+would index the [Multi-News](https://aclanthology.org/P19-1102/) dataset, replace its documents with those retrieved from the index by a sparse retriever, and save the resulting dataset to `"./output/datasets/multinews_sparse_oracle"`. Note that this is actually calling the `index_and_retrieve.py` script, which you can get more information about by calling
+
+```bash
+python ./scripts/index_and_retrieve.py --help
+```
 
 ### [`submit_index.sh`](submit_index.sh)
 
-TODO
+Submits an array of jobs for a given dataset, producing multiple copies where each contains its documents replaced by those retrieved from the index using a different retriever and top-k strategy, e.g.
+
+```bash
+
+```bash
+bash "./scripts/slurm/submit_index.sh" "multinews" "./output/datasets" 
+```
+
+would all jobs for the [Multi-News](https://aclanthology.org/P19-1102/) dataset, creating multiple copies of the dataset using all retrievers and top-k strategies, and save the resulting datasets to `"./output/datasets"`.
 
 ## Retrieval (or "Open-domain MDS") Experiments
 
@@ -106,4 +124,4 @@ bash "./scripts/slurm/submit_eval_checkpoints.sh" \
   "mean"
 ```
 
-would submit jobs to evaluate each of the trained checkpoints in `"./output/multinews/primera/trained_with_retrieval"` and save the results to `"./output/results/multinews/primera/training"`. Note that this is actually calling two scripts, `eval_checkpoint_retrieved.sh` and `eval_checkpoint_gold.sh`, which aren't expected to be called directly.
+would submit jobs to evaluate each of the trained checkpoints in `"./output/multinews/primera/trained_with_retrieval"` and save the results to `"./output/results/multinews/primera/training"`. Note that this is calling two scripts, `eval_checkpoint_retrieved.sh` and `eval_checkpoint_gold.sh`, which aren't expected to be called directly.
