@@ -5,14 +5,20 @@
 # "./conf/multinews/primera/eval.yml" \
 # "./output/results/multinews/primera"
 
+### Usage notes ###
+# Some perturbations take much longer than others (e.g. addition vs deletion). It is therefore advisable to submit
+# this script multiple times, with different job runtimes depending on the perturbation. Additionally, some
+# perturbations cache intermediate results (backtranslation). Tt is advisable to run these perturbations
+# sequentially with an increasing PERTURBED_FRAC.
+
 ### Script arguments ###
-# Must be provided as argument to the script
+# Required arguments
 CONFIG_FILEPATH="$1"  # The path on disk to the yml config file
 OUTPUT_DIR="$2"       # The path on disk to save the output to
 # Constants
 PERTURBATIONS=("backtranslation" "duplication" "addition" "deletion" "replacement")
-STRATEGIES=("random" "best-case" "worst-case")
-PERTURBED_FRAC=(0.1 0.5 1.0)
+STRATEGIES=("random" "oracle")
+PERTURBED_FRAC=(0.1 0.25 0.5 0.75 1.0)
 
 ### Job ###
 
