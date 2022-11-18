@@ -1,4 +1,4 @@
-# Retrieval Exploration
+# Open-Domain Multi-Document Summarization
 
 [![ci](https://github.com/allenai/retrieval-exploration/actions/workflows/ci.yml/badge.svg)](https://github.com/allenai/retrieval-exploration/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/allenai/retrieval-exploration/branch/main/graph/badge.svg?token=YTQEI2VMSA)](https://codecov.io/gh/allenai/retrieval-exploration)
@@ -76,7 +76,7 @@ python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multinews/pegasu
     --perturbed-frac 0.10
 ```
 
-Train [PRIMERA](https://arxiv.org/abs/2110.08499) with the `"addition"` perturbation and `"best-case"` strategy, perturbing 50% of input documents, on the [Multi-XScience](https://aclanthology.org/2020.emnlp-main.648/) dataset
+Evaluate [PRIMERA](https://arxiv.org/abs/2110.08499) with the `"addition"` perturbation and `"best-case"` strategy, perturbing 50% of input documents, on the [Multi-XScience](https://aclanthology.org/2020.emnlp-main.648/) dataset
 
 ```bash
 python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multixscience/primera/train.yml" \
@@ -98,7 +98,7 @@ Other experiments can be crafted by modifying the perturbation arguments accordi
 
 ### Retrieval
 
-We also provide a script, [retrieval.py](./scripts/retrieval.py), for re-building the input document sets of several popular MDS datasets with retrieval. To run the script, make sure you have installed the required dependencies
+We also provide a script, [index_and_retrieve.py](./scripts/index_and_retrieve.py), for re-building the input document sets of several popular MDS datasets with retrieval. To run the script, make sure you have installed the required dependencies
 
 ```bash
 # With pip
@@ -111,7 +111,7 @@ poetry install -E "retrieval"
 Then you can see detailed instructions by calling
 
 ```bash
-python ./scripts/retrieval.py --help
+python ./scripts/index_and_retrieve.py --help
 ```
 
 Here are a few examples:
@@ -119,7 +119,7 @@ Here are a few examples:
 Re-build the `"test"` set of the [Multi-News](https://aclanthology.org/P19-1102/) dataset with a `"sparse"` retriever, using the `"oracle"` strategy to choose `k`
 
 ```bash
-python ./scripts/retrieval.py "multinews" "./output/datasets/multinews_sparse_oracle" \
+python ./scripts/index_and_retrieve.py "multinews" "./output/datasets/multinews_sparse_oracle" \
     --retriever "sparse" \
     --top-k-strategy "oracle" \
     --splits "test"
@@ -128,7 +128,7 @@ python ./scripts/retrieval.py "multinews" "./output/datasets/multinews_sparse_or
 Re-build the `"validation"` and test set of the [MS^2](https://aclanthology.org/2021.emnlp-main.594/) dataset with a `"dense"` retriever, using the `"mean"` strategy to choose `k`
 
 ```bash
-python ./scripts/retrieval.py "ms2" "./output/datasets/ms2_dense_mean" \
+python ./scripts/index_and_retrieve.py "ms2" "./output/datasets/ms2_dense_mean" \
     --retriever "dense" \
     --top-k-strategy "mean" \
     --splits "validation"
@@ -144,3 +144,7 @@ python ./scripts/retrieval.py "ms2" "./output/datasets/ms2_dense_mean" \
   ```
 
 - If you wish to use the `dense` retriever, you will need to install [FAISS](https://github.com/facebookresearch/faiss) with GPU support. See [here](https://github.com/facebookresearch/faiss/blob/main/INSTALL.md) for detailed instructions.
+
+## Reproducing Results
+
+If you are interested in reproducing the results from our paper, please see the README in the [scripts/slurm](./scripts/slurm) directory. We also provide notebooks that, given the raw experimental results, reproduce the tables and figures from the paper. These notebooks can be found in the [notebooks](./notebooks) directory.
