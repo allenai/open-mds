@@ -1,30 +1,26 @@
 #!/bin/bash
 # Requested resources
-#SBATCH --mem=36G
+#SBATCH --mem=32G
 #SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu:a100:1
 # Wall time and job details
-#SBATCH --time=3:00:00
+#SBATCH --time=5:00:00
 #SBATCH --job-name=retrieve
 #SBATCH --account=def-wanglab-ab
-# Emails me when job starts, ends or fails
-#SBATCH --mail-user=johnmgiorgi@gmail.com
-#SBATCH --mail-type=FAIL
 # Use this command to run the same job interactively
-# salloc --mem=16G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=def-wanglab-ab
-# salloc --mem=16G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=def-gbader
+# salloc --mem=32G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=def-wanglab-ab
+# salloc --mem=32G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=def-gbader
 
 ### Example usage ###
-# sbatch "./scripts/slurm/retrieve.sh" "./conf/multi_news/primera/eval.yml" \
-#   "./output/multi_news/retrieval/sparse/mean" \
+# sbatch "./scripts/slurm/retrieve.sh" "./conf/multinews/primera/eval.yml" \
+#   "./output/results/multinews/primera/retrieval/sparse/mean" \
+#   "./output/datasets/multinews_sparse_mean" \
 #   "sparse" \
 #   "mean"
 
-### Example usage ###
-# PRIMERA on MultiNews requires <5hrs
-# PRIMERA on MultiXScience requires <3hrs
-# Pegasus on MultiNews requires <5hrs
-# LED on MS2 requires <3hrs, ~16GB
+### Usage notes ###
+# Most dataset, retriever, and strategy combinations should take about 3 hours or less.
+# The larger datasets (e.g. Multi-News and MS2) will take longer, especially when using the max strategy.
  
 ### Environment ###
 # Add your W&B key here to enable W&B reporting (or login with wandb login)
@@ -37,7 +33,7 @@ source "$HOME/$PROJECT_NAME/bin/activate"
 cd "$HOME/projects/def-gbader/$USER/$PROJECT_NAME" || exit
 
 ### Script arguments ###
-# Must be provided as argument to the script
+# Required arguments
 CONFIG_FILEPATH="$1"  # The path on disk to the yml config file
 OUTPUT_DIR="$2"       # The path on disk to save the output to
 DATASET_DIR="$3"      # The path on disk to the dataset to use
@@ -56,3 +52,5 @@ python "./scripts/run_summarization.py" "./conf/base.yml" "$CONFIG_FILEPATH" \
     dataset_name="$DATASET_DIR" \
     retriever="$RETRIEVER" \
     top_k_strategy="$STRATEGY"
+
+exit
