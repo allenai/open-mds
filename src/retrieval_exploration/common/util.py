@@ -18,6 +18,7 @@ from transformers import PreTrainedTokenizer
 _BASELINE_DIR = "baseline"
 _PERTURBATIONS_DIR = "perturbations"
 _RETRIEVAL_DIR = "retrieval"
+_TRAINING_DIR = "training"
 _RESULTS_FILENAME = "all_results.json"
 
 # Public constants
@@ -276,10 +277,12 @@ def _read_result_dict(results_dict: Union[Dict[str, Any], List[Dict[str, Any]]],
 
 def load_results_dicts(
     data_dir: str,
+    include_models: Optional[List[str]] = None,
     metric_columns: Optional[List[str]] = None,
     metric_key_prefix: Optional[str] = "predict",
     load_perturbation_results: bool = True,
     load_retrieval_results: bool = True,
+    load_training_results: bool = True,
 ) -> Tuple[Optional[pd.DataFrame], pd.DataFrame]:
     """Loads the result dictionaries at `data_dir`. Assumes this directory is organized as follows:
 
@@ -291,7 +294,10 @@ def load_results_dicts(
     |   |   |   └── all_results.json
     │   |   └── perturbation_2
     |   |       └── ...
-    │   └── retrieval
+    │   ├── retrieval
+    │   |   └── ...
+    │   └── training
+    │       └── ...
     ├── model_2
     │   └── ...
     └── ...
@@ -300,13 +306,20 @@ def load_results_dicts(
     one for each `metric` in `metric_columns`, will be computed as the difference between the experimental results
     and the baseline results for the column `metric` and added to the returned dataframe. The metrics are assumed
     to be prefixed with `metric_key_prefix`, which is added by the HuggingFace Trainer (and defaults to "eval" for
-    the validation set and "predict" for the test set).
+    the validation set and "predict" for the test set). You can control which sets of results are loaded with
+    `load_perturbation_results`, `load_retrieval_results`, and `load_training_results`. To only load the results
+    for some models, provide a list of model names, `include_models`.
     """
 
     baseline_dfs = []
     results_dfs = []
 
     for model_dir in Path(data_dir).iterdir():
+
+        # Only load data from the specified model directories, if provided
+        if include_models is not None and model_dir.name not in include_models:
+            continue
+
         baseline_df = None
         baseline_dir = Path(model_dir) / _BASELINE_DIR
 
@@ -319,7 +332,6 @@ def load_results_dicts(
 
         # Load the experimental results
         filepaths = []
-
         if load_perturbation_results:
             perturbation_dir = Path(model_dir) / _PERTURBATIONS_DIR
             filepaths += list(Path(perturbation_dir).glob(f"**/{_RESULTS_FILENAME}"))
@@ -328,9 +340,18 @@ def load_results_dicts(
             retrieval_dir = Path(model_dir) / _RETRIEVAL_DIR
             filepaths += list(Path(retrieval_dir).glob(f"**/{_RESULTS_FILENAME}"))
 
+        if load_training_results:
+            training_dir = Path(model_dir) / _TRAINING_DIR
+            filepaths += list(Path(training_dir).glob(f"**/{_RESULTS_FILENAME}"))
+
+        # Process the individual results files and store them as dataframes
         for filepath in tqdm(filepaths, desc=f"Loading results from {model_dir}"):
             results_dict = json.loads(filepath.read_text())
             results_df = _read_result_dict(results_dict)
+
+            # This is a little brittle, but if the filepath is named after a checkpoint, save it in the results_df
+            checkpoint = re.search(r"checkpoint-(\d+)", str(filepath.parent.name))
+            results_df["checkpoint"] = int(checkpoint.group(1)) if checkpoint is not None else None
 
             if baseline_df is not None:
                 # The perturbation and baseline data should pertain to the same examples.
@@ -345,6 +366,7 @@ def load_results_dicts(
                             " experimental results do not correspond to the same examples."
                         )
 
+                # Compute the actual number of documents perturbed
                 results_df["frac_docs_perturbed"] = [
                     get_frac_docs_perturbed(pre, post, doc_sep_token=doc_sep_token)
                     for pre, post, doc_sep_token in zip(
@@ -354,6 +376,7 @@ def load_results_dicts(
                     )
                 ]
 
+                # Compute the absolute difference between the baseline and experimental results for these metrics
                 if metric_columns is not None:
                     for metric in metric_columns:
                         # Compute the per-instance absolute differences
@@ -361,6 +384,9 @@ def load_results_dicts(
 
             results_dfs.append(results_df)
 
+    if not results_dfs:
+        raise ValueError(f"No experimental results were found in {data_dir}.")
+
     baseline_df = pd.concat(baseline_dfs, ignore_index=True) if baseline_dfs else None
-    perturbed_df = pd.concat(results_dfs, ignore_index=True)
-    return baseline_df, perturbed_df
+    results_df = pd.concat(results_dfs, ignore_index=True)
+    return baseline_df, results_df
