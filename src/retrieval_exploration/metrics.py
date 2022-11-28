@@ -1,7 +1,9 @@
+import warnings
+from typing import Any, Dict, List, Tuple
+
 import nltk
-from typing import List, Tuple, Dict, Any
-from datasets import load_metric
 import numpy as np
+from datasets import load_metric
 
 
 def _postprocess_text(*, predictions: List[str], references: List[str]) -> Tuple[List[str], List[str]]:
@@ -40,10 +42,15 @@ def compute_rouge(*, predictions: List[str], references: List[str], **kwargs) ->
             "fmeasure_mean": np.mean([score.fmeasure for score in value]) * 100,
         }
     # Compute the arithmetic mean of ROUGE-1, ROUGE-2 and ROUGE-L following: https://arxiv.org/abs/2110.08499
-    results["rouge_avg_fmeasure"] = np.mean(
-        [results[key]["fmeasure"] for key in ["rouge1", "rouge2", "rougeL"]], axis=0
-    ).tolist()
-    results["rouge_avg_fmeasure_mean"] = np.mean(results["rouge_avg_fmeasure"]).item()
+    if all(rouge_type in results for rouge_type in ["rouge1", "rouge2", "rougeL"]):
+        results["rouge_avg_fmeasure"] = np.mean(
+            [results[key]["fmeasure"] for key in ["rouge1", "rouge2", "rougeL"]], axis=0
+        ).tolist()
+        results["rouge_avg_fmeasure_mean"] = np.mean(results["rouge_avg_fmeasure"]).item()
+    else:
+        warnings.warn(
+            "ROUGE-1, ROUGE-2 and ROUGE-L are not all present in the results. Skipping the computation of ROUGE-AVG."
+        )
 
     return results
 
