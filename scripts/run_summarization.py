@@ -875,6 +875,8 @@ def main():
         "seed": training_args.seed,
         "doc_sep_token": doc_sep_token,
         "model_name_or_path": model_args.model_name_or_path,
+        "dataset_name": data_args.dataset_name,
+        "dataset_config_name": data_args.dataset_config_name,
     }
 
     # Initialize our Trainer
