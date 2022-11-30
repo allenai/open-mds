@@ -1,0 +1,29 @@
+# ModelArguments
+# NOTE: If you are using this in offline mode, you will need to point model_name_or_path to a local copy of the model.
+model_name_or_path: "ccdv/lsg-bart-base-4096-wcep"
+tokenizer_name: "ccdv/lsg-bart-base-4096-wcep"
+# This model contains custom code, so we need to set trust_remote_code to True.
+trust_remote_code: true
+
+# DataTrainingArguments
+dataset_name: "allenai/wcep_dense_mean"
+text_column: "document"
+summary_column: "summary"
+max_source_length: 4096
+max_target_length: 64
+
+# Seq2SeqTrainingArguments
+# See: https://huggingface.co/docs/transformers/main_classes/trainer#transformers.Seq2SeqTrainingArguments
+do_train: true
+per_device_train_batch_size: 8
+per_device_eval_batch_size: 16
+# per_device_train_batch_size = 8 * gradient_accumulation_steps = 4 = total effective batch size of 32
+gradient_accumulation_steps: 4
+learning_rate: 8e-05
+num_train_epochs: 3
+warmup_ratio: 0.10
+# Controls the checkpointing strategy
+save_strategy: "steps"
+# 8158 examples * 3 epochs / batch size of 32 = 764. For 12 evaluations we need 764 / 12 = 63 steps
+save_steps: 63
+save_total_limit: 12
