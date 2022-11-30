@@ -12,14 +12,14 @@ from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 DATASETS = ["multi_news", "multi_x_science_sum", "allenai/mslr2022", "ccdv/WCEP-10"]
 MODELS = [
-    "allenai/PRIMERA-multinews",
     "google/pegasus-multi_news",
-    "allenai/PRIMERA-multixscience",
+    "allenai/PRIMERA-multinews",
+    "ccdv/lsg-bart-base-4096-multinews",
     "allenai/PRIMERA-wcep",
-    "ccdv/lsg-bart-base-4096-wcep"
+    "ccdv/lsg-bart-base-4096-wcep",
+    "allenai/PRIMERA-multixscience",
     "allenai/led-base-16384-ms2",
     "allenai/led-base-16384-cochrane",
-    
 ]
 
 for model in tqdm(MODELS, desc="Downloading models"):
