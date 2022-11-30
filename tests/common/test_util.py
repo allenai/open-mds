@@ -6,7 +6,7 @@ from typing import Callable, List
 import pytest
 from hypothesis import given
 from hypothesis.strategies import booleans, text
-from retrieval_exploration.common import util
+from open_mds.common import util
 from transformers import AutoTokenizer
 
 

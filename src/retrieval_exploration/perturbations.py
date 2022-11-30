@@ -12,7 +12,7 @@ import torch
 from diskcache import Cache
 from tqdm import tqdm
 
-from retrieval_exploration.common import util
+from open_mds.common import util
 
 _SEMANTIC_SIMILARITY_MODEL = "all-MiniLM-L6-v2"
 _BT_FROM_MODEL_NAME = "Helsinki-NLP/opus-mt-en-da"

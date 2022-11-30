@@ -3,9 +3,9 @@ from typing import Callable
 import datasets
 import pytest
 from datasets.dataset_dict import DatasetDict
-from retrieval_exploration import indexing
+from open_mds import indexing
 from transformers import AutoConfig, AutoModel, AutoTokenizer, PretrainedConfig, PreTrainedTokenizer
-from retrieval_exploration.common import util
+from open_mds.common import util
 
 
 @pytest.fixture
