@@ -93,7 +93,7 @@ Other experiments can be crafted by modifying the perturbation arguments accordi
 - In order to avoid duplicate computation, some perturbations will cache their results. You can get this path by calling
 
   ```bash
-  python -c "from retrieval_exploration.common import util ; print(util.CACHE_DIR)"
+  python -c "from open_mds.common import util ; print(util.CACHE_DIR)"
   ```
 
 ### Retrieval
@@ -102,7 +102,7 @@ We also provide a script, [index_and_retrieve.py](./scripts/index_and_retrieve.p
 
 ```bash
 # With pip
-pip install "git+https://github.com/allenai/open-mds.git#egg=retrieval_exploration[retrieval]"
+pip install "git+https://github.com/allenai/open-mds.git#egg=open_mds[retrieval]"
 
 # OR, if installin with poetry
 poetry install -E "retrieval"
@@ -140,7 +140,7 @@ python ./scripts/index_and_retrieve.py "ms2" "./output/datasets/ms2_dense_mean" 
 - If `index-path` is not provided, document indices will be saved to disk under a default location. You can get this dock path by calling
 
   ```bash
-  python -c "from retrieval_exploration.common import util ; print(util.CACHE_DIR)"
+  python -c "from open_mds.common import util ; print(util.CACHE_DIR)"
   ```
 
 - If you wish to use the `dense` retriever, you will need to install [FAISS](https://github.com/facebookresearch/faiss) with GPU support. See [here](https://github.com/facebookresearch/faiss/blob/main/INSTALL.md) for detailed instructions.

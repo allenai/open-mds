@@ -10,7 +10,7 @@ from datasets import load_dataset
 from nltk.tokenize import wordpunct_tokenize
 from tqdm import tqdm
 
-from retrieval_exploration.common import util
+from open_mds.common import util
 
 _HF_DATASETS_URL = "https://huggingface.co/datasets"
 
@@ -102,7 +102,7 @@ class HuggingFacePyTerrierDataset(pt.datasets.Dataset):
         indexref = indexer.index(self.get_corpus_iter(verbose=verbose))
         return indexref
 
-    def get_document_stats(self, avg_tokens_per_doc=False, **kwargs) -> Dict[str, float]:
+    def get_document_stats(self, avg_tokens_per_doc=False, avg_tokens_per_summary=False, **kwargs) -> Dict[str, float]:
         """Returns a dictionary with corpus statistics for the given dataset. Must be implemented by child class.
         If avg_tokens_per_doc is True, the average number of tokens per document will be returned.
         """
@@ -186,25 +186,31 @@ class CanonicalMDSDataset(HuggingFacePyTerrierDataset):
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
-    def get_document_stats(self, avg_tokens_per_doc: bool = False, **kwargs) -> Dict[str, float]:
+    def get_document_stats(
+        self, avg_tokens_per_doc: bool = False, avg_tokens_per_summary=False, **kwargs
+    ) -> Dict[str, float]:
         num_docs: List[int] = []
         doc_lens: List[int] = []
+        summ_lens: List[int] = []
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
                 docs = util.split_docs(example["document"], doc_sep_token=self._doc_sep_token)
                 num_docs.append(len(docs))
                 if avg_tokens_per_doc:
                     doc_lens.extend(len(wordpunct_tokenize(doc.strip())) for doc in docs)
+                if avg_tokens_per_summary:
+                    summ_lens.append(len(wordpunct_tokenize(example["summary"].strip())))
 
         stats = {
             "max": np.max(num_docs),
             "mean": np.mean(num_docs),
             "min": np.min(num_docs),
-            "avg_tokens_per_doc": np.mean(doc_lens),
         }
 
         if avg_tokens_per_doc:
             stats["avg_tokens_per_doc"] = np.mean(doc_lens)
+        if avg_tokens_per_summary:
+            stats["avg_tokens_per_summary"] = np.mean(summ_lens)
 
         return stats
 
@@ -269,9 +275,12 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
-    def get_document_stats(self, avg_tokens_per_doc: bool = False, **kwargs) -> Dict[str, float]:
+    def get_document_stats(
+        self, avg_tokens_per_doc: bool = False, avg_tokens_per_summary: bool = False, **kwargs
+    ) -> Dict[str, float]:
         num_docs: List[int] = []
         doc_lens: List[int] = []
+        summ_lens: List[int] = []
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
                 num_docs.append(len(example["ref_abstract"]["abstract"]))
@@ -279,13 +288,21 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
                     doc_lens.extend(
                         len(wordpunct_tokenize(doc.strip())) for doc in example["ref_abstract"]["abstract"]
                     )
+                if avg_tokens_per_summary:
+                    summ_lens.append(len(wordpunct_tokenize(example["related_work"].strip())))
 
-        return {
+        stats = {
             "max": np.max(num_docs),
             "mean": np.mean(num_docs),
             "min": np.min(num_docs),
-            "avg_tokens_per_doc": np.mean(doc_lens),
         }
+
+        if avg_tokens_per_doc:
+            stats["avg_tokens_per_doc"] = np.mean(doc_lens)
+        if avg_tokens_per_summary:
+            stats["avg_tokens_per_summary"] = np.mean(summ_lens)
+
+        return stats
 
 
 class MSLR2022Dataset(HuggingFacePyTerrierDataset):
@@ -350,9 +367,12 @@ class MSLR2022Dataset(HuggingFacePyTerrierDataset):
         labels = [1] * len(qids)
         return pd.DataFrame({"qid": qids, "docno": docnos, "label": labels})
 
-    def get_document_stats(self, avg_tokens_per_doc: bool = False, **kwargs) -> Dict[str, float]:
+    def get_document_stats(
+        self, avg_tokens_per_doc: bool = False, avg_tokens_per_summary: bool = False, **kwargs
+    ) -> Dict[str, float]:
         num_docs: List[int] = []
         doc_lens: List[int] = []
+        summ_lens: List[int] = []
         max_documents = kwargs.get("max_documents")
         for split in self._hf_dataset:
             for example in self._hf_dataset[split]:
@@ -361,9 +381,17 @@ class MSLR2022Dataset(HuggingFacePyTerrierDataset):
 
                 if avg_tokens_per_doc:
                     doc_lens.extend(len(wordpunct_tokenize(doc.strip())) for doc in example["abstract"])
-        return {
+                if avg_tokens_per_summary:
+                    summ_lens.append(len(wordpunct_tokenize(example["target"].strip())))
+        stats = {
             "max": np.max(num_docs),
             "mean": np.mean(num_docs),
             "min": np.min(num_docs),
-            "avg_tokens_per_doc": np.mean(doc_lens),
         }
+
+        if avg_tokens_per_doc:
+            stats["avg_tokens_per_doc"] = np.mean(doc_lens)
+        if avg_tokens_per_summary:
+            stats["avg_tokens_per_summary"] = np.mean(summ_lens)
+
+        return stats
