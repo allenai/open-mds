@@ -23,7 +23,7 @@ _RESULTS_FILENAME = "all_results.json"
 
 # Public constants
 DOC_SEP_TOKENS = {"primera": "<doc-sep>", "multi_news": "|||||", "ccdv/WCEP-10": "</s>"}
-CACHE_DIR = user_cache_dir("retrieval-exploration", "ai2")
+CACHE_DIR = user_cache_dir("open-mds", "ai2")
 
 
 def sanitize_text(text: str, lowercase: bool = False) -> str:

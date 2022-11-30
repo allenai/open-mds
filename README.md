@@ -1,7 +1,7 @@
 # Open-Domain Multi-Document Summarization
 
-[![ci](https://github.com/allenai/retrieval-exploration/actions/workflows/ci.yml/badge.svg)](https://github.com/allenai/retrieval-exploration/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/allenai/retrieval-exploration/branch/main/graph/badge.svg?token=YTQEI2VMSA)](https://codecov.io/gh/allenai/retrieval-exploration)
+[![ci](https://github.com/allenai/open-mds/actions/workflows/ci.yml/badge.svg)](https://github.com/allenai/open-mds/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/allenai/open-mds/branch/main/graph/badge.svg?token=YTQEI2VMSA)](https://codecov.io/gh/allenai/open-mds)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
 The intention of this repository is to study end-to-end performance of __multi-document summarization__ (MDS) models, that is, when the input document set must be retrieved via (semi-)automatic methods.
@@ -17,14 +17,14 @@ This repository requires Python 3.8 or later.
 Install with `pip` right from GitHub
 
 ```bash
-pip install "git+https://github.com/allenai/retrieval-exploration.git"
+pip install "git+https://github.com/allenai/open-mds.git"
 ```
 
 or clone the repo locally
 
 ```bash
-git clone https://github.com/allenai/retrieval-exploration.git
-cd retrieval-exploration
+git clone https://github.com/allenai/open-mds.git
+cd open-mds
 pip install -e .
 ```
 
@@ -38,8 +38,8 @@ To install using [Poetry](https://python-poetry.org/)
 curl -sSL https://install.python-poetry.org | python3 -
 
 # Clone and move into the repo
-git clone https://github.com/allenai/retrieval-exploration
-cd retrieval-exploration
+git clone https://github.com/allenai/open-mds
+cd open-mds
 
 # Install the package with poetry
 poetry install
@@ -102,7 +102,7 @@ We also provide a script, [index_and_retrieve.py](./scripts/index_and_retrieve.p
 
 ```bash
 # With pip
-pip install "git+https://github.com/allenai/retrieval-exploration.git#egg=retrieval_exploration[retrieval]"
+pip install "git+https://github.com/allenai/open-mds.git#egg=retrieval_exploration[retrieval]"
 
 # OR, if installin with poetry
 poetry install -E "retrieval"
