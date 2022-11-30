@@ -1,0 +1,29 @@
+# ModelArguments
+model_name_or_path: "allenai/led-base-16384-ms2"
+
+# DataTrainingArguments
+dataset_name: "allenai/ms2_dense_mean"
+text_column: "background"
+summary_column: "target"
+max_source_length: 16384
+max_target_length: 256
+
+# Seq2SeqTrainingArguments
+# See: https://huggingface.co/docs/transformers/main_classes/trainer#transformers.Seq2SeqTrainingArguments
+do_train: true
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+# per_device_train_batch_size = 1 * gradient_accumulation_steps = 16 = total effective batch size of 16
+gradient_accumulation_steps: 16
+learning_rate: 3e-5
+weight_decay: 0.01
+num_train_epochs: 3
+warmup_ratio: 0.10
+label_smoothing_factor: 0.1
+# Controls the checkpointing strategy
+save_strategy: "steps"
+# 14188 examples * 3 epochs / batch size of 16 = 2660 steps. For 12 evaluations we need 2660 / 12 = 221 steps
+save_steps: 221
+save_total_limit: 12
+# We generally won't be extending training, so default to overwriting the existing checkpoint
+overwrite_output_dir: true
