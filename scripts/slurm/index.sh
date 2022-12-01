@@ -22,7 +22,7 @@
  
 module purge  # suggested in alliancecan docs: https://docs.alliancecan.ca/wiki/Running_jobs
 module load StdEnv/2020 gcc/9.3.0 python/3.9 arrow/7.0.0 java/14.0.2 cuda/11.4 faiss/1.7.1
-PROJECT_NAME="retrieval-exploration"
+PROJECT_NAME="open-mds"
 source "$HOME/$PROJECT_NAME/bin/activate"
 cd "$HOME/projects/def-gbader/$USER/$PROJECT_NAME" || exit
 

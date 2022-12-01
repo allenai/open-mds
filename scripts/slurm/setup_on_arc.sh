@@ -13,7 +13,7 @@ module purge
 module load StdEnv/2020 gcc/9.3.0 python/3.9 arrow/7.0.0 java/14.0.2
 
 # Setup the virtual environment under home
-PROJECT_NAME="retrieval-exploration"
+PROJECT_NAME="open-mds"
 virtualenv --no-download "$HOME/$PROJECT_NAME"
 source "$HOME/$PROJECT_NAME/bin/activate"
 pip install --no-index --upgrade pip
@@ -21,8 +21,8 @@ pip install --no-index --upgrade pip
 # Setup the project and scratch directories
 # NOTE: On some clusters (e.g. Narval), the PROJECT env var does not exist, so you will have to cd manually
 cd "$PROJECT/$USER" || exit
-git clone https://github.com/allenai/retrieval-exploration.git
-cd "retrieval-exploration" || exit
+git clone https://github.com/allenai/open-mds.git
+cd "open-mds" || exit
 mkdir -p "$SCRATCH/$PROJECT_NAME"
 
 # Install the package
@@ -37,7 +37,7 @@ pip install scipy numpy pandas torch torchvision --no-index
 # We also need the latest version of transformers, so install from git
 pip install "git+https://github.com/huggingface/transformers.git"
 # Lastly, we can export the project's dependencies to a requirements file and install with pip
-poetry export -f requirements.txt --output requirements.txt -E "summarization" --without-hashes
+poetry export -f requirements.txt --output requirements.txt -E "retrieval" --without-hashes
 # but first, remove any of the dependencies we are installing manually
 sed -i '/^scipy\|^numpy\|^pandas\|^torch\|^torchvision\|^transformers\|^pyarrow/d' requirements.txt 
 pip install -r requirements.txt
