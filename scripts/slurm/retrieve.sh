@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu:a100:1
 # Wall time and job details
-#SBATCH --time=5:00:00
+#SBATCH --time=9:00:00
 #SBATCH --job-name=retrieve
 #SBATCH --account=def-wanglab-ab
 # Use this command to run the same job interactively
@@ -17,9 +17,17 @@
 #   "./output/datasets/multinews_sparse_mean" \
 #   "sparse" \
 #   "mean"
+#
+# Or, for the training experiments:
+# sbatch "./scripts/slurm/retrieve.sh" "./conf/multinews/primera/train_retrieved.yml" \
+#   "./output/results/multinews/primera/trained_with_retrieval" \
+#   "./output/datasets/multinews_dense_mean" \
+#   "dense" \
+#   "mean"
+# 
 
 ### Usage notes ###
-# Most dataset, retriever, and strategy combinations should take about 3 hours or less.
+# Most dataset, retriever, and top-k strategy combinations should take about 5 hours or less.
 # The larger datasets (e.g. Multi-News and MS2) will take longer, especially when using the max strategy.
  
 ### Environment ###
