@@ -51,6 +51,7 @@ python "./scripts/run_summarization.py" "./conf/base.yml" "$CONFIG_FILEPATH" \
     model_name_or_path="$MODEL_NAME_OR_PATH" \
     dataset_name="$DATASET_DIR" \
     retriever="$RETRIEVER" \
-    top_k_strategy="$STRATEGY"
+    top_k_strategy="$STRATEGY" \
+    seed="42"
 
 exit
