@@ -45,6 +45,7 @@ TRANSFORMERS_OFFLINE=1 \
 HF_DATASETS_OFFLINE=1 \
 python "./scripts/run_summarization.py" "./conf/base.yml" "$CONFIG_FILEPATH" \
     output_dir="$OUTPUT_DIR" \
-    model_name_or_path="$MODEL_NAME_OR_PATH"
+    model_name_or_path="$MODEL_NAME_OR_PATH" \
+    seed="42"
 
 exit
