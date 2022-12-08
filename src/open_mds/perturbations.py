@@ -365,7 +365,7 @@ class Perturber:
                 documents=input_docs,
                 k=k,
                 target=target,
-                largest=self._strategy == "worst-case",
+                largest=False,
             )
             to_delete = [input_docs.index(doc) for doc in sampled_docs]
 
