@@ -160,7 +160,7 @@ def main(
 
     top_k_strategy_msg = f"[bold blue]:gear: Using the '{top_k_strategy.value}' TopKStrategy. "
     if top_k_strategy.value != TopKStrategy.oracle:
-        # Following https://arxiv.org/abs/2104.06486, take the first 25 articles
+        # Following https://aclanthology.org/2021.emnlp-main.594/, take the first 25 articles
         if hf_dataset_name == Dataset.ms2 or hf_dataset_name == Dataset.cochrane:
             document_stats = pt_dataset.get_document_stats(max_documents=25)
         else:

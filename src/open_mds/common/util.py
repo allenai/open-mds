@@ -192,7 +192,7 @@ def preprocess_ms2(
 ) -> Tuple[str, str]:
     background = text.strip()
     articles = [f"{title.strip()} {abstract.strip()}" for title, abstract in zip(titles, abstracts)]
-    # Following https://arxiv.org/abs/2104.06486, take the first 25 articles.
+    # Following https://aclanthology.org/2021.emnlp-main.594/, take the first 25 articles.
     articles = articles[:max_included_studies]
     text = f" {doc_sep_token} ".join([background] + articles)
     summary = summary.strip()
@@ -203,7 +203,7 @@ def preprocess_cochrane(
     summary: str, titles: List[str], abstracts: List[str], doc_sep_token: str, max_included_studies: int = 25
 ) -> Tuple[str, str]:
     articles = [f"{title.strip()} {abstract.strip()}" for title, abstract in zip(titles, abstracts)]
-    # Following https://arxiv.org/abs/2104.06486, take the first 25 articles.
+    # Following https://aclanthology.org/2021.emnlp-main.594/, take the first 25 articles.
     articles = articles[:max_included_studies]
     text = f" {doc_sep_token} ".join(articles)
     summary = summary.strip()

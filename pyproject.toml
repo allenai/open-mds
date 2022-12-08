@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "open-mds"
 version = "0.1.0"
-description = ""
+description = 'The corresponding code for our paper: "Open-domain Multi-Document Summarization".'
 authors = ["John Giorgi <johnmgiorgi@gmail.com>"]
 readme = "README.md"
 
@@ -29,9 +29,9 @@ py7zr = "^0.18.5"
 protobuf = "^3.20.1"
 rouge-score = "^0.0.4"
 bert-score = "^0.3.11"
-# Can install from PyPI when this branch is merged into latest release
-python-terrier = {git = "https://github.com/terrier-org/pyterrier.git", rev = "master", optional = true}
-pyterrier-sentence-transformers = {git = "https://github.com/soldni/pyterrier_sentence_transformers.git", optional = true}
+seaborn = "^0.12.1"
+python-terrier = "^0.9.1"
+pyterrier-sentence-transformers = {git = "https://github.com/soldni/pyterrier_sentence_transformers.git", rev = "main", optional = true}
 
 [tool.poetry.extras]
 # Extra dependencies required for retrieval.
