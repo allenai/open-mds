@@ -5,8 +5,8 @@ import warnings
 
 import pytest
 import requests
-from retrieval_exploration import perturbations
-from retrieval_exploration.common import util
+from open_mds import perturbations
+from open_mds.common import util
 
 
 class TestPerturber:

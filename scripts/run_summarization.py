@@ -32,9 +32,9 @@ import numpy as np
 import transformers
 from datasets import load_dataset, load_from_disk
 from filelock import FileLock
-from retrieval_exploration import metrics as summarization_metrics
-from retrieval_exploration.common import util
-from retrieval_exploration.perturbations import Perturber
+from open_mds import metrics as summarization_metrics
+from open_mds.common import util
+from open_mds.perturbations import Perturber
 from transformers import (
     AutoConfig,
     AutoModelForSeq2SeqLM,

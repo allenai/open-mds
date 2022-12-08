@@ -1,5 +1,5 @@
-from retrieval_exploration import indexing
-from retrieval_exploration.common import util
+from open_mds import indexing
+from open_mds.common import util
 import pandas as pd
 from copy import deepcopy
 

@@ -1,7 +1,7 @@
 # Open-Domain Multi-Document Summarization
 
-[![ci](https://github.com/allenai/retrieval-exploration/actions/workflows/ci.yml/badge.svg)](https://github.com/allenai/retrieval-exploration/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/allenai/retrieval-exploration/branch/main/graph/badge.svg?token=YTQEI2VMSA)](https://codecov.io/gh/allenai/retrieval-exploration)
+[![ci](https://github.com/allenai/open-mds/actions/workflows/ci.yml/badge.svg)](https://github.com/allenai/open-mds/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/allenai/open-mds/branch/main/graph/badge.svg?token=YTQEI2VMSA)](https://codecov.io/gh/allenai/open-mds)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
 The intention of this repository is to study end-to-end performance of __multi-document summarization__ (MDS) models, that is, when the input document set must be retrieved via (semi-)automatic methods.
@@ -17,14 +17,14 @@ This repository requires Python 3.8 or later.
 Install with `pip` right from GitHub
 
 ```bash
-pip install "git+https://github.com/allenai/retrieval-exploration.git"
+pip install "git+https://github.com/allenai/open-mds.git"
 ```
 
 or clone the repo locally
 
 ```bash
-git clone https://github.com/allenai/retrieval-exploration.git
-cd retrieval-exploration
+git clone https://github.com/allenai/open-mds.git
+cd open-mds
 pip install -e .
 ```
 
@@ -38,8 +38,8 @@ To install using [Poetry](https://python-poetry.org/)
 curl -sSL https://install.python-poetry.org | python3 -
 
 # Clone and move into the repo
-git clone https://github.com/allenai/retrieval-exploration
-cd retrieval-exploration
+git clone https://github.com/allenai/open-mds
+cd open-mds
 
 # Install the package with poetry
 poetry install
@@ -93,7 +93,7 @@ Other experiments can be crafted by modifying the perturbation arguments accordi
 - In order to avoid duplicate computation, some perturbations will cache their results. You can get this path by calling
 
   ```bash
-  python -c "from retrieval_exploration.common import util ; print(util.CACHE_DIR)"
+  python -c "from open_mds.common import util ; print(util.CACHE_DIR)"
   ```
 
 ### Retrieval
@@ -102,7 +102,7 @@ We also provide a script, [index_and_retrieve.py](./scripts/index_and_retrieve.p
 
 ```bash
 # With pip
-pip install "git+https://github.com/allenai/retrieval-exploration.git#egg=retrieval_exploration[retrieval]"
+pip install "git+https://github.com/allenai/open-mds.git#egg=open_mds[retrieval]"
 
 # OR, if installin with poetry
 poetry install -E "retrieval"
@@ -140,7 +140,7 @@ python ./scripts/index_and_retrieve.py "ms2" "./output/datasets/ms2_dense_mean" 
 - If `index-path` is not provided, document indices will be saved to disk under a default location. You can get this dock path by calling
 
   ```bash
-  python -c "from retrieval_exploration.common import util ; print(util.CACHE_DIR)"
+  python -c "from open_mds.common import util ; print(util.CACHE_DIR)"
   ```
 
 - If you wish to use the `dense` retriever, you will need to install [FAISS](https://github.com/facebookresearch/faiss) with GPU support. See [here](https://github.com/facebookresearch/faiss/blob/main/INSTALL.md) for detailed instructions.

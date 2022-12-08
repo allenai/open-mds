@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "retrieval-exploration"
+name = "open-mds"
 version = "0.1.0"
 description = ""
 authors = ["John Giorgi <johnmgiorgi@gmail.com>"]
