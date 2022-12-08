@@ -3,6 +3,7 @@
 [![ci](https://github.com/allenai/open-mds/actions/workflows/ci.yml/badge.svg)](https://github.com/allenai/open-mds/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/allenai/open-mds/branch/main/graph/badge.svg?token=YTQEI2VMSA)](https://codecov.io/gh/allenai/open-mds)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
+![GitHub](https://img.shields.io/github/license/allenai/open-mds?color=blue)
 
 The corresponding code for our paper: "Open-domain Multi-Document Summarization".
 
