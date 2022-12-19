@@ -5,7 +5,7 @@
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 ![GitHub](https://img.shields.io/github/license/allenai/open-mds?color=blue)
 
-The corresponding code for our paper: "Open-domain Multi-Document Summarization".
+The corresponding code for our paper: "Open-domain Multi-Document Summarization". The raw experimental results are available for download [here](https://ai2-s2-research-public.s3-us-west-2.amazonaws.com/open-mds/results.tar.gz).
 
 ## Installation
 
@@ -78,7 +78,7 @@ We also provide a script, [index_and_retrieve.py](./scripts/index_and_retrieve.p
 # With pip
 pip install "git+https://github.com/allenai/open-mds.git#egg=open_mds[retrieval]"
 
-# OR, if installin with poetry
+# OR, if installing with poetry
 poetry install -E "retrieval"
 ```
 
