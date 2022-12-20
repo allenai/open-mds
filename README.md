@@ -5,7 +5,7 @@
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 ![GitHub](https://img.shields.io/github/license/allenai/open-mds?color=blue)
 
-The corresponding code for our paper: "Open-domain Multi-Document Summarization".
+The corresponding code for our paper: Exploring the Challenges of Open Domain Multi-Document Summarization. The raw experimental results are available for download [here](https://ai2-s2-research-public.s3-us-west-2.amazonaws.com/open-mds/results.tar.gz).
 
 ## Installation
 
@@ -72,13 +72,19 @@ You can now select this environment as a kernel in the notebook. See [here](http
 
 ### 🔎 Open-domain MDS
 
-We also provide a script, [index_and_retrieve.py](./scripts/index_and_retrieve.py), for re-building the input document sets of several popular MDS datasets with retrieval. To run the script, make sure you have installed the required dependencies
+In the paper, we bootstrap the newly proposed task of open-domain MDS using existing datasets, retrievers, and summarizers. To run these experiments, there are two steps:
+
+#### 1️⃣ (OPTIONAL) Index and Retrieve the Input Documents
+
+This is only required if you want to re-index the datasets and re-retrieve the input documents. We have already done this and made them publicly available. Just look for `"allenai/[dataset_name]_[sparse|dense]_[max|mean|oracle]"` on [HuggingFace](https://huggingface.co/datasets), e.g. [`"allenai/multinews_sparse_mean"`](https://huggingface.co/datasets/allenai/multinews_sparse_mean).
+
+Otherwise, please use the [index_and_retrieve.py](./scripts/index_and_retrieve.py) script. First, make sure you have installed the required dependencies
 
 ```bash
 # With pip
 pip install "git+https://github.com/allenai/open-mds.git#egg=open_mds[retrieval]"
 
-# OR, if installin with poetry
+# OR, if installing with poetry
 poetry install -E "retrieval"
 ```
 
@@ -90,34 +96,59 @@ python ./scripts/index_and_retrieve.py --help
 
 Here are a few examples:
 
-Re-build the `"test"` set of the [Multi-News](https://aclanthology.org/P19-1102/) dataset with a `"sparse"` retriever, using the `"oracle"` strategy to choose `k`
+Re-build the examples of the [Multi-News](https://aclanthology.org/P19-1102/) dataset with a `"sparse"` retriever and `"oracle"` top-`k` strategy
 
 ```bash
 python ./scripts/index_and_retrieve.py "multinews" "./output/datasets/multinews_sparse_oracle" \
     --retriever "sparse" \
-    --top-k-strategy "oracle" \
-    --splits "test"
+    --top-k-strategy "oracle"
 ```
 
-Re-build the `"validation"` and test set of the [MS^2](https://aclanthology.org/2021.emnlp-main.594/) dataset with a `"dense"` retriever, using the `"mean"` strategy to choose `k`
+Re-build the examples of the [MS^2](https://aclanthology.org/2021.emnlp-main.594/) dataset with a `"dense"` retriever and `"mean"` top-`k` strategy
 
 ```bash
 python ./scripts/index_and_retrieve.py "ms2" "./output/datasets/ms2_dense_mean" \
     --retriever "dense" \
-    --top-k-strategy "mean" \
-    --splits "validation"
+    --top-k-strategy "mean"
 ```
 
-#### Notes
+Other experiments can be crafted by modifying the arguments accordingly.
 
-- We have re-built several popular MDS datasets with retrieval and made them publically available. On the [HuggingFace Hub](https://huggingface.co/). Just search for `"allenai/[dataset_name]_[sparse|dense]_[max|mean|oracle]"`, e.g. [allenai/multinews_dense_max](https://huggingface.co/datasets/allenai/multinews_dense_max).
-- If `index-path` is not provided, document indices will be saved to disk under a default location. You can get this dock path by calling
+##### Notes
+
+- If `index-path` is not provided, document indices will be saved to disk under a default location. You can get this path by calling
 
   ```bash
   python -c "from open_mds.common import util ; print(util.CACHE_DIR)"
   ```
 
 - If you wish to use the `dense` retriever, you will need to install [FAISS](https://github.com/facebookresearch/faiss) with GPU support. See [here](https://github.com/facebookresearch/faiss/blob/main/INSTALL.md) for detailed instructions.
+
+#### Evaluate Summarizers in the Open-Domain Setting
+
+Usage is similar to the original [`run_summarization.py`](https://github.com/huggingface/transformers/blob/main/examples/pytorch/summarization/run_summarization.py) script from HuggingFace, but with extra arguments for the retrieval. To make things easier, [we provide configs](./conf) for the models and datasets we investigated. Here are a few examples:
+
+1️⃣ Evaluate [PEGASUS](https://arxiv.org/abs/1912.08777) with a `"sparse"` retriever and `"mean"` top-`k` strategy on the [Multi-News](https://aclanthology.org/P19-1102/) dataset
+
+```bash
+python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multinews/pegasus/eval.yml" \
+    --output_dir "./output/multinews/pegasus/retrieval/sparse/mean" \
+    --dataset_name "allenai/multinews_sparse_mean" \
+    --retriever "sparse" \
+    --top_k_strategy "mean"
+```
+
+2️⃣ Evaluate [PRIMERA](https://arxiv.org/abs/2110.08499) with a `"dense"` retriever and `"oracle"` top-`k` strategy on the [Multi-XScience](https://aclanthology.org/2020.emnlp-main.648/) dataset
+
+```bash
+python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multixscience/primera/eval.yml" \
+    --output_dir "./output/multixscience/primera/retrieval/dense/oracle" \
+    --dataset_name "allenai/multixscience_dense_oracle" \
+    --retriever "dense" \
+    --strategy "oracle"
+```
+
+Other experiments can be crafted by modifying the arguments accordingly.
 
 ### 🧪 Simulating Document Retrieval Errors
 
@@ -139,21 +170,21 @@ We include two different document "selection strategies" that apply to each pert
 
 Usage is similar to the original [`run_summarization.py`](https://github.com/huggingface/transformers/blob/main/examples/pytorch/summarization/run_summarization.py) script from HuggingFace, but with extra arguments for the perturbation. To make things easier, [we provide configs](./conf) for the models and datasets we investigated. Here are a few examples:
 
-1️⃣ Evaluate [PEGASUS](https://arxiv.org/abs/1912.08777) with the `"deletion"` perturbation and `"random"` document selection strategy, perturbing 10% of input documents, on the [Multi-News](https://aclanthology.org/P19-1102/) dataset
+1️⃣ Evaluate [PEGASUS](https://arxiv.org/abs/1912.08777) with the `"deletion"` perturbation and `"random"` document selection strategy, perturbing 10% of input documents on the [Multi-News](https://aclanthology.org/P19-1102/) dataset
 
 ```bash
 python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multinews/pegasus/eval.yml" \
-    --output_dir "./output/multinews/pegasus/eval/perturbations/deletion/random/0.10" \
+    --output_dir "./output/multinews/pegasus/perturbations/deletion/random/0.10" \
     --perturbation "deletion" \
     --strategy "random" \
     --perturbed-frac 0.10
 ```
 
-2️⃣ Evaluate [PRIMERA](https://arxiv.org/abs/2110.08499) with the `"addition"` perturbation and `"oracle"` strategy, perturbing 50% of input documents, on the [Multi-XScience](https://aclanthology.org/2020.emnlp-main.648/) dataset
+2️⃣ Evaluate [PRIMERA](https://arxiv.org/abs/2110.08499) with the `"addition"` perturbation and `"oracle"` strategy, perturbing 50% of input documents on the [Multi-XScience](https://aclanthology.org/2020.emnlp-main.648/) dataset
 
 ```bash
-python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multixscience/primera/train.yml" \
-    --output_dir "./output/multixscience/primera/train/perturbations/addition/oracle/0.50" \
+python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multixscience/primera/eval.yml" \
+    --output_dir "./output/multixscience/primera/perturbations/addition/oracle/0.50" \
     --perturbation "addition" \
     --strategy "oracle" \
     --perturbed-frac 0.50
