@@ -688,7 +688,8 @@ def main():
                 unperturbed_indices=unperturbed_indices,
             )
             logger.info(
-                f"Applying perturbation '{perturbation_args.perturbation}' with selection strategy '{perturbation_args.selection_strategy}'."
+                f"Applying perturbation '{perturbation_args.perturbation}' with selection strategy"
+                f" '{perturbation_args.selection_strategy}'."
             )
 
         # Rather than naively truncating the concatenated documents, we follow
@@ -907,7 +908,9 @@ def main():
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
         metrics.update(metadata)
 
-        trainer.log_metrics("train", metrics)
+        # The log metrics function does not support anything other then floats or strings, so we elect to not log.
+        # The metrics will still be saved to disk, which is what we care about.
+        # trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
         trainer.save_state()
 
@@ -926,7 +929,9 @@ def main():
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
         metrics.update(metadata)
 
-        trainer.log_metrics("eval", metrics)
+        # The log metrics function does not support anything other then floats or strings, so we elect to not log.
+        # The metrics will still be saved to disk, which is what we care about.
+        # trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 
     if training_args.do_predict:
@@ -942,7 +947,9 @@ def main():
         metrics["predict_samples"] = min(max_predict_samples, len(predict_dataset))
         metrics.update(metadata)
 
-        trainer.log_metrics("predict", metrics)
+        # The log metrics function does not support anything other then floats or strings, so we elect to not log.
+        # The metrics will still be saved to disk, which is what we care about.
+        # trainer.log_metrics("predict", metrics)
         trainer.save_metrics("predict", metrics)
 
         if trainer.is_world_process_zero():
