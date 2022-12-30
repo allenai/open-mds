@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "open-mds"
 version = "0.1.0"
-description = 'The corresponding code for our paper: "Open-domain Multi-Document Summarization".'
+description = 'The corresponding code for our paper: Exploring the Challenges of Open Domain Multi-Document Summarization.'
 authors = ["John Giorgi <johnmgiorgi@gmail.com>"]
 readme = "README.md"
 
@@ -12,9 +12,8 @@ diskcache = "^5.4.0"
 platformdirs = "^2.5.2"
 typer = "^0.6.1"
 rich = "^12.5.1"
-# Currently facing an issue installing torch>1.13 with poetry (see https://github.com/pytorch/pytorch/issues/88049)
-# The upper bound on pinned version can be removed if that issue is resolved
-torch = "^1.10.0,<1.13.0"
+# Skip torch=1.13.0, as there are issues installing with poetry (see https://github.com/pytorch/pytorch/issues/88049)
+torch = "^1.10.0,!=1.13.0"
 transformers = "^4.19.0"
 tokenizers = "^0.12.1"
 datasets = "^2.4.0"
@@ -32,6 +31,8 @@ bert-score = "^0.3.11"
 seaborn = "^0.12.1"
 python-terrier = "^0.9.1"
 pyterrier-sentence-transformers = {git = "https://github.com/soldni/pyterrier_sentence_transformers.git", rev = "main", optional = true}
+# Only required until >0.13.5 is released, see: https://github.com/statsmodels/statsmodels/issues/8543
+statsmodels = {git = "https://github.com/statsmodels/statsmodels.git", rev = "main"}
 
 [tool.poetry.extras]
 # Extra dependencies required for retrieval.

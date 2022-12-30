@@ -132,20 +132,20 @@ Usage is similar to the original [`run_summarization.py`](https://github.com/hug
 
 ```bash
 python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multinews/pegasus/eval.yml" \
-    --output_dir "./output/multinews/pegasus/retrieval/sparse/mean" \
-    --dataset_name "allenai/multinews_sparse_mean" \
-    --retriever "sparse" \
-    --top_k_strategy "mean"
+    output_dir="./output/multinews/pegasus/retrieval/sparse/mean" \
+    dataset_name="allenai/multinews_sparse_mean" \
+    retriever="sparse" \
+    top_k_strategy="mean"
 ```
 
 2️⃣ Evaluate [PRIMERA](https://arxiv.org/abs/2110.08499) with a `"dense"` retriever and `"oracle"` top-`k` strategy on the [Multi-XScience](https://aclanthology.org/2020.emnlp-main.648/) dataset
 
 ```bash
 python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multixscience/primera/eval.yml" \
-    --output_dir "./output/multixscience/primera/retrieval/dense/oracle" \
-    --dataset_name "allenai/multixscience_dense_oracle" \
-    --retriever "dense" \
-    --strategy "oracle"
+    output_dir="./output/multixscience/primera/retrieval/dense/oracle" \
+    dataset_name="allenai/multixscience_dense_oracle" \
+    retriever="dense" \
+    top_k_strategy="oracle"
 ```
 
 Other experiments can be crafted by modifying the arguments accordingly.
@@ -174,20 +174,20 @@ Usage is similar to the original [`run_summarization.py`](https://github.com/hug
 
 ```bash
 python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multinews/pegasus/eval.yml" \
-    --output_dir "./output/multinews/pegasus/perturbations/deletion/random/0.10" \
-    --perturbation "deletion" \
-    --strategy "random" \
-    --perturbed-frac 0.10
+    output_dir="./output/multinews/pegasus/perturbations/deletion/random/0.10" \
+    perturbation="deletion" \
+    selection_strategy="random" \
+    perturbed_frac 0.10
 ```
 
 2️⃣ Evaluate [PRIMERA](https://arxiv.org/abs/2110.08499) with the `"addition"` perturbation and `"oracle"` strategy, perturbing 50% of input documents on the [Multi-XScience](https://aclanthology.org/2020.emnlp-main.648/) dataset
 
 ```bash
 python ./scripts/run_summarization.py "./conf/base.yml" "./conf/multixscience/primera/eval.yml" \
-    --output_dir "./output/multixscience/primera/perturbations/addition/oracle/0.50" \
-    --perturbation "addition" \
-    --strategy "oracle" \
-    --perturbed-frac 0.50
+    output_dir="./output/multixscience/primera/perturbations/addition/oracle/0.50" \
+    perturbation="addition" \
+    selection_strategy="oracle" \
+    perturbed_frac 0.50
 ```
 
 Other experiments can be crafted by modifying the arguments accordingly.
