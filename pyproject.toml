@@ -12,8 +12,9 @@ diskcache = "^5.4.0"
 platformdirs = "^2.5.2"
 typer = "^0.6.1"
 rich = "^12.5.1"
-# Skip torch=1.13.0, as there are issues installing with poetry (see https://github.com/pytorch/pytorch/issues/88049)
-torch = "^1.10.0,!=1.13.0"
+# Skip torch=1.13.0, as there are issues installing with poetry.
+# See https://github.com/pytorch/pytorch/issues/88049 and https://github.com/python-poetry/poetry/issues/6939
+torch = "^1.13.1"
 transformers = "^4.19.0"
 tokenizers = "^0.12.1"
 datasets = "^2.4.0"
