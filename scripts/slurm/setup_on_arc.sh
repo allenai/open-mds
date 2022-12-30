@@ -27,17 +27,26 @@ mkdir -p "$SCRATCH/$PROJECT_NAME"
 
 # Install the package
 # The package is built with poetry, so make sure that it is available first
-pip install "git+https://github.com/python-poetry/poetry.git"
+pip install --upgrade "git+https://github.com/python-poetry/poetry.git"
 poetry -V
 # Unfortunately, poetry install causes a host of issues on ARC machines
 # As a workaround, install only the package with poetry, and all of its dependencies with pip
 poetry install --only-root
 # For several packages, there are less errors when installing the pre-built wheels
-pip install scipy numpy pandas torch torchvision --no-index
+pip install scipy scikit-learn numpy pandas "torch>=1.13.1" torchvision pillow --no-index
 # We also need the latest version of transformers, so install from git
-pip install "git+https://github.com/huggingface/transformers.git"
+pip install --upgrade "git+https://github.com/huggingface/transformers.git"
 # Lastly, we can export the project's dependencies to a requirements file and install with pip
-poetry export -f requirements.txt --output requirements.txt -E "retrieval" --without-hashes
+poetry export -f requirements.txt --output requirements.txt --with "dev" -E "retrieval" --without-hashes
 # but first, remove any of the dependencies we are installing manually
-sed -i '/^scipy\|^numpy\|^pandas\|^torch\|^torchvision\|^transformers\|^pyarrow/d' requirements.txt 
+sed -i '/^scipy\|^scikit-learn\|^numpy\|^pandas\|^torch\|^torchvision\|^pillow\|^transformers\|^pyarrow/d' requirements.txt
+# We also need to remove any dependencies on nvidia-cublas or nvidia-cuda. This is bad metadata that shouldn't
+# have ended up in the requirements file (see: https://github.com/python-poetry/poetry/issues/6939)
+sed -i '/^nvidia-cu/d' requirements.txt
 pip install -r requirements.txt
+
+# (OPTIONAL) Download and cache the models and datasets. Only required if the compute nodes do not have internet access.
+python ./scripts/cache.py
+
+# Check that all tests are passing
+pytest tests
