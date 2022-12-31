@@ -5,6 +5,9 @@ import nltk
 import numpy as np
 from datasets import load_metric
 
+# The underlying language model used by BERTScore to compute the score
+BERTSCORE_MODEL_TYPE = "microsoft/deberta-xlarge-mnli"
+
 
 def _postprocess_text(*, predictions: List[str], references: List[str]) -> Tuple[List[str], List[str]]:
     """Simple post-processing of the text to make it compatible with the summarization evaluation metrics."""
@@ -66,7 +69,7 @@ def compute_bertscore(*, predictions: List[str], references: List[str], **kwargs
         predictions=predictions,
         references=references,
         # These are mostly based on the recommendations in https://github.com/Tiiiger/bert_score
-        model_type="microsoft/deberta-xlarge-mnli",
+        model_type=BERTSCORE_MODEL_TYPE,
         lang="en",
         rescale_with_baseline=True,
         use_fast_tokenizer=True,
