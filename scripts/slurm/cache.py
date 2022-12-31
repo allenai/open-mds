@@ -6,9 +6,11 @@ do not have access to the internet. This is a simple script to download and cach
 models used in this project.
 """
 
-from datasets import load_dataset
+from datasets import load_dataset, load_metric
 from tqdm import tqdm
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import AutoModel, AutoModelForSeq2SeqLM, AutoTokenizer
+
+from open_mds.metrics import BERTSCORE_MODEL_TYPE
 
 DATASETS = ["multi_news", "multi_x_science_sum", "allenai/mslr2022", "ccdv/WCEP-10"]
 MODELS = [
@@ -21,6 +23,7 @@ MODELS = [
     "allenai/led-base-16384-ms2",
     "allenai/led-base-16384-cochrane",
 ]
+METRICS = ["rouge", "bertscore"]
 
 for model in tqdm(MODELS, desc="Downloading models"):
     # trust_remote_code required for ccdv models
@@ -34,3 +37,9 @@ for dataset in tqdm(DATASETS, desc="Downloading datasets"):
         _ = load_dataset(dataset, "cochrane", download_mode="force_redownload")
     else:
         _ = load_dataset(dataset, download_mode="force_redownload")
+
+for metric in tqdm(METRICS, desc="Downloading metrics"):
+    _ = load_metric(metric, download_mode="force_redownload")
+    if metric == "bertscore":
+        # BERTScore requires a model to be downloaded
+        _ = AutoModel.from_pretrained(BERTSCORE_MODEL_TYPE, force_download=True)
