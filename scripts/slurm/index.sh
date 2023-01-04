@@ -8,9 +8,6 @@
 #SBATCH --time=12:00:00
 #SBATCH --job-name=index
 #SBATCH --account=def-wanglab-ab
-# Emails me when job starts, ends or fails
-#SBATCH --mail-user=johnmgiorgi@gmail.com
-#SBATCH --mail-type=FAIL
 # Use this command to run the same job interactively
 # salloc --mem=32G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=def-wanglab-ab
 # salloc --mem=32G --cpus-per-task=1 --gres=gpu:a100:1 --time=3:00:00 --account=def-gbader
