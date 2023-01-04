@@ -1,0 +1,15 @@
+# ModelArguments
+# NOTE: If you are using this in offline mode, you will need to point model_name_or_path to a local copy of the model.
+model_name_or_path: "ccdv/lsg-bart-base-4096-multinews"
+tokenizer_name: "ccdv/lsg-bart-base-4096-multinews"
+# This model contains custom code, so we need to set trust_remote_code to True.
+trust_remote_code: true
+
+# DataTrainingArguments
+dataset_name: "multi_news"
+max_source_length: 4096
+max_target_length: 320
+
+# Seq2SeqTrainingArguments
+do_predict: true
+per_device_eval_batch_size: 16
