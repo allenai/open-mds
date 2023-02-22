@@ -53,11 +53,12 @@ There are several ways to interact with this codebase. If you are interested in 
 We have notebooks corresponding to each of the major experiments in the paper:
 
 - [Dataset Statistics](./notebooks/dataset_statistics.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/allenai/open-mds/blob/main/notebooks/dataset_statistics.ipynb)): Compute simple dataset statistics for each dataset in the paper.
-- [Open-Domain MDS](./notebooks/open-mds.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/allenai/open-mds/blob/main/notebooks/open-mds.ipynb)): Analyze the results from the open-domain MDS experiments.
+- [Open-Domain MDS](./notebooks/open_mds.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/allenai/open-mds/blob/main/notebooks/open_mds.ipynb)): Analyze the results from the open-domain MDS experiments.
 - [Baselines](./notebooks/baselines.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/allenai/open-mds/blob/main/notebooks/baselines.ipynb)): Computes the summarization performance of several simple baselines for each dataset in the paper.
 - [Training](./notebooks/training.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/allenai/open-mds/blob/main/notebooks/training.ipynb)): Analyze the results from the experiments where we fine-tune summarizers in the open-domain setting.
 - [Perturbations](./notebooks/perturbations.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/allenai/open-mds/blob/main/notebooks/perturbations.ipynb)): Analyze the results of our simulated document retrieval error experiments.
 - [Sorting](./notebooks/sorting.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/allenai/open-mds/blob/main/notebooks/sorting.ipynb)): Analyze the results of the sorting perturbation experiment.
+- [Human Evaluation](./notebooks/human_eval.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/allenai/open-mds/blob/main/notebooks/human_eval.ipynb)): Setup and analyze the results of the human evaluation.
 
 If you are running the notebooks locally, make sure to add a virtual environment with this project installed in it to an IPython kernel:
 
