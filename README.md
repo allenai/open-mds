@@ -1,5 +1,9 @@
 # Open-Domain Multi-Document Summarization
 
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/exploring-the-challenges-of-open-domain-multi/multi-document-summarization-on-ms-2)](https://paperswithcode.com/sota/multi-document-summarization-on-ms-2?p=exploring-the-challenges-of-open-domain-multi)
+
+---
+
 [![ci](https://github.com/allenai/open-mds/actions/workflows/ci.yml/badge.svg)](https://github.com/allenai/open-mds/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/allenai/open-mds/branch/main/graph/badge.svg?token=YTQEI2VMSA)](https://codecov.io/gh/allenai/open-mds)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
