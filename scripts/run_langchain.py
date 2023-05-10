@@ -17,6 +17,13 @@ from open_mds.common import util
 DOC_SEP_TOKEN = "<|doc|>"
 
 
+def _print_example_prompt(llm, example_prompt, example_printed: bool) -> bool:
+    """Print the example prompt if it hasn't already been printed."""
+    if not example_printed:
+        print(f"Example prompt (length={llm.get_num_tokens(example_prompt)}): {example_prompt}")
+    return True
+
+
 def main(
     dataset_name: str = typer.Argument("The name of the dataset to use (via the datasets library)."),
     output_fp: str = typer.Argument("Filepath to save the results to."),
@@ -47,9 +54,11 @@ def main(
     ),
     split: str = typer.Option("test", help="The dataset split to use."),
 ):
+    """Evaluate an OpenAI based large language model for multi-document summarization."""
 
     # Load the dataset
     dataset = load_dataset(dataset_name, dataset_config_name, split=split)
+    print(f'Loaded dataset "{dataset_name}" (config="{dataset_config_name}", split="{split}")')
 
     # Setup the LLM
     openai_api_key = openai_api_key or os.environ.get("OPENAI_API_KEY")
@@ -61,6 +70,7 @@ def main(
         model=model_name, temperature=temperature, openai_api_key=openai_api_key, max_tokens=max_output_Tokens
     )
     tokenizer = tiktoken.encoding_for_model(model_name)
+    print(f'Using "{model_name}" as the LLM with temperature={temperature} and {max_output_Tokens} max output tokens.')
 
     # Setup the prompt
     if dataset_name == "multi_news" or "multinews" in dataset_name:
@@ -89,7 +99,7 @@ Abstract: {abstract}\n{ref_abstract}\nRelated work:",
         """,
         )
     else:
-        raise ValueError(f"Unknown dataset: {dataset_name} or config {dataset_config_name}")
+        raise NotImplementedError(f"Unknown dataset: {dataset_name} or config {dataset_config_name}")
 
     # Setup the chain
     chain = LLMChain(llm=llm, prompt=prompt)
@@ -111,16 +121,14 @@ Abstract: {abstract}\n{ref_abstract}\nRelated work:",
                 tokenizer=tokenizer,
             )
             documents = "\n".join(
-                f"Source {i+1}: {doc}"
-                for i, doc in enumerate(util.split_docs(documents, doc_sep_token=DOC_SEP_TOKEN))
+                f"Source {i+1}: {doc}" for i, doc in enumerate(util.split_docs(documents, doc_sep_token=DOC_SEP_TOKEN))
             )
             # Print the first example, helpful for debugging / catching errors in the prompt
-            if not example_printed:
-                example_prompt = prompt.format(documents=documents)
-                print(f"Example prompt (length={llm.get_num_tokens(example_prompt)}): {example_prompt}")
-                example_printed = True
+            example_prompt = prompt.format(documents=documents)
+            example_printed = _print_example_prompt(llm, example_prompt, example_printed)
+            # Run the chain
             output = chain.run(documents=documents)
-        elif dataset_name == "multi_x_science_sum" or "multixscience" in dataset_name:
+        else:
             abstract = util.sanitize_text(example["abstract"])
             ref_abstract = DOC_SEP_TOKEN.join(
                 f"Referenced abstract {cite_n}: {util.sanitize_text(ref_abs)}"
@@ -134,16 +142,9 @@ Abstract: {abstract}\n{ref_abstract}\nRelated work:",
                 tokenizer=tokenizer,
             )
             ref_abstract = ref_abstract.replace(DOC_SEP_TOKEN, "\n")
-
-            # Print the first example, helpful for debugging / catching errors in the prompt
-            if not example_printed:
-                example_prompt = prompt.format(abstract=abstract, ref_abstract=ref_abstract)
-                print(f"Example prompt (length={llm.get_num_tokens(example_prompt)}): {example_prompt}")
-                example_printed = True
-
+            example_prompt = prompt.format(abstract=abstract, ref_abstract=ref_abstract)
+            example_printed = _print_example_prompt(llm, example_prompt, example_printed)
             output = chain.run(abstract=abstract, ref_abstract=ref_abstract)
-        else:
-            raise ValueError(f"Unknown dataset: {dataset_name} or config {dataset_config_name}")
 
         outputs.append(output)
         if max_examples and len(outputs) >= max_examples:
@@ -152,10 +153,8 @@ Abstract: {abstract}\n{ref_abstract}\nRelated work:",
     # Compute the metrics and save the results
     if dataset_name == "multi_news" or "multinews" in dataset_name:
         references = dataset["summary"]
-    elif dataset_name == "multi_x_science_sum" or "multixscience" in dataset_name:
-        references = dataset["related_work"]
     else:
-        raise ValueError(f"Unknown dataset: {dataset_name} or config {dataset_config_name}")
+        references = dataset["related_work"]
 
     rouge = metrics.compute_rouge(predictions=outputs, references=references[: len(outputs)])
     bertscore = metrics.compute_bertscore(predictions=outputs, references=references[: len(outputs)])
