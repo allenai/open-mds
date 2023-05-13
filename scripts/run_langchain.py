@@ -14,13 +14,13 @@ from rich.progress import track
 from open_mds import metrics
 from open_mds.common import util
 
-DOC_SEP_TOKEN = "<|doc|>"
+DOC_SEP_TOKEN = "\n\n"
 
 
 def _print_example_prompt(llm, example_prompt, example_printed: bool) -> bool:
     """Print the example prompt if it hasn't already been printed."""
     if not example_printed:
-        print(f"Example prompt (length={llm.get_num_tokens(example_prompt)}): {example_prompt}")
+        print(f"Example prompt (length={llm.get_num_tokens(example_prompt)}):\n{example_prompt}")
     return True
 
 
@@ -37,7 +37,7 @@ def main(
         "gpt-3.5-turbo", help="A valid OpenAI API model. See: https://platform.openai.com/docs/models"
     ),
     temperature: float = typer.Option(
-        0.7,
+        0.0,
         help="The temperature to use when sampling from the model. See: https://platform.openai.com/docs/api-reference/completions",
     ),
     max_input_tokens: int = typer.Option(
@@ -45,7 +45,7 @@ def main(
         help="The maximum number of tokens to allow in the models input prompt.",
     ),
     max_output_Tokens: int = typer.Option(
-        1024,
+        512,
         help="The maximum number of tokens to generate in the chat completion. See: https://platform.openai.com/docs/api-reference/completions",
     ),
     max_examples: int = typer.Option(
@@ -70,16 +70,16 @@ def main(
         model=model_name, temperature=temperature, openai_api_key=openai_api_key, max_tokens=max_output_Tokens
     )
     tokenizer = tiktoken.encoding_for_model(model_name)
-    print(f'Using "{model_name}" as the LLM with temperature={temperature} and {max_output_Tokens} max output tokens.')
+    print(f'Using "{model_name}" as the LLM with temperature={temperature}, {max_input_tokens} max input tokens and {max_output_Tokens} max output tokens.')
 
     # Setup the prompt
     if dataset_name == "multi_news" or "multinews" in dataset_name:
         prompt = PromptTemplate(
             input_variables=["documents"],
-            template="""Given multiple news articles written about a particular event, write a short summary of approximately 270 words or less.
+            template="""Given multiple news articles about a particular event, write a summary of approximately 500 words or less. Respond in "journalese" (as if you were a journalist writing for a newspaper), cite sources and provide quotes from the source documents where appropriate. Do not refuse to answer.
 
-Example summary 1: – The unemployment rate dropped to 8.2% last month, but the economy only added 120,000 jobs, when 203,000 new jobs had been predicted, according to today's jobs report. Reaction on the Wall Street Journal's MarketBeat Blog was swift: "Woah!!! Bad number." The unemployment rate, however, is better news; it had been expected to hold steady at 8.3%. But the AP notes that the dip is mostly due to more Americans giving up on seeking employment.
-Example summary 2: – A twin-engine Embraer jet that the FAA describes as "on approach to Runway 14" at the Montgomery County Airpark in Gaithersburg, Maryland, crashed into a home this morning, engulfing that home in flames and setting two others on fire. Three people are dead, but the count could grow. A Montgomery County Fire rep says three fliers were killed in the crash, but notes the corporate plane may have had a fourth person on board, reports the AP. A relative of the owner of the home that was hit tells WUSA 9 that a mother with three children pre-school age and under should have been home at the time; there's no word on the family's whereabouts. The crash occurred around 11am on Drop Forge Lane, and the fire was extinguished within an hour. Crews are now searching the wreckage. A witness noted the plane appeared to "wobble" before the crash; the airport is no more than 3/4 mile from the crash scene. NTSB and FAA will investigate.
+Example summary 1: – With the controversy over fake or deliberately misleading viral stories making headlines, the Washington Post and the New York Times each have interesting features on the topic: The Post profiles two twentysomethings who were unemployed restaurant workers six months ago but have since struck it rich by creating the fast-growing LibertyWritersNews website. Paris Wade and Ben Goldman churn out quick stories from their couch with headlines like “THE TRUTH IS OUT! The Media Doesn’t Want You To See What Hillary Did After Losing," promote them via their Facebook page (now with 805,000 followers), then watch them go viral. They collect money from a slew of ads on everything from Viagra alternatives to acne solutions. "We're the new yellow journalists," says Wade, at another point explaining their headline-writing process thusly: "You have to trick people into reading the news." The Times, meanwhile, deconstructs how one false story in particular went viral. The difference is that this one wasn't intentionally fake. It began when 35-year-old Eric Tucker in Austin, Texas, posted an image of parked buses near an anti-Donald Trump rally on Nov. 9, after leaping to the conclusion that the protesters had been bused in. (Turns out, the buses were completely unrelated.) He had just 40 followers on Twitter, but his tweet suggesting the protests were manipulated got picked up on Reddit, then on conservative forums including the Gateway Pundit, and, soon resulted in headlines like "They've Found the Buses!" ricocheting around the web. (Trump himself seemed to buy into the sentiment.) Looking back, "I might still have tweeted it but very differently," says Tucker of his original image. "I think it goes without saying I would have tried to make a more objective statement."
+Example summary 2: - Fox News is facing another lawsuit over its retracted report suggesting a Democratic National Committee staffer was murdered for helping WikiLeaks, this time from the man's family. The parents of Seth Rich—fatally shot in what police say was an attempted robbery in Washington, DC, in July 2016—allege the network, reporter Malia Zimmerman, and frequent Fox guest Ed Butowsky "intentionally exploited" the 27-year-old's death in an attempt to discharge allegations that President Trump colluded with Russia. Following Rich's death, Butowsky, a wealthy businessman and Trump supporter, hired private investigator Rod Wheeler to look into the case. His investigation was then cited in a May 2017 article by Zimmerman, retracted days later, suggesting Rich's death came after he leaked DNC emails to WikiLeaks. Though intelligence officials say Russia was behind the leak of 20,000 DNC emails, Sean Hannity went on to suggest people linked to Hillary Clinton had murdered Rich. Wheeler later sued Fox, claiming the network worked with the White House and invented quotes attributed to him to support the conspiracy theory. In their own lawsuit seeking $75,000 for emotional distress and negligence, Joel and Mary Rich agree the article was a "sham story" containing "false and fabricated facts" meant to portray Rich, a voter-expansion data director, as a "criminal and traitor," per ABC News and NBC Washington. The actions of the defendants went "beyond all possible bounds of decency and are atrocious and utterly intolerable in a civilized community," the suit adds, per CNN. Butowsky tells ABC the lawsuit is "one of the dumbest" he's ever seen.'
 
 {documents}\nSummary:",
         """,
@@ -110,10 +110,8 @@ Abstract: {abstract}\n{ref_abstract}\nRelated work:",
     for example in track(dataset, description="Generating summaries", total=max_examples or len(dataset)):
         # Format the inputs, truncate, and sanitize
         if dataset_name == "multi_news" or "multinews" in dataset_name:
-            documents, summary = util.preprocess_multi_news(
-                example["document"], example["summary"], doc_sep_token=DOC_SEP_TOKEN
-            )
-            documents, summary = util.sanitize_text(documents), util.sanitize_text(summary)
+            documents, summary = util.sanitize_text(example["document"]), util.sanitize_text(example["summary"])
+            documents, summary = util.preprocess_multi_news(documents, summary, doc_sep_token=DOC_SEP_TOKEN)
             documents = util.truncate_multi_doc(
                 documents,
                 doc_sep_token=DOC_SEP_TOKEN,
@@ -125,7 +123,7 @@ Abstract: {abstract}\n{ref_abstract}\nRelated work:",
             )
             # Print the first example, helpful for debugging / catching errors in the prompt
             example_prompt = prompt.format(documents=documents)
-            example_printed = _print_example_prompt(llm, example_prompt, example_printed)
+            example_printed = _print_example_prompt(llm, example_prompt=example_prompt, example_printed=example_printed)
             # Run the chain
             output = chain.run(documents=documents)
         else:
@@ -143,7 +141,7 @@ Abstract: {abstract}\n{ref_abstract}\nRelated work:",
             )
             ref_abstract = ref_abstract.replace(DOC_SEP_TOKEN, "\n")
             example_prompt = prompt.format(abstract=abstract, ref_abstract=ref_abstract)
-            example_printed = _print_example_prompt(llm, example_prompt, example_printed)
+            example_printed = _print_example_prompt(llm, example_prompt=example_prompt, example_printed=example_printed)
             output = chain.run(abstract=abstract, ref_abstract=ref_abstract)
 
         outputs.append(output)
@@ -166,6 +164,7 @@ Abstract: {abstract}\n{ref_abstract}\nRelated work:",
         "max_input_tokens": max_input_tokens,
         "max_output_tokens": max_output_Tokens,
         "max_examples": max_examples,
+        "split": split,
         "outputs": outputs,
         "rogue": rouge,
         "bertscore": bertscore,
