@@ -7,6 +7,7 @@ from typing import Optional
 import tiktoken
 import typer
 from datasets import load_dataset
+from diskcache import Cache
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
@@ -119,10 +120,16 @@ Summary:""",
             f"Source {i+1}: {doc}" for i, doc in enumerate(util.split_docs(documents, doc_sep_token=DOC_SEP_TOKEN))
         )
         # Print the first example, helpful for debugging / catching errors in the prompt
-        example_prompt = prompt.format(documents=documents)
-        example_printed = _print_example_prompt(llm, example_prompt=example_prompt, example_printed=example_printed)
-        # Run the chain
-        output = chain.run(documents=documents)
+        formatted_prompt = prompt.format(documents=documents)
+        example_printed = _print_example_prompt(llm, example_prompt=formatted_prompt, example_printed=example_printed)
+        # Run the chain, retrieving the output from the cache if we have already run this example
+        with Cache(util.CACHE_DIR) as reference:
+            key = util.sanitize_text(f"{model_name}_{temperature}_{formatted_prompt}", lowercase=True)
+            if key in reference:
+                output = reference[key]
+            else:
+                output = chain.run(documents=documents)
+                reference[key] = output
         outputs.append(output)
         if max_examples and len(outputs) >= max_examples:
             break
