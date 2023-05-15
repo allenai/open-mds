@@ -6,7 +6,7 @@ authors = ["John Giorgi <johnmgiorgi@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8.1"
+python = "^3.9"
 omegaconf = "^2.2.2"
 diskcache = "^5.4.0"
 platformdirs = "^2.5.2"
