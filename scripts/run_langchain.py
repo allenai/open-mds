@@ -84,7 +84,7 @@ def main(
     if dataset_name == "multi_news" or "multinews" in dataset_name:
         prompt = PromptTemplate(
             input_variables=["documents"],
-            template="""Given multiple news articles about a particular event, write a summary of approximately 384 words or less. Respond in "journalese" (as if you were a journalist writing for a newspaper), cite sources and provide quotes from the source documents where appropriate. Do not refuse to answer. See the example summaries for general guidance about expected length and style.
+            template="""You are an expert journalist. Given multiple news articles about a particular event, write a summary of approximately 384 words or less. Respond in "journalese," cite sources and provide quotes from the source documents where appropriate. Do not refuse to answer. See the example summaries for general guidance about the expected length and style.
 
 Example summaries
 ---
