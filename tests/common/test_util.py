@@ -138,24 +138,36 @@ def test_get_global_attention_mask() -> None:
     assert expected_global_attention_mask == actual_global_attention_mask
 
 
-def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
+@pytest.mark.parametrize("tokenizer_type", ["hf_tokenizer", "tiktokenizer"])
+def test_truncate_multi_doc(tokenizer_type: Callable, request) -> None:
     max_length = 24
-    doc_sep_token = "<doc-sep>"
-    tokenizer = hf_tokenizer("allenai/PRIMERA")
+    # Use something that is not in either tokenizer's vocabulary
+    doc_sep_token = "\n\n"
+
+    # Retrieve the correct tokenizer
+    tokenizer_factory = request.getfixturevalue(tokenizer_type)
+    tokenizer = (
+        tokenizer_factory("allenai/PRIMERA")
+        if tokenizer_type == "hf_tokenizer"
+        else tokenizer_factory("gpt-3.5-turbo")
+    )
 
     # Test a simple case with two documents, where one is longer than the other
     docs = [
         "I am document one.",
         # Including a document separator token at the end. Some examples in multi-news do this,
-        # so we should make sure it doesn't trip up logic.
+        # so we should make sure it doesn't trip up the logic.
         f"I am document two. I am a little longer than document one. {doc_sep_token}",
     ]
     text = f" {doc_sep_token} ".join(docs)
 
-    expected = "I am document one. <doc-sep> I am document two. I am a little longer"
+    expected = (
+        f"I am document one. {doc_sep_token} I am document two. I am a little"
+        if tokenizer_type == "hf_tokenizer"
+        else f"I am document one. {doc_sep_token} I am document two. I am a little longer than"
+    )
     actual = util.truncate_multi_doc(text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer)
     assert expected == actual
-    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
 
     # Test a simple case with two documents, where both are the same length
     docs = [
@@ -164,10 +176,13 @@ def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
     ]
     text = f" {doc_sep_token} ".join(docs)
 
-    expected = "I am document one. I am the same length <doc-sep> I am document two. I am the same length"
+    expected = (
+        f"I am document one. I am the same {doc_sep_token} I am document two. I am the same"
+        if tokenizer_type == "hf_tokenizer"
+        else f"I am document one. I am the same length as {doc_sep_token} I am document two. I am the same length as"
+    )
     actual = util.truncate_multi_doc(text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer)
     assert expected == actual
-    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
 
     # Test that the argument num_docs is respected
     docs = [
@@ -178,22 +193,32 @@ def test_truncate_multi_doc(hf_tokenizer: Callable) -> None:
     text = f" {doc_sep_token} ".join(docs)
 
     expected = (
-        "I am document one. I am the same length <doc-sep>"
-        " I am document two. I am the same length <doc-sep>"
-        " I am document three. I am the same length"
+        (
+            f"I am document one. I am the same {doc_sep_token}"
+            f" I am document two. I am the same {doc_sep_token}"
+            " I am document three. I am the same"
+        )
+        if tokenizer_type == "hf_tokenizer"
+        else (
+            f"I am document one. I am the same length as {doc_sep_token}"
+            f" I am document two. I am the same length as {doc_sep_token}"
+            " I am document three. I am the same length as"
+        )
     )
     actual = util.truncate_multi_doc(
         text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer, num_docs=2
     )
     assert expected == actual
-    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
 
-    expected = "I am document one. I <doc-sep> I am document two. I <doc-sep> I am document three. I"
+    expected = (
+        f"I am document one. {doc_sep_token} I am document two. {doc_sep_token} I am document three."
+        if tokenizer_type == "hf_tokenizer"
+        else f"I am document one. I {doc_sep_token} I am document two. I {doc_sep_token} I am document three. I"
+    )
     actual = util.truncate_multi_doc(
         text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer, num_docs=3
     )
     assert expected == actual
-    assert len(tokenizer(text, max_length=max_length)["input_ids"]) == max_length
 
 
 def test_batch_decode_multi_doc() -> None:

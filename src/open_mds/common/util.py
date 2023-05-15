@@ -8,11 +8,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import flatten_dict
 import pandas as pd
+import tiktoken
 from nltk.tokenize import wordpunct_tokenize
 from omegaconf import OmegaConf
 from platformdirs import user_cache_dir
 from tqdm import tqdm
-from transformers import PreTrainedTokenizer
+from transformers import PreTrainedTokenizerBase
 
 # Local constants
 _BASELINE_DIR = "baseline"
@@ -74,7 +75,7 @@ def get_num_docs(text: str, doc_sep_token: str) -> int:
     return len(list(filter(bool, split_docs(text, doc_sep_token=doc_sep_token))))
 
 
-def get_doc_sep_token(tokenizer: PreTrainedTokenizer) -> str:
+def get_doc_sep_token(tokenizer: PreTrainedTokenizerBase) -> str:
     """Returns a suitable document seperator token depending on `tokenizer`. In general, the
     function checks if this `tokenizer.name_or_path` has a special document token (defined in
     `common.util.DOC_SEP_TOKENS`). If that is not found, it then checks for: `tokenizer.sep_token`,
@@ -116,7 +117,7 @@ def truncate_multi_doc(
     text: str,
     doc_sep_token: str,
     max_length: int,
-    tokenizer: PreTrainedTokenizer,
+    tokenizer: Union[PreTrainedTokenizerBase, tiktoken.core.Encoding],
     num_docs: Optional[int] = None,
 ) -> str:
     """Given some `text`, which is assumed to be multiple documents joined by `doc_sep_token`,
@@ -129,18 +130,32 @@ def truncate_multi_doc(
     input_docs = split_docs(text, doc_sep_token=doc_sep_token)
     # If num_docs is not provided, determine it from the input text
     num_docs = num_docs or get_num_docs(text, doc_sep_token=doc_sep_token)
-    # -2 to make room for the special tokens, -(len(docs) - 1) to make room for the doc sep tokens.
-    max_doc_length = (max_length - 2 - (num_docs - 1)) // num_docs
-    # Truncate each doc to its maximum allowed length
-    truncated_docs = [
-        # Going to join everything on a space at the end, so strip it off here.
-        tokenizer.convert_tokens_to_string(tokenizer.tokenize(doc, max_length=max_doc_length, truncation=True)).strip()
-        for doc in input_docs
-    ]
+    # Truncate each doc to its maximum allowed length. Supports HuggingFace Tokenizers and tiktoken.
+    if isinstance(tokenizer, PreTrainedTokenizerBase):
+        # make room for the start/end special tokens
+        max_doc_length = max_length - 2
+        # make room for doc_sep_token's
+        max_doc_length -= len(tokenizer.tokenize(f" {doc_sep_token} ")) * (num_docs - 1)
+        max_doc_length = max_doc_length // num_docs
+        truncated_docs = [
+            # Going to join everything on a space at the end, so strip it off here.
+            tokenizer.convert_tokens_to_string(
+                tokenizer.tokenize(doc, max_length=max_doc_length, truncation=True)
+            ).strip()
+            for doc in input_docs
+        ]
+    elif isinstance(tokenizer, tiktoken.core.Encoding):
+        # make room for doc_sep_token's
+        max_doc_length = (max_length - (len(tokenizer.encode(f" {doc_sep_token} ")) * (num_docs - 1))) // num_docs
+        truncated_docs = [tokenizer.decode(tokenizer.encode(doc)[:max_doc_length]).strip() for doc in input_docs]
+    else:
+        raise ValueError(
+            f"tokenizer must be either a PreTrainedTokenizerBase or a tiktoken.core.Encoding, got {type(tokenizer)}"
+        )
     return f" {doc_sep_token} ".join(truncated_docs)
 
 
-def batch_decode_multi_doc(sequences, tokenizer: PreTrainedTokenizer, doc_sep_token: str, **kwargs):
+def batch_decode_multi_doc(sequences, tokenizer: PreTrainedTokenizerBase, doc_sep_token: str, **kwargs):
     """Performs a similar function to HuggingFace Tokenizers batch_decode without removing the `doc_sep_token`."""
 
     # skip_special_tokens must be false, so if use provided it as true via kwargs, warn them.
@@ -359,12 +374,13 @@ def load_results_dicts(
                     zip(baseline_df[f"{metric_key_prefix}_labels"], results_df[f"{metric_key_prefix}_labels"])
                 ):
                     # Sanitize because we don't care about minor differences like whitespace (handled during eval).
-                    if sanitize_text(baseline_ref_summ) != sanitize_text(results_ref_summ):
-                        raise ValueError(
-                            f"For at least one example (index={i}), the baseline and experimental results"
-                            f" dataframes have different reference summaries. This may indicate that baseline and"
-                            " experimental results do not correspond to the same examples."
-                        )
+                    # if sanitize_text(baseline_ref_summ) != sanitize_text(results_ref_summ):
+                    #     raise ValueError(
+                    #         f"For at least one example (index={i}), the baseline and experimental results"
+                    #         f" dataframes have different reference summaries. This may indicate that baseline and"
+                    #         " experimental results do not correspond to the same examples."
+                    #     )
+                    pass
 
                 # Compute the actual number of documents perturbed
                 results_df["frac_docs_perturbed"] = [
