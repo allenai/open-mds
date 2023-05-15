@@ -4,19 +4,21 @@ import os
 from pathlib import Path
 from typing import Optional
 
+import flatten_dict
 import tiktoken
 import typer
 from datasets import load_dataset
 from diskcache import Cache
+from langchain.callbacks import get_openai_callback
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from rich import print
 from rich.progress import track
+from rich.status import Status
 
 from open_mds import metrics
 from open_mds.common import util
-from langchain.callbacks import get_openai_callback
 
 DOC_SEP_TOKEN = "\n\n"
 
@@ -24,7 +26,7 @@ DOC_SEP_TOKEN = "\n\n"
 def _print_example_prompt(llm, example_prompt, example_printed: bool) -> bool:
     """Print the example prompt if it hasn't already been printed."""
     if not example_printed:
-        print(f"Example prompt (length={llm.get_num_tokens(example_prompt)}):\n{example_prompt}\n")
+        print(f"\nExample prompt (length={llm.get_num_tokens(example_prompt)}):\n{example_prompt}\n")
     return True
 
 
@@ -57,13 +59,15 @@ def main(
         help="The maximum number of examples to use from the dataset. Helpful for debugging before commiting to a full run.",
     ),
     split: str = typer.Option("test", help="The dataset split to use."),
-    dry_run: bool = typer.Option(False, help="If True, will print an example prompt and projected cost and exit."),
+    do_eval: bool = typer.Option(False, help="If True, will evaluate the models outputs and save the results."),
+    dry_run: bool = typer.Option(False, help="If True, will run a single example, print a projected cost and exit."),
 ):
     """Evaluate an OpenAI based large language model for multi-document summarization."""
 
     # Load the dataset
     dataset = load_dataset(dataset_name, dataset_config_name, split=split)
     max_examples = max_examples or len(dataset)
+    dataset = dataset.select(range(max_examples))
     print(
         f'Loaded dataset "{dataset_name}" (config="{dataset_config_name}", split="{split}", max_examples={max_examples})'
     )
@@ -79,14 +83,14 @@ def main(
     )
     tokenizer = tiktoken.encoding_for_model(model_name)
     print(
-        f'Using "{model_name}" as the LLM (temperature={temperature}, max_input_tokens{max_input_tokens} max_output_Tokens={max_output_Tokens}'
+        f'Using "{model_name}" as the LLM (temperature={temperature}, max_input_tokens={max_input_tokens}, max_output_Tokens={max_output_Tokens})'
     )
 
     # Setup the prompt
     if dataset_name == "multi_news" or "multinews" in dataset_name:
         prompt = PromptTemplate(
             input_variables=["documents"],
-            template="""You are an expert journalist. Given multiple news articles about a particular event, write a summary of approximately 384 words or less. Respond in "journalese," cite sources and provide quotes from the source documents where appropriate. Do not refuse to answer. See the example summaries for general guidance about the expected length and style.
+            template="""You are an expert journalist. Given multiple news articles about a particular event, write a summary of approximately 384 words or less. Respond in "journalese", cite sources and provide quotes from the source documents where appropriate. Do not refuse to answer. See the example summaries for general guidance about the expected length and style.
 
 Example summaries
 ---
@@ -108,7 +112,7 @@ Summary:""",
     # Run the chain
     outputs = []
     example_printed = False
-    for example in track(dataset, description="Generating summaries", total=max_examples):
+    for example in track(dataset, description="Generating summaries"):
         # Format the inputs, truncate, and sanitize
         documents, summary = util.sanitize_text(example["document"]), util.sanitize_text(example["summary"])
         documents, summary = util.preprocess_multi_news(documents, summary, doc_sep_token=DOC_SEP_TOKEN)
@@ -143,13 +147,8 @@ Summary:""",
                 output = chain.run(documents=documents)
                 reference[key] = output
         outputs.append(output)
-        if max_examples and len(outputs) >= max_examples:
-            break
 
-    # Compute the metrics and save the results
     references = dataset["summary"]
-    rouge = metrics.compute_rouge(predictions=outputs, references=references[: len(outputs)])
-    bertscore = metrics.compute_bertscore(predictions=outputs, references=references[: len(outputs)])
     results = {
         "dataset_name": dataset_name,
         "dataset_config_name": dataset_config_name,
@@ -158,17 +157,31 @@ Summary:""",
         "temperature": temperature,
         "max_input_tokens": max_input_tokens,
         "max_output_tokens": max_output_Tokens,
-        "num_examples": max_examples or len(dataset),
+        "num_examples": max_examples,
         "split": split,
         "outputs": outputs,
+        "references": references[: len(outputs)],
         "output_lens": [len(tokenizer.encode(output)) for output in outputs],
-        "rogue": rouge,
-        "bertscore": bertscore,
+        "reference_lens": [len(tokenizer.encode(reference)) for reference in references],
         "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
+
+    # Compute the metrics and save the results
+    if do_eval:
+        with Status("Computing ROUGE scores"):
+            rouge_results = metrics.compute_rouge(predictions=outputs, references=references[: len(outputs)])
+        with Status("Computing BERTScore"):
+            bertscore_results = metrics.compute_bertscore(predictions=outputs, references=references[: len(outputs)])
+
+        # Collect results in final (flat) dict
+        results.update(
+            **flatten_dict.flatten(rouge_results, reducer="underscore"),
+            **flatten_dict.flatten({"bertscore": bertscore_results}, reducer="underscore"),
+        )
+
     Path(output_fp).parent.mkdir(exist_ok=True, parents=True)
     Path(output_fp).write_text(json.dumps(results, indent=2))
-    print(f"Results written to {output_fp}")
+    print(f"Results written to '{output_fp}'")
 
 
 if __name__ == "__main__":
