@@ -45,7 +45,7 @@ def main(
         help="The temperature to use when sampling from the model. See: https://platform.openai.com/docs/api-reference/completions",
     ),
     max_input_tokens: int = typer.Option(
-        3073,
+        3512,
         help="The maximum number of tokens to allow in the models input prompt.",
     ),
     max_output_Tokens: int = typer.Option(
@@ -75,7 +75,7 @@ def main(
             "OpenAI API key must be provided via the OPENAI_API_KEY environment variable or the --openai-api-key flag."
         )
     llm = ChatOpenAI(
-        model=model_name, temperature=temperature, openai_api_key=openai_api_key, max_tokens=max_output_Tokens
+        model_name=model_name, temperature=temperature, openai_api_key=openai_api_key, max_tokens=max_output_Tokens
     )
     tokenizer = tiktoken.encoding_for_model(model_name)
     print(
