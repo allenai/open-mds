@@ -16,6 +16,7 @@ from rich.progress import track
 
 from open_mds import metrics
 from open_mds.common import util
+from langchain.callbacks import get_openai_callback
 
 DOC_SEP_TOKEN = "\n\n"
 
@@ -23,7 +24,7 @@ DOC_SEP_TOKEN = "\n\n"
 def _print_example_prompt(llm, example_prompt, example_printed: bool) -> bool:
     """Print the example prompt if it hasn't already been printed."""
     if not example_printed:
-        print(f"Example prompt (length={llm.get_num_tokens(example_prompt)}):\n{example_prompt}")
+        print(f"Example prompt (length={llm.get_num_tokens(example_prompt)}):\n{example_prompt}\n")
     return True
 
 
@@ -56,6 +57,7 @@ def main(
         help="The maximum number of examples to use from the dataset. Helpful for debugging before commiting to a full run.",
     ),
     split: str = typer.Option("test", help="The dataset split to use."),
+    dry_run: bool = typer.Option(False, help="If True, will print an example prompt and projected cost and exit."),
 ):
     """Evaluate an OpenAI based large language model for multi-document summarization."""
 
@@ -122,6 +124,16 @@ Summary:""",
         # Print the first example, helpful for debugging / catching errors in the prompt
         formatted_prompt = prompt.format(documents=documents)
         example_printed = _print_example_prompt(llm, example_prompt=formatted_prompt, example_printed=example_printed)
+
+        # Get projected cost of the experiement
+        if dry_run:
+            with get_openai_callback() as cb:
+                output = chain.run(documents=documents)
+                print("[yellow]--dry-run flag passed. Getting projected cost and exiting.[/yellow]")
+                print(f"Projected cost for one example. Actual cost will be ~max_examples={max_examples} this amount.")
+                print(cb)
+                raise typer.Exit()
+
         # Run the chain, retrieving the output from the cache if we have already run this example
         with Cache(util.CACHE_DIR) as reference:
             key = util.sanitize_text(f"{model_name}_{temperature}_{formatted_prompt}", lowercase=True)
