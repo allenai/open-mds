@@ -183,8 +183,9 @@ Summary:""",
             **flatten_dict.flatten({"bertscore": bertscore_results}, reducer="underscore"),
         )
 
-    Path(output_fp).parent.mkdir(exist_ok=True, parents=True)
-    Path(output_fp).write_text(json.dumps(results, indent=2))
+    with Status("Writing results to disk"):
+        Path(output_fp).parent.mkdir(exist_ok=True, parents=True)
+        Path(output_fp).write_text(json.dumps(results, indent=2))
     print(f"Results written to '{output_fp}'")
 
 
