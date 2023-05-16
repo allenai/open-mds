@@ -34,7 +34,7 @@ def main(
         bertscore_results = metrics.compute_bertscore(
             predictions=predictions, references=references, batch_size=batch_size
         )
-    print(f"[green]Done. BERTScore F1: {bertscore_results['bertscore_f1_mean']:.2}[/green]")
+    print(f"[green]Done. BERTScore F1: {bertscore_results['bertscore_f1_mean']:.2f}[/green]")
 
     results.update(
         **flatten_dict.flatten(rouge_results, reducer="underscore"),
