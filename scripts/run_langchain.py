@@ -113,6 +113,8 @@ Summary:""",
     outputs = []
     example_printed = False
     for example in track(dataset, description="Generating summaries"):
+        if not example["document"].strip():
+            continue
         # Format the inputs, truncate, and sanitize
         documents, summary = util.sanitize_text(example["document"]), util.sanitize_text(example["summary"])
         documents, summary = util.preprocess_multi_news(documents, summary, doc_sep_token=DOC_SEP_TOKEN)
@@ -134,7 +136,7 @@ Summary:""",
             with get_openai_callback() as cb:
                 output = chain.run(documents=documents)
                 print("[yellow]--dry-run flag passed. Getting projected cost and exiting.[/yellow]")
-                print(f"Projected cost for one example. Actual cost will be ~max_examples={max_examples} this amount.")
+                print(f"Projected cost for one example. Actual cost will be ~max_examples={max_examples} this amount (excluding cached examples).")
                 print(cb)
                 raise typer.Exit()
 
