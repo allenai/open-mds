@@ -6,7 +6,7 @@ authors = ["John Giorgi <johnmgiorgi@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 omegaconf = "^2.2.2"
 diskcache = "^5.4.0"
 platformdirs = "^2.5.2"
@@ -19,6 +19,7 @@ transformers = "^4.19.0"
 tokenizers = "^0.12.1"
 datasets = "^2.4.0"
 sentence-transformers = "^2.1.0"
+langchain = {version = "^0.0.163", extras = ["openai"]}
 flatten-dict = "^0.4.2"
 sacremoses = "^0.0.53"
 sentencepiece = "^0.1.96"

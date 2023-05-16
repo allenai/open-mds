@@ -2,9 +2,11 @@ from typing import Callable
 
 import datasets
 import pytest
+import tiktoken
 from datasets.dataset_dict import DatasetDict
+from transformers import AutoConfig, AutoModel, AutoTokenizer, PretrainedConfig, PreTrainedTokenizerBase
+
 from open_mds import indexing
-from transformers import AutoConfig, AutoModel, AutoTokenizer, PretrainedConfig, PreTrainedTokenizer
 from open_mds.common import util
 
 
@@ -26,10 +28,20 @@ def hf_tokenizer() -> Callable:
     to create a HuggingFace tokenizer object. Optional **kwargs are passed to `from_pretrained()`.
     """
 
-    def _hf_tokenizer(model_name_or_path: str, **kwargs) -> PreTrainedTokenizer:
+    def _hf_tokenizer(model_name_or_path: str, **kwargs) -> PreTrainedTokenizerBase:
         return AutoTokenizer.from_pretrained(model_name_or_path, **kwargs)
 
     return _hf_tokenizer
+
+
+@pytest.fixture
+def tiktokenizer() -> Callable:
+    """This is a fixture factory. It returns a function that you can use to create a tiktoken Encoding object."""
+
+    def _tiktokenizer(model_name: str) -> tiktoken.Encoding:
+        return tiktoken.encoding_for_model(model_name)
+
+    return _tiktokenizer
 
 
 @pytest.fixture

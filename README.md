@@ -13,7 +13,7 @@ The corresponding code for our paper: Exploring the Challenges of Open Domain Mu
 
 ## Installation
 
-This repository requires Python 3.8 or later.
+This repository requires Python 3.9 or later.
 
 ### Installing with pip
 
