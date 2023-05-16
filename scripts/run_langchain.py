@@ -31,8 +31,8 @@ def _print_example_prompt(llm, example_prompt, example_printed: bool) -> bool:
 
 
 def main(
-    dataset_name: str = typer.Argument("The name of the dataset to use (via the datasets library)."),
-    output_fp: str = typer.Argument("Filepath to save the results to."),
+    dataset_name: str = typer.Argument(..., help="The name of the dataset to use (via the datasets library)."),
+    output_fp: str = typer.Argument(..., help="Filepath to save the results to."),
     dataset_config_name: str = typer.Option(
         None, help="The configuration name of the dataset to use (via the datasets library)."
     ),
@@ -136,7 +136,9 @@ Summary:""",
             with get_openai_callback() as cb:
                 output = chain.run(documents=documents)
                 print("[yellow]--dry-run flag passed. Getting projected cost and exiting.[/yellow]")
-                print(f"Projected cost for one example. Actual cost will be ~max_examples={max_examples} this amount (excluding cached examples).")
+                print(
+                    f"Projected cost for one example. Actual cost will be ~max_examples={max_examples} this amount (excluding cached examples)."
+                )
                 print(cb)
                 raise typer.Exit()
 
