@@ -29,17 +29,20 @@ def main(
 
     with Status("Computing ROUGE scores"):
         rouge_results = metrics.compute_rouge(predictions=predictions, references=references)
-    print(f"[green]Done. ROUGE-Avg: {rouge_results['rouge_avg_fmeasure_mean']:.2f}[/green]")
+    print(f"[green]Done.[/green] ROUGE-Avg: {rouge_results['rouge_avg_fmeasure_mean']:.2f}")
     with Status("Computing BERTScore"):
         bertscore_results = metrics.compute_bertscore(
             predictions=predictions, references=references, batch_size=batch_size
         )
-    print(f"[green]Done. BERTScore F1: {bertscore_results['bertscore_f1_mean']:.2f}[/green]")
+    print(f"[green]Done.[/green] BERTScore F1: {bertscore_results['f1_mean']:.2f}")
 
     results.update(
         **flatten_dict.flatten(rouge_results, reducer="underscore"),
         **flatten_dict.flatten({"bertscore": bertscore_results}, reducer="underscore"),
     )
+
+    with Status("Writing results to disk"):
+        Path(input_fp).write_text(json.dumps(results, ensure_ascii=False, indent=2))
     print(f"Results written to '{input_fp}'")
 
 

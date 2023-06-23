@@ -32,9 +32,6 @@ import numpy as np
 import transformers
 from datasets import load_dataset, load_from_disk
 from filelock import FileLock
-from open_mds import metrics as summarization_metrics
-from open_mds.common import util
-from open_mds.perturbations import Perturber
 from transformers import (
     AutoConfig,
     AutoModelForSeq2SeqLM,
@@ -52,6 +49,10 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode, send_example_telemetry
 from transformers.utils.versions import require_version
+
+from open_mds import metrics as summarization_metrics
+from open_mds.common import util
+from open_mds.perturbations import Perturber
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.21.0.dev0")
