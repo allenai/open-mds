@@ -10,7 +10,7 @@
 # - arrow needed for HF Datasets both during installation and use
 # - java needed for Terrier (via PyTerrier) both during installation and use
 module purge
-module load StdEnv/2020 gcc/9.3.0 python/3.9 arrow/7.0.0 java/14.0.2
+module load StdEnv/2020 gcc/9.3.0 python/3.9 arrow/8.0.0 java/14.0.2
 
 # Setup the virtual environment under home
 PROJECT_NAME="open-mds"
