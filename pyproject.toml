@@ -33,8 +33,7 @@ bert-score = "^0.3.11"
 seaborn = "^0.12.1"
 python-terrier = "^0.9.1"
 pyterrier-sentence-transformers = {git = "https://github.com/soldni/pyterrier_sentence_transformers.git", rev = "main", optional = true}
-# Only required until >0.13.5 is released, see: https://github.com/statsmodels/statsmodels/issues/8543
-statsmodels = {git = "https://github.com/statsmodels/statsmodels.git", rev = "main"}
+statsmodels = "^0.14.0"
 
 [tool.poetry.extras]
 # Extra dependencies required for retrieval.

@@ -6,8 +6,9 @@ from typing import Callable, List
 import pytest
 from hypothesis import given
 from hypothesis.strategies import booleans, text
-from open_mds.common import util
 from transformers import AutoTokenizer
+
+from open_mds.common import util
 
 
 @given(text=text(), lowercase=booleans())
@@ -164,7 +165,7 @@ def test_truncate_multi_doc(tokenizer_type: Callable, request) -> None:
     expected = (
         f"I am document one. {doc_sep_token} I am document two. I am a little"
         if tokenizer_type == "hf_tokenizer"
-        else f"I am document one. {doc_sep_token} I am document two. I am a little longer than"
+        else f"I am document one. {doc_sep_token} I am document two. I am a little longer than document one."
     )
     actual = util.truncate_multi_doc(text, doc_sep_token=doc_sep_token, max_length=max_length, tokenizer=tokenizer)
     assert expected == actual

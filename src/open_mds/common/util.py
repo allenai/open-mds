@@ -128,30 +128,30 @@ def truncate_multi_doc(
     for truncation when applying pertubations (e.g. additiion and deletion).
     """
     input_docs = split_docs(text, doc_sep_token=doc_sep_token)
-    # If num_docs is not provided, determine it from the input text
-    num_docs = num_docs or get_num_docs(text, doc_sep_token=doc_sep_token)
-    # Truncate each doc to its maximum allowed length. Supports HuggingFace Tokenizers and tiktoken.
+
+    # Setup encode/decode functions based on the type of tokenizer
     if isinstance(tokenizer, PreTrainedTokenizerBase):
         # make room for the start/end special tokens
-        max_doc_length = max_length - 2
-        # make room for doc_sep_token's
-        max_doc_length -= len(tokenizer.tokenize(f" {doc_sep_token} ")) * (num_docs - 1)
-        max_doc_length = max_doc_length // num_docs
-        truncated_docs = [
-            # Going to join everything on a space at the end, so strip it off here.
-            tokenizer.convert_tokens_to_string(
-                tokenizer.tokenize(doc, max_length=max_doc_length, truncation=True)
-            ).strip()
-            for doc in input_docs
-        ]
+        max_length -= 2
+        encode = tokenizer.tokenize
+        decode = tokenizer.convert_tokens_to_string
     elif isinstance(tokenizer, tiktoken.core.Encoding):
-        # make room for doc_sep_token's
-        max_doc_length = (max_length - (len(tokenizer.encode(f" {doc_sep_token} ")) * (num_docs - 1))) // num_docs
-        truncated_docs = [tokenizer.decode(tokenizer.encode(doc)[:max_doc_length]).strip() for doc in input_docs]
+        encode = tokenizer.encode
+        decode = tokenizer.decode
     else:
         raise ValueError(
             f"tokenizer must be either a PreTrainedTokenizerBase or a tiktoken.core.Encoding, got {type(tokenizer)}"
         )
+    if len(encode(text)) > max_length:
+        # If num_docs is not provided, determine it from the input text
+        num_docs = num_docs or get_num_docs(text, doc_sep_token=doc_sep_token)
+        # make room for doc_sep_token's
+        max_doc_length = max_length - len(encode(f" {doc_sep_token} ")) * (num_docs - 1)
+        max_doc_length = max_doc_length // num_docs
+        # Going to join everything on a space at the end, so strip it off here.
+        truncated_docs = [decode(encode(doc)[:max_doc_length]).strip() for doc in input_docs]
+    else:
+        truncated_docs = input_docs
     return f" {doc_sep_token} ".join(truncated_docs)
 
 
