@@ -9,7 +9,7 @@
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 ![GitHub](https://img.shields.io/github/license/allenai/open-mds?color=blue)
 
-The corresponding code for our paper: Exploring the Challenges of Open Domain Multi-Document Summarization. The raw experimental results are available for download [here](https://ai2-s2-research-public.s3-us-west-2.amazonaws.com/open-mds/results.tar.gz).
+The corresponding code for our paper: Evaluating the Impact of Retrieval on Multi-document Summarization. The raw experimental results are available for download [here](https://ai2-s2-research-public.s3-us-west-2.amazonaws.com/open-mds/results.tar.gz).
 
 ## Installation
 
