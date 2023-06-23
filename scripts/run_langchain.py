@@ -44,7 +44,10 @@ def main(
     ),
     temperature: float = typer.Option(
         0.0,
-        help="The temperature to use when sampling from the model. See: https://platform.openai.com/docs/api-reference/completions",
+        help=(
+            "The temperature to use when sampling from the model."
+            " See: https://platform.openai.com/docs/api-reference/completions"
+        ),
     ),
     max_input_tokens: int = typer.Option(
         3512,
@@ -52,11 +55,14 @@ def main(
     ),
     max_output_tokens: int = typer.Option(
         512,
-        help="The maximum number of tokens to generate in the chat completion. See: https://platform.openai.com/docs/api-reference/completions",
+        help=(
+            "The maximum number of tokens to generate in the chat completion."
+            " See: https://platform.openai.com/docs/api-reference/completions"
+        ),
     ),
     max_examples: int = typer.Option(
         None,
-        help="The maximum number of examples to use from the dataset. Helpful for debugging before commiting to a full run.",
+        help="Maximum number of examples to use. Helpful for debugging before commiting to a full run.",
     ),
     split: str = typer.Option("test", help="The dataset split to use."),
     retriever: str = typer.Option(
@@ -72,7 +78,7 @@ def main(
         ),
     ),
     do_eval: bool = typer.Option(False, help="If True, will evaluate the models outputs and save the results."),
-    dry_run: bool = typer.Option(False, help="If True, will run a single example, print a projected cost and exit."),
+    dry_run: bool = typer.Option(False, help="If True, run a single example, print a projected cost and exit."),
     use_cache: bool = typer.Option(
         True, help="If True, will load model generations from cache when model_name and prompt are identical."
     ),
@@ -91,7 +97,7 @@ def main(
     openai_api_key = openai_api_key or os.environ.get("OPENAI_API_KEY")
     if openai_api_key is None:
         raise ValueError(
-            "OpenAI API key must be provided via the OPENAI_API_KEY environment variable or the --openai-api-key flag."
+            "API key must be provided via the OPENAI_API_KEY environment variable or the --openai-api-key flag."
         )
     llm = ChatOpenAI(
         model_name=model_name, temperature=temperature, openai_api_key=openai_api_key, max_tokens=max_output_tokens
@@ -177,7 +183,10 @@ Summary:""",
                 output = chain.run(max_words=max_words, ic_examples=ic_examples, documents=documents)
                 print("[yellow]--dry-run flag passed. Getting projected cost and exiting.[/yellow]")
                 print(
-                    f"Projected cost for one example. Actual cost will be ~max_examples={max_examples} this amount (excluding cached examples)."
+                    (
+                        "Projected cost for one example."
+                        f" Actual cost will be ~max_examples={max_examples} this amount (excluding cached examples)."
+                    )
                 )
                 print(cb)
                 raise typer.Exit()
