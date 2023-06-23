@@ -6,9 +6,10 @@ from typing import List
 
 import pyterrier as pt
 import typer
+from rich import print
+
 from open_mds import indexing
 from open_mds.common import util
-from rich import print
 
 app = typer.Typer()
 
