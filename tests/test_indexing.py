@@ -1,7 +1,9 @@
+from copy import deepcopy
+
+import pandas as pd
+
 from open_mds import indexing
 from open_mds.common import util
-import pandas as pd
-from copy import deepcopy
 
 
 def test_sanitize_query() -> None:
