@@ -16,7 +16,7 @@ from open_mds.common import util
 _HF_DATASETS_URL = "https://huggingface.co/datasets"
 
 if not pt.started():
-    # This is a bit of a hack, but the version and helper version are required if you want to use PyTerrier.
+    # This is a bit of a hack, but the version and helper version are required if you want to use PyTerrier
     # offline. See: https://pyterrier.readthedocs.io/en/latest/installation.html#pyterrier.init
     if is_offline_mode():
         version, helper_version = util.get_pyterrier_versions()
