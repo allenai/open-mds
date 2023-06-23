@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "open-mds"
 version = "0.1.0"
-description = 'The corresponding code for our paper: Exploring the Challenges of Open Domain Multi-Document Summarization.'
+description = 'The corresponding code for our paper: Evaluating the Impact of Retrieval on Multi-document Summarization.'
 authors = ["John Giorgi <johnmgiorgi@gmail.com>"]
 readme = "README.md"
 
@@ -19,7 +19,7 @@ transformers = "^4.19.0"
 tokenizers = "^0.12.1"
 datasets = "^2.4.0"
 sentence-transformers = "^2.1.0"
-langchain = {version = "^0.0.163", extras = ["openai"]}
+langchain = {version = "^0.0.210", extras = ["openai"]}
 flatten-dict = "^0.4.2"
 sacremoses = "^0.0.53"
 sentencepiece = "^0.1.96"
