@@ -205,6 +205,7 @@ class CanonicalMDSDataset(HuggingFacePyTerrierDataset):
             "max": np.max(num_docs),
             "mean": np.mean(num_docs),
             "min": np.min(num_docs),
+            "sum": np.sum(num_docs),
         }
 
         if avg_tokens_per_doc:
@@ -295,6 +296,7 @@ class MultiXScienceDataset(HuggingFacePyTerrierDataset):
             "max": np.max(num_docs),
             "mean": np.mean(num_docs),
             "min": np.min(num_docs),
+            "sum": np.sum(num_docs),
         }
 
         if avg_tokens_per_doc:
@@ -387,6 +389,7 @@ class MSLR2022Dataset(HuggingFacePyTerrierDataset):
             "max": np.max(num_docs),
             "mean": np.mean(num_docs),
             "min": np.min(num_docs),
+            "sum": np.sum(num_docs),
         }
 
         if avg_tokens_per_doc:
