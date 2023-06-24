@@ -149,5 +149,5 @@ tar cvfz output.tar.gz \
 and uploaded the resulting `tar` file to an AWS S3 bucket
 
 ```bash
-aws s3 cp "./output/results.tar.gz" "s3://ai2-s2-research-public/open-mds/results.tar.gz"
+aws s3 cp "output.tar.gz" "s3://ai2-s2-research-public/open-mds/output.tar.gz"
 ```
