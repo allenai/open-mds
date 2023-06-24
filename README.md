@@ -9,7 +9,12 @@
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 ![GitHub](https://img.shields.io/github/license/allenai/open-mds?color=blue)
 
-The corresponding code for our paper: Evaluating the Impact of Retrieval on Multi-document Summarization. The raw experimental results are available for download [here](https://ai2-s2-research-public.s3-us-west-2.amazonaws.com/open-mds/results.tar.gz).
+The corresponding code for our paper: _Evaluating the Impact of Retrieval on Multi-document Summarization_.
+
+The raw experimental results, including the output of the human evaluation, can be downloaded [here](https://ai2-s2-research-public.s3-us-west-2.amazonaws.com/open-mds/output.tar.gz).
+
+> **Warning**
+> The download is approximately 7GB compressed.
 
 ## Installation
 
@@ -73,7 +78,8 @@ python -m ipykernel install --user --name=<myenv>
 
 You can now select this environment as a kernel in the notebook. See [here](https://janakiev.com/blog/jupyter-virtual-envs/#add-virtual-environment-to-jupyter-notebook) for more details.
 
-> Note: some IDEs, like VSCode, will automate this process when you launch a notebook with the virtual environment active.
+> **Note**
+> some IDEs, like VSCode, will automate this process when you launch a notebook with the virtual environment active.
 
 ### 🔎 Open-domain MDS
 
