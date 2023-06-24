@@ -133,19 +133,21 @@ would submit all perturbation experiments for the [PRIMERA](https://arxiv.org/ab
 Once all the results were generated, we compressed the directory with the following command:
 
 ```bash
-tar -zcv \
+tar cvfz output.tar.gz \
+  --exclude '.DS_Store' \
   --exclude 'README.md' \
+  --exclude 'plots/*' \
+  --exclude 'tables/*' \
   --exclude '*/eval_results.json' \
   --exclude '*/predict_results.json' \
   --exclude '*/generated_predictions.txt' \
   --exclude '*/runs/*' \
   --exclude '*/trained_with_retrieval/*' \
-  -f "./output/results.tar.gz" \
-  "./
+  output
 ```
 
 and uploaded the resulting `tar` file to an AWS S3 bucket
 
 ```bash
-aws s3 cp "./output/results.tar.gz" "s3://ai2-s2-research-public/open-mds/results.tar.gz"
+aws s3 cp "output.tar.gz" "s3://ai2-s2-research-public/open-mds/output.tar.gz"
 ```
